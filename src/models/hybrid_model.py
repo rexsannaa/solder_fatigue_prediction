@@ -8,8 +8,9 @@ hybrid_model.py - 改進的混合PINN-LSTM模型
 主要特點:
 1. 使用PINN分支從靜態特徵中提取物理關係並強化物理約束
 2. 使用LSTM分支從時間序列數據中提取動態特徵
-3. 采用優化的特徵融合與損失平衡機制
+3. 採用優化的特徵融合與損失平衡機制
 4. 針對小樣本數據集(81筆)專門優化
+5. 提供分階段訓練和物理約束驅動的預測流程
 """
 
 import torch
@@ -134,7 +135,8 @@ class PINNModel(nn.Module):
     """
     def __init__(self, input_dim=5, hidden_dims=[32, 16], output_dim=1, 
                  dropout_rate=0.2, use_physics_layer=True, physics_layer_trainable=False,
-                 use_batch_norm=True, activation='relu', a_coefficient=55.83, b_coefficient=-2.259):
+                 use_batch_norm=True, activation='relu', a_coefficient=55.83, b_coefficient=-2.259,
+                 l2_reg=0.001):
         """
         初始化PINN模型
         
@@ -149,6 +151,7 @@ class PINNModel(nn.Module):
             activation (str): 激活函數類型
             a_coefficient (float): 物理模型係數a
             b_coefficient (float): 物理模型係數b
+            l2_reg (float): L2正則化系數
         """
         super(PINNModel, self).__init__()
         
@@ -156,6 +159,7 @@ class PINNModel(nn.Module):
         self.hidden_dims = hidden_dims
         self.output_dim = output_dim
         self.use_physics_layer = use_physics_layer
+        self.l2_reg = l2_reg
         
         # 選擇激活函數
         if activation == 'relu':
@@ -164,6 +168,8 @@ class PINNModel(nn.Module):
             self.activation = nn.LeakyReLU(0.1)
         elif activation == 'elu':
             self.activation = nn.ELU()
+        elif activation == 'selu':
+            self.activation = nn.SELU()
         else:
             self.activation = nn.ReLU()
         
@@ -242,10 +248,17 @@ class PINNModel(nn.Module):
             # 直接預測疲勞壽命
             nf_pred = torch.exp(self.direct_predictor(features))  # 使用exp確保為正值
         
+        # 應用L2正則化
+        l2_penalty = 0.0
+        if self.l2_reg > 0:
+            for param in self.parameters():
+                l2_penalty += torch.norm(param, 2)
+        
         return {
             'nf_pred': nf_pred.squeeze(-1),
             'delta_w': delta_w.squeeze(-1),
-            'features': features
+            'features': features,
+            'l2_penalty': l2_penalty * self.l2_reg
         }
 
     
@@ -255,7 +268,8 @@ class LSTMModel(nn.Module):
     專門用於處理銲錫接點的非線性塑性應變功時間序列資料
     """
     def __init__(self, input_dim=2, hidden_size=32, num_layers=1, output_dim=1,
-                 bidirectional=True, dropout_rate=0.2, use_attention=True):
+                 bidirectional=True, dropout_rate=0.2, use_attention=True,
+                 l2_reg=0.001):
         """
         初始化LSTM模型
         
@@ -267,6 +281,7 @@ class LSTMModel(nn.Module):
             bidirectional (bool): 是否使用雙向LSTM
             dropout_rate (float): Dropout比率
             use_attention (bool): 是否使用注意力機制
+            l2_reg (float): L2正則化系數
         """
         super(LSTMModel, self).__init__()
         
@@ -275,6 +290,7 @@ class LSTMModel(nn.Module):
         self.num_layers = num_layers
         self.bidirectional = bidirectional
         self.use_attention = use_attention
+        self.l2_reg = l2_reg
         
         # LSTM層
         self.lstm = nn.LSTM(
@@ -294,14 +310,20 @@ class LSTMModel(nn.Module):
             self.attention = AttentionLayer(lstm_output_dim)
         
         # 全連接層，用於最終預測
+        fc_layers = []
         fc_input_dim = lstm_output_dim
-        self.fc = nn.Sequential(
-            nn.Linear(fc_input_dim, fc_input_dim // 2),
-            nn.BatchNorm1d(fc_input_dim // 2),
-            nn.ReLU(),
-            nn.Dropout(dropout_rate if dropout_rate > 0 else 0),
-            nn.Linear(fc_input_dim // 2, output_dim)
-        )
+        fc_hidden_dims = [lstm_output_dim // 2]
+        
+        for hidden_dim in fc_hidden_dims:
+            fc_layers.append(nn.Linear(fc_input_dim, hidden_dim))
+            fc_layers.append(nn.BatchNorm1d(hidden_dim))
+            fc_layers.append(nn.ReLU())
+            if dropout_rate > 0:
+                fc_layers.append(nn.Dropout(dropout_rate))
+            fc_input_dim = hidden_dim
+        
+        self.fc_layers = nn.Sequential(*fc_layers)
+        self.output_layer = nn.Linear(fc_input_dim, output_dim)
         
         # 初始化權重
         self._initialize_weights()
@@ -358,17 +380,468 @@ class LSTMModel(nn.Module):
         
         # 全連接層處理
         # 使用log空間預測，確保輸出為正值
-        output = torch.exp(self.fc(context_vector))
+        fc_output = self.fc_layers(context_vector)
+        output = torch.exp(self.output_layer(fc_output))
+        
+        # 應用L2正則化
+        l2_penalty = 0.0
+        if self.l2_reg > 0:
+            for param in self.parameters():
+                l2_penalty += torch.norm(param, 2)
         
         result = {
             'output': output.squeeze(-1),
-            'features': context_vector
+            'features': context_vector,
+            'l2_penalty': l2_penalty * self.l2_reg
         }
         
         if return_attention and attention_weights is not None:
             result['attention_weights'] = attention_weights
         
         return result
+    
+    def calculate_loss(self, outputs, targets, lambda_physics=0.5, lambda_consistency=0.1):
+        """
+        計算混合損失
+        
+        參數:
+            outputs (dict): 模型輸出
+            targets (torch.Tensor): 目標疲勞壽命
+            lambda_physics (float): 物理約束損失權重
+            lambda_consistency (float): 分支間一致性損失權重
+            
+        返回:
+            dict: 包含各部分損失的字典
+        """
+        # 獲取對數空間的目標值和預測值，用於計算相對誤差
+        log_targets = torch.log(targets + 1e-8)
+        log_predictions = torch.log(outputs['nf_pred'] + 1e-8)
+        
+        # 1. 主要預測損失 - 結合MSE和相對誤差
+        # 使用均方誤差
+        mse_loss = F.mse_loss(outputs['nf_pred'], targets)
+        
+        # 對數空間的均方誤差 (相對誤差)
+        log_mse_loss = F.mse_loss(log_predictions, log_targets)
+        
+        # 組合損失函數，同時考慮絕對誤差和相對誤差
+        # 對小樣本數據集，相對誤差更重要
+        pred_loss = 0.3 * mse_loss + 0.7 * log_mse_loss
+        
+        # 2. 物理約束損失
+        if self.use_physics_layer and 'delta_w' in outputs:
+            # 從真實壽命推算的理論上的delta_w (使用物理公式)
+            delta_w_theory = torch.pow(targets / self.a_coefficient, 1/self.b_coefficient)
+            delta_w_theory = torch.clamp(delta_w_theory, min=1e-8)
+            
+            # delta_w預測損失
+            delta_w_loss = F.mse_loss(outputs['delta_w'], delta_w_theory)
+            
+            # 物理預測一致性損失 - 預測的nf應符合物理模型
+            nf_physics = self.a_coefficient * torch.pow(outputs['delta_w'], self.b_coefficient)
+            physics_consistency_loss = F.mse_loss(outputs['pinn_nf_pred'], nf_physics)
+            
+            # 組合物理損失
+            physics_loss = 0.6 * delta_w_loss + 0.4 * physics_consistency_loss
+        else:
+            physics_loss = torch.tensor(0.0, device=targets.device)
+        
+        # 3. 分支間一致性損失 - 要求PINN和LSTM分支預測結果相近
+        # 使用對數空間進行比較以處理相對誤差
+        log_pinn_pred = torch.log(outputs['pinn_nf_pred'] + 1e-8)
+        log_lstm_pred = torch.log(outputs['lstm_nf_pred'] + 1e-8)
+        consistency_loss = F.mse_loss(log_pinn_pred, log_lstm_pred)
+        
+        # 4. L2正則化損失
+        l2_loss = outputs.get('l2_penalty', 0.0)
+        
+        # 5. 總損失
+        total_loss = pred_loss + lambda_physics * physics_loss + lambda_consistency * consistency_loss + l2_loss
+        
+        return {
+            'total_loss': total_loss,
+            'pred_loss': pred_loss,
+            'physics_loss': physics_loss,
+            'consistency_loss': consistency_loss,
+            'mse_loss': mse_loss,
+            'log_mse_loss': log_mse_loss,
+            'l2_loss': l2_loss
+        }
+
+
+class PINNLSTMTrainer:
+    """
+    PINN-LSTM混合模型訓練器
+    提供分階段訓練、物理約束動態調整等功能
+    """
+    def __init__(self, model, optimizer, device, 
+                 lambda_physics_init=0.1, lambda_physics_max=1.0,
+                 lambda_consistency_init=0.05, lambda_consistency_max=0.3,
+                 lambda_ramp_epochs=50, clip_grad_norm=1.0,
+                 scheduler=None, log_interval=10):
+        """
+        初始化PINN-LSTM訓練器
+        
+        參數:
+            model (HybridPINNLSTMModel): 混合模型
+            optimizer (torch.optim.Optimizer): 優化器
+            device (torch.device): 計算設備
+            lambda_physics_init (float): 物理約束初始權重
+            lambda_physics_max (float): 物理約束最大權重
+            lambda_consistency_init (float): 一致性損失初始權重
+            lambda_consistency_max (float): 一致性損失最大權重
+            lambda_ramp_epochs (int): 達到最大權重的輪數
+            clip_grad_norm (float): 梯度裁剪範數
+            scheduler (torch.optim.lr_scheduler): 學習率調度器
+            log_interval (int): 日誌輸出間隔
+        """
+        self.model = model
+        self.optimizer = optimizer
+        self.device = device
+        self.lambda_physics_init = lambda_physics_init
+        self.lambda_physics_max = lambda_physics_max
+        self.lambda_consistency_init = lambda_consistency_init
+        self.lambda_consistency_max = lambda_consistency_max
+        self.lambda_ramp_epochs = lambda_ramp_epochs
+        self.clip_grad_norm = clip_grad_norm
+        self.scheduler = scheduler
+        self.log_interval = log_interval
+        
+        # 初始化訓練記錄
+        self.train_losses = []
+        self.val_losses = []
+        self.train_metrics = {}
+        self.val_metrics = {}
+        self.current_epoch = 0
+        self.best_val_loss = float('inf')
+        self.best_model_state = None
+        
+        # 初始化損失權重
+        self.lambda_physics = lambda_physics_init
+        self.lambda_consistency = lambda_consistency_init
+    
+    def update_loss_weights(self, epoch):
+        """
+        更新損失權重
+        
+        參數:
+            epoch (int): 當前訓練輪次
+        """
+        progress = min(epoch / self.lambda_ramp_epochs, 1.0)
+        self.lambda_physics = self.lambda_physics_init + (self.lambda_physics_max - self.lambda_physics_init) * progress
+        self.lambda_consistency = self.lambda_consistency_init + (self.lambda_consistency_max - self.lambda_consistency_init) * progress
+        
+        logger.debug(f"輪次 {epoch}: 物理約束權重 = {self.lambda_physics:.4f}, 一致性約束權重 = {self.lambda_consistency:.4f}")
+    
+    def train_epoch(self, train_loader):
+        """
+        訓練一個輪次
+        
+        參數:
+            train_loader (DataLoader): 訓練資料載入器
+            
+        返回:
+            dict: 包含訓練損失和指標的字典
+        """
+        self.model.train()
+        epoch_losses = {'total': 0.0, 'pred': 0.0, 'physics': 0.0, 'consistency': 0.0}
+        num_batches = len(train_loader)
+        
+        for batch_idx, (static_features, time_series, targets) in enumerate(train_loader):
+            # 將資料移至設備
+            static_features = static_features.to(self.device)
+            time_series = time_series.to(self.device)
+            targets = targets.to(self.device)
+            
+            # 清零梯度
+            self.optimizer.zero_grad()
+            
+            # 前向傳播
+            outputs = self.model(static_features, time_series)
+            
+            # 計算損失
+            losses = self.model.calculate_loss(
+                outputs, targets, 
+                lambda_physics=self.lambda_physics,
+                lambda_consistency=self.lambda_consistency
+            )
+            
+            loss = losses['total_loss']
+            
+            # 反向傳播
+            loss.backward()
+            
+            # 梯度裁剪
+            if self.clip_grad_norm > 0:
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad_norm)
+            
+            # 參數更新
+            self.optimizer.step()
+            
+            # 累計損失
+            for k, v in losses.items():
+                if k.endswith('_loss'):
+                    name = k.replace('_loss', '')
+                    if name in epoch_losses:
+                        epoch_losses[name] += v.item()
+                    else:
+                        epoch_losses[name] = v.item()
+        
+        # 計算平均損失
+        for k in epoch_losses:
+            epoch_losses[k] /= num_batches
+        
+        return epoch_losses
+    
+    def evaluate(self, val_loader):
+        """
+        評估模型
+        
+        參數:
+            val_loader (DataLoader): 驗證資料載入器
+            
+        返回:
+            tuple: (平均損失, 評估指標字典, 預測結果, 目標值)
+        """
+        self.model.eval()
+        val_losses = {'total': 0.0, 'pred': 0.0, 'physics': 0.0, 'consistency': 0.0}
+        all_outputs = []
+        all_targets = []
+        
+        with torch.no_grad():
+            for static_features, time_series, targets in val_loader:
+                # 將資料移至設備
+                static_features = static_features.to(self.device)
+                time_series = time_series.to(self.device)
+                targets = targets.to(self.device)
+                
+                # 前向傳播
+                outputs = self.model(static_features, time_series)
+                
+                # 計算損失
+                losses = self.model.calculate_loss(
+                    outputs, targets, 
+                    lambda_physics=self.lambda_physics,
+                    lambda_consistency=self.lambda_consistency
+                )
+                
+                # 累計損失
+                for k, v in losses.items():
+                    if k.endswith('_loss'):
+                        name = k.replace('_loss', '')
+                        if name in val_losses:
+                            val_losses[name] += v.item()
+                        else:
+                            val_losses[name] = v.item()
+                
+                # 收集預測和目標
+                all_outputs.append(outputs)
+                all_targets.append(targets.cpu().numpy())
+        
+        # 計算平均損失
+        num_batches = len(val_loader)
+        for k in val_losses:
+            val_losses[k] /= num_batches
+        
+        # 合併預測和目標
+        all_predictions = torch.cat([o['nf_pred'].cpu() for o in all_outputs]).numpy()
+        all_targets = np.concatenate(all_targets)
+        
+        # 計算指標
+        metrics = self._calculate_metrics(all_predictions, all_targets)
+        
+        return val_losses, metrics, all_predictions, all_targets
+    
+    def _calculate_metrics(self, predictions, targets):
+        """
+        計算評估指標
+        
+        參數:
+            predictions (np.ndarray): 預測值
+            targets (np.ndarray): 真實值
+            
+        返回:
+            dict: 包含評估指標的字典
+        """
+        from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+        
+        # 計算基本指標
+        mse = mean_squared_error(targets, predictions)
+        rmse = np.sqrt(mse)
+        r2 = r2_score(targets, predictions)
+        mae = mean_absolute_error(targets, predictions)
+        
+        # 計算相對誤差
+        rel_error = np.abs((targets - predictions) / (targets + 1e-8)) * 100
+        mean_rel_error = np.mean(rel_error)
+        median_rel_error = np.median(rel_error)
+        
+        # 計算對數空間的指標
+        log_targets = np.log(targets + 1e-8)
+        log_predictions = np.log(predictions + 1e-8)
+        log_mse = mean_squared_error(log_targets, log_predictions)
+        log_rmse = np.sqrt(log_mse)
+        
+        return {
+            'rmse': rmse,
+            'r2': r2,
+            'mae': mae,
+            'mean_rel_error': mean_rel_error,
+            'median_rel_error': median_rel_error,
+            'log_rmse': log_rmse
+        }
+    
+    def train(self, train_loader, val_loader, epochs, early_stopping_patience=20,
+             save_path=None, callbacks=None):
+        """
+        訓練模型
+        
+        參數:
+            train_loader (DataLoader): 訓練資料載入器
+            val_loader (DataLoader): 驗證資料載入器
+            epochs (int): 訓練輪數
+            early_stopping_patience (int): 早停耐心值
+            save_path (str): 模型保存路徑
+            callbacks (list): 回調函數列表
+            
+        返回:
+            dict: 訓練歷史記錄
+        """
+        callbacks = callbacks or []
+        best_val_loss = float('inf')
+        patience_counter = 0
+        
+        for epoch in range(epochs):
+            self.current_epoch = epoch
+            
+            # 更新損失權重
+            self.update_loss_weights(epoch)
+            
+            # 訓練一個輪次
+            train_losses = self.train_epoch(train_loader)
+            self.train_losses.append(train_losses)
+            
+            # 評估
+            val_losses, val_metrics, _, _ = self.evaluate(val_loader)
+            self.val_losses.append(val_losses)
+            
+            # 更新指標記錄
+            for k, v in val_metrics.items():
+                if k not in self.val_metrics:
+                    self.val_metrics[k] = []
+                self.val_metrics[k].append(v)
+            
+            # 更新學習率
+            if self.scheduler is not None:
+                if hasattr(self.scheduler, 'step_with_metrics'):
+                    self.scheduler.step_with_metrics(val_losses['total'])
+                else:
+                    self.scheduler.step()
+            
+            # 輸出日誌
+            if epoch % self.log_interval == 0 or epoch == epochs - 1:
+                curr_lr = self.optimizer.param_groups[0]['lr']
+                log_msg = (f"輪次 {epoch+1}/{epochs} - "
+                          f"訓練損失: {train_losses['total']:.4f}, "
+                          f"驗證損失: {val_losses['total']:.4f}, "
+                          f"RMSE: {val_metrics['rmse']:.4f}, "
+                          f"R²: {val_metrics['r2']:.4f}, "
+                          f"學習率: {curr_lr:.6f}")
+                logger.info(log_msg)
+            
+            # 早停檢查
+            if val_losses['total'] < best_val_loss:
+                best_val_loss = val_losses['total']
+                patience_counter = 0
+                
+                # 保存最佳模型
+                if save_path:
+                    self._save_model(save_path, val_losses, val_metrics)
+                
+                # 保存最佳模型狀態
+                self.best_val_loss = best_val_loss
+                self.best_model_state = {k: v.cpu().clone() for k, v in self.model.state_dict().items()}
+            else:
+                patience_counter += 1
+                
+                if patience_counter >= early_stopping_patience:
+                    logger.info(f"早停觸發，在輪次 {epoch+1} 停止訓練")
+                    break
+            
+            # 執行回調函數
+            for callback in callbacks:
+                callback(epoch, {
+                    'model': self.model,
+                    'optimizer': self.optimizer,
+                    'train_loss': train_losses['total'],
+                    'val_loss': val_losses['total'],
+                    'metrics': val_metrics
+                })
+        
+        # 恢復最佳模型
+        if self.best_model_state is not None:
+            self.model.load_state_dict(self.best_model_state)
+        
+        return {
+            'train_losses': self.train_losses,
+            'val_losses': self.val_losses,
+            'val_metrics': self.val_metrics,
+            'best_val_loss': self.best_val_loss
+        }
+    
+    def _save_model(self, path, val_losses, val_metrics):
+        """
+        保存模型
+        
+        參數:
+            path (str): 保存路徑
+            val_losses (dict): 驗證損失
+            val_metrics (dict): 驗證指標
+        """
+        # 確保目錄存在
+        import os
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        # 保存模型
+        torch.save({
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'val_losses': val_losses,
+            'val_metrics': val_metrics,
+            'epoch': self.current_epoch,
+            'best_val_loss': self.best_val_loss,
+            'lambda_physics': self.lambda_physics,
+            'lambda_consistency': self.lambda_consistency
+        }, path)
+        
+        logger.info(f"模型已保存至 {path}")
+    
+    def load_model(self, path):
+        """
+        載入模型
+        
+        參數:
+            path (str): 模型路徑
+            
+        返回:
+            dict: 包含模型指標的字典
+        """
+        checkpoint = torch.load(path, map_location=self.device)
+        
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        self.current_epoch = checkpoint.get('epoch', 0)
+        self.best_val_loss = checkpoint.get('best_val_loss', float('inf'))
+        self.lambda_physics = checkpoint.get('lambda_physics', self.lambda_physics)
+        self.lambda_consistency = checkpoint.get('lambda_consistency', self.lambda_consistency)
+        
+        logger.info(f"模型已從 {path} 載入")
+        
+        return {
+            'val_losses': checkpoint.get('val_losses', {}),
+            'val_metrics': checkpoint.get('val_metrics', {})
+        }
 
 
 class FeatureFusionLayer(nn.Module):
@@ -458,22 +931,23 @@ class HybridPINNLSTMModel(nn.Module):
                  static_input_dim=5,        # 靜態結構參數維度
                  time_input_dim=2,          # 時間序列特徵維度
                  time_steps=4,              # 時間步數
-                 pinn_hidden_dims=[32, 16],  # PINN隱藏層維度
-                 lstm_hidden_size=32,       # LSTM隱藏層大小
+                 pinn_hidden_dims=[16, 8],  # PINN隱藏層維度
+                 lstm_hidden_size=16,       # LSTM隱藏層大小
                  lstm_num_layers=1,         # LSTM層數
-                 fusion_dim=32,             # 特徵融合維度
-                 dropout_rate=0.2,          # Dropout比率
+                 fusion_dim=16,             # 特徵融合維度
+                 dropout_rate=0.1,          # Dropout比率
                  bidirectional=True,        # 是否使用雙向LSTM
                  use_attention=True,        # 是否使用注意力機制
                  use_physics_layer=True,    # 是否使用物理約束層
                  physics_layer_trainable=False,  # 物理層參數是否可訓練
                  use_batch_norm=True,       # 是否使用批次正規化
-                 pinn_weight_init=1.0,      # PINN分支初始權重
-                 lstm_weight_init=1.0,      # LSTM分支初始權重
+                 pinn_weight_init=0.7,      # PINN分支初始權重
+                 lstm_weight_init=0.3,      # LSTM分支初始權重
                  a_coefficient=55.83,       # 物理模型係數a
                  b_coefficient=-2.259,      # 物理模型係數b
                  use_log_transform=True,    # 是否使用對數變換預測結果
-                 ensemble_method='weighted'): # 集成方法: 'weighted', 'gate', 'deep_fusion'
+                 ensemble_method='weighted', # 集成方法: 'weighted', 'gate', 'deep_fusion'
+                 l2_reg=0.001):             # L2正則化系數
         """
         初始化混合PINN-LSTM模型
         
@@ -497,6 +971,7 @@ class HybridPINNLSTMModel(nn.Module):
             b_coefficient (float): 物理模型係數b
             use_log_transform (bool): 是否使用對數變換
             ensemble_method (str): 集成方法
+            l2_reg (float): L2正則化系數
         """
         super(HybridPINNLSTMModel, self).__init__()
         
@@ -506,6 +981,9 @@ class HybridPINNLSTMModel(nn.Module):
         self.use_physics_layer = use_physics_layer
         self.use_log_transform = use_log_transform
         self.ensemble_method = ensemble_method
+        self.l2_reg = l2_reg
+        self.a_coefficient = a_coefficient
+        self.b_coefficient = b_coefficient
         
         # 1. PINN分支，處理靜態結構參數
         self.pinn_branch = PINNModel(
@@ -517,7 +995,8 @@ class HybridPINNLSTMModel(nn.Module):
             physics_layer_trainable=physics_layer_trainable,
             use_batch_norm=use_batch_norm,
             a_coefficient=a_coefficient,
-            b_coefficient=b_coefficient
+            b_coefficient=b_coefficient,
+            l2_reg=l2_reg
         )
         
         # 2. LSTM分支，處理時間序列資料
@@ -528,15 +1007,18 @@ class HybridPINNLSTMModel(nn.Module):
             output_dim=1,
             bidirectional=bidirectional,
             dropout_rate=dropout_rate,
-            use_attention=use_attention
+            use_attention=use_attention,
+            l2_reg=l2_reg
         )
         
         # 3. 分支權重 - 可訓練參數
         if ensemble_method == 'weighted':
-            # 初始化分支權重
-            self.log_branch_weights = nn.Parameter(
-                torch.tensor([math.log(pinn_weight_init), math.log(lstm_weight_init)], dtype=torch.float32)
+            # 初始化分支權重 - 使用sigmoid確保正值並在0-1之間，且和為1
+            weight_param = torch.tensor(
+                [math.log(pinn_weight_init / (1 - pinn_weight_init))], 
+                dtype=torch.float32
             )
+            self.branch_weight_param = nn.Parameter(weight_param)
         
         # 4. 特徵融合層 (用於'gate'和'deep_fusion'方法)
         if ensemble_method in ['gate', 'deep_fusion']:
@@ -576,6 +1058,16 @@ class HybridPINNLSTMModel(nn.Module):
                 nn.init.ones_(m.weight)
                 nn.init.zeros_(m.bias)
     
+    def get_branch_weights(self):
+        """獲取分支權重"""
+        if self.ensemble_method == 'weighted':
+            # 使用sigmoid轉換參數，獲得PINN分支權重
+            pinn_weight = torch.sigmoid(self.branch_weight_param)
+            # LSTM分支權重為補值
+            lstm_weight = 1 - pinn_weight
+            return torch.cat([pinn_weight, lstm_weight])
+        return None
+    
     def forward(self, static_features, time_series, return_features=False):
         """
         前向傳播
@@ -593,16 +1085,18 @@ class HybridPINNLSTMModel(nn.Module):
         pinn_nf_pred = pinn_output['nf_pred']
         pinn_delta_w = pinn_output['delta_w']
         pinn_features = pinn_output['features']
+        pinn_l2_penalty = pinn_output.get('l2_penalty', 0.0)
         
         # 2. LSTM分支前向傳播
         lstm_output = self.lstm_branch(time_series, return_attention=return_features)
         lstm_nf_pred = lstm_output['output']
         lstm_features = lstm_output['features']
+        lstm_l2_penalty = lstm_output.get('l2_penalty', 0.0)
         
         # 3. 根據集成方法合併預測結果
         if self.ensemble_method == 'weighted':
-            # 獲取分支權重 (通過softmax確保權重為正且總和為1)
-            branch_weights = F.softmax(self.log_branch_weights, dim=0)
+            # 獲取分支權重
+            branch_weights = self.get_branch_weights()
             
             # 加權平均預測結果
             nf_pred = branch_weights[0] * pinn_nf_pred + branch_weights[1] * lstm_nf_pred
@@ -645,7 +1139,8 @@ class HybridPINNLSTMModel(nn.Module):
             'nf_pred': nf_pred,
             'pinn_nf_pred': pinn_nf_pred,
             'lstm_nf_pred': lstm_nf_pred,
-            'fusion_weights': fusion_weights
+            'fusion_weights': fusion_weights,
+            'l2_penalty': pinn_l2_penalty + lstm_l2_penalty
         }
         
         if self.use_physics_layer:
@@ -657,71 +1152,6 @@ class HybridPINNLSTMModel(nn.Module):
             if self.ensemble_method in ['gate', 'deep_fusion']:
                 result['fused_features'] = fused_features
             if 'attention_weights' in lstm_output:
-                result['lstm_attention_weights'] = lstm_output['attention_weights']
+                result['attention_weights'] = lstm_output['attention_weights']
         
         return result
-    
-    def calculate_loss(self, outputs, targets, lambda_physics=0.5, lambda_consistency=0.1):
-        """
-        計算混合損失
-        
-        參數:
-            outputs (dict): 模型輸出
-            targets (torch.Tensor): 目標疲勞壽命
-            lambda_physics (float): 物理約束損失權重
-            lambda_consistency (float): 分支間一致性損失權重
-            
-        返回:
-            dict: 包含各部分損失的字典
-        """
-        # 獲取對數空間的目標值和預測值，用於計算相對誤差
-        log_targets = torch.log(targets + 1e-8)
-        log_predictions = torch.log(outputs['nf_pred'] + 1e-8)
-        
-        # 1. 主要預測損失 - 結合MSE和相對誤差
-        # 使用均方誤差
-        mse_loss = F.mse_loss(outputs['nf_pred'], targets)
-        
-        # 對數空間的均方誤差 (相對誤差)
-        log_mse_loss = F.mse_loss(log_predictions, log_targets)
-        
-        # 組合損失函數，同時考慮絕對誤差和相對誤差
-        pred_loss = 0.4 * mse_loss + 0.6 * log_mse_loss
-        
-        # 2. 物理約束損失
-        if self.use_physics_layer and 'delta_w' in outputs:
-            # 從真實壽命推算的理論上的delta_w (使用物理公式)
-            a = 55.83
-            b = -2.259
-            delta_w_theory = torch.pow(targets / a, 1/b)
-            delta_w_theory = torch.clamp(delta_w_theory, min=1e-8)
-            
-            # delta_w預測損失
-            delta_w_loss = F.mse_loss(outputs['delta_w'], delta_w_theory)
-            
-            # 物理預測一致性損失 - 預測的nf應符合物理模型
-            nf_physics = a * torch.pow(outputs['delta_w'], b)
-            physics_consistency_loss = F.mse_loss(outputs['pinn_nf_pred'], nf_physics)
-            
-            # 組合物理損失
-            physics_loss = 0.7 * delta_w_loss + 0.3 * physics_consistency_loss
-        else:
-            physics_loss = torch.tensor(0.0, device=targets.device)
-        
-        # 3. 分支間一致性損失 - 要求PINN和LSTM分支預測結果相近
-        # 使用對數空間進行比較以處理相對誤差
-        log_pinn_pred = torch.log(outputs['pinn_nf_pred'] + 1e-8)
-        log_lstm_pred = torch.log(outputs['lstm_nf_pred'] + 1e-8)
-        consistency_loss = F.mse_loss(log_pinn_pred, log_lstm_pred)
-        
-        # 4. 總損失
-        total_loss = pred_loss + lambda_physics * physics_loss + lambda_consistency * consistency_loss
-        
-        return {
-            'total_loss': total_loss,
-            'pred_loss': pred_loss,
-            'physics_loss': physics_loss,
-            'consistency_loss': consistency_loss,
-            'mse_loss': mse_loss,
-            'log_mse_loss': log_mse_loss
-        }

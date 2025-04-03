@@ -1,0 +1,187 @@
+# 訓練配置文件
+# 用於銲錫接點疲勞壽命預測模型訓練
+
+# 實驗配置
+experiment:
+  name: "hybrid_pinn_lstm_solder_fatigue"           # 實驗名稱
+  description: "混合PINN-LSTM模型用於銲錫接點疲勞壽命預測"
+  version: "1.0.0"                                  # 實驗版本
+  tags: ["PINN", "LSTM", "hybrid", "solder", "fatigue"]
+
+# 實驗追蹤
+tracking:
+  use_tensorboard: true                            # 是否使用TensorBoard記錄
+  log_interval: 1                                  # 日誌記錄間隔（每多少批次）
+  eval_interval: 1                                 # 評估間隔（每多少輪次）
+  save_interval: 10                                # 保存間隔（每多少輪次）
+  plot_metrics: true                               # 是否繪製指標圖表
+  export_predictions: true                         # 是否導出預測結果
+
+# 訓練策略
+training_strategy:
+  # 分階段訓練
+  stages:
+    - name: "warmup"                               # 預熱階段
+      epochs: 20                                   # 預熱輪次
+      learning_rate_factor: 0.1                    # 學習率因子
+      lambda_physics: 0.01                         # 物理約束權重
+      lambda_consistency: 0.01                     # 一致性損失權重
+      description: "低學習率預熱，輕微物理約束"
+    
+    - name: "main_training"                        # 主要訓練階段
+      epochs: 150                                  # 訓練輪次
+      learning_rate_factor: 1.0                    # 學習率因子
+      lambda_physics_start: 0.05                   # 初始物理約束權重
+      lambda_physics_end: 0.3                      # 結束物理約束權重
+      lambda_consistency_start: 0.05               # 初始一致性損失權重
+      lambda_consistency_end: 0.2                  # 結束一致性損失權重
+      description: "逐步增加物理約束的影響"
+    
+    - name: "fine_tuning"                          # 微調階段
+      epochs: 30                                   # 微調輪次
+      learning_rate_factor: 0.01                   # 學習率因子
+      lambda_physics: 0.5                          # 物理約束權重
+      lambda_consistency: 0.3                      # 一致性損失權重
+      description: "低學習率微調，強化物理約束"
+  
+  # 小樣本數據增強
+  data_augmentation:
+    enabled: true                                  # 是否啟用數據增強
+    physics_guided: true                           # 是否使用物理引導的數據增強
+    synthetic_samples: 20                          # 合成樣本數量
+    noise_level: 0.05                              # 噪聲水平
+    description: "基於物理模型生成合成數據以增強訓練"
+
+# 回調函數配置
+callbacks:
+  # 模型檢查點
+  model_checkpoint:
+    enabled: true                                  # 是否啟用
+    monitor: "val_loss"                            # 監控指標
+    mode: "min"                                    # 監控模式
+    save_best_only: true                           # 是否只保存最佳模型
+    save_weights_only: false                       # 是否只保存權重
+    verbose: 1                                     # 詳細程度
+  
+  # 早停機制
+  early_stopping:
+    enabled: true                                  # 是否啟用
+    monitor: "val_loss"                            # 監控指標
+    mode: "min"                                    # 監控模式
+    patience: 20                                   # 耐心值
+    min_delta: 0.0001                              # 最小改善閾值
+    verbose: 1                                     # 詳細程度
+  
+  # 學習率調度
+  lr_scheduler:
+    enabled: true                                  # 是否啟用
+    type: "cosine"                                 # 調度類型
+    monitor: "val_loss"                            # 監控指標
+    mode: "min"                                    # 監控模式
+    verbose: 1                                     # 詳細程度
+    patience: 5                                    # 耐心值（僅用於'plateau'類型）
+    factor: 0.5                                    # 衰減因子（僅用於'step'和'plateau'類型）
+    step_size: 10                                  # 步長（僅用於'step'類型）
+    T_max: 100                                     # 週期長度（僅用於'cosine'類型）
+    min_lr: 0.00001                                # 最小學習率
+  
+  # TensorBoard日誌
+  tensorboard:
+    enabled: true                                  # 是否啟用
+    log_dir: "outputs/logs"                        # 日誌目錄
+    histogram_freq: 5                              # 直方圖頻率
+    write_graph: true                              # 是否記錄計算圖
+    write_images: false                            # 是否記錄圖像
+  
+  # 進度條
+  progress_bar:
+    enabled: true                                  # 是否啟用
+    update_freq: 1                                 # 更新頻率
+
+# 驗證策略
+validation:
+  # K-折交叉驗證
+  k_fold:
+    enabled: false                                 # 是否啟用K-折交叉驗證
+    n_splits: 5                                    # 折數
+    shuffle: true                                  # 是否打亂數據
+    random_state: 42                               # 隨機種子
+  
+  # 留一法交叉驗證（適用於小樣本數據集）
+  leave_one_out:
+    enabled: true                                  # 是否啟用留一法交叉驗證
+    save_all_models: false                         # 是否保存所有模型
+  
+  # 物理驗證
+  physics_validation:
+    enabled: true                                  # 是否啟用物理驗證
+    tolerance: 20.0                                # 物理約束容差（百分比）
+    enforce_in_prediction: true                    # 預測時是否強制執行物理約束
+
+# 模型評估
+evaluation:
+  # 主要評估指標
+  primary_metric: "rmse"                           # 主要評估指標
+  primary_metric_mode: "min"                       # 主要評估指標模式
+  
+  # 詳細評估
+  detailed_metrics: ["rmse", "r2", "mae", "mape", "rel_error_mean", "rel_error_median"]
+  log_scale_metrics: true                           # 是否使用對數尺度評估
+  
+  # 特徵重要性分析
+  feature_importance:
+    enabled: true                                  # 是否啟用特徵重要性分析
+    method: "permutation"                          # 分析方法: permutation, shap
+  
+  # 敏感性分析
+  sensitivity_analysis:
+    enabled: true                                  # 是否啟用敏感性分析
+    parameters: ["Die", "stud", "mold", "PCB"]     # 要分析的參數
+    n_samples: 20                                  # 分析樣本數
+
+# 輸出與可視化
+output:
+  # 模型保存
+  save_model:
+    format: "pytorch"                              # 模型格式
+    save_optimizer: true                           # 是否保存優化器狀態
+    save_history: true                             # 是否保存訓練歷史
+  
+  # 可視化
+  visualization:
+    prediction_vs_true: true                       # 是否生成預測值與真實值對比圖
+    error_distribution: true                       # 是否生成誤差分佈圖
+    physical_validation: true                      # 是否生成物理驗證圖
+    attention_weights: true                        # 是否生成注意力權重圖
+    training_curves: true                          # 是否生成訓練曲線圖
+    feature_importance: true                       # 是否生成特徵重要性圖
+
+# 調試選項
+debug:
+  verbose: 2                                       # 詳細程度: 0=安靜，1=進度條，2=每輪信息
+  print_model_summary: true                        # 是否打印模型摘要
+  log_device_placement: false                      # 是否記錄設備放置
+  profile_execution: false                         # 是否分析執行時間
+  seed_everything: true                            # 是否固定所有隨機種子
+
+# 分佈式訓練（适用於大規模數據集，當前項目无需启用）
+distributed:
+  enabled: false                                   # 是否啟用分佈式訓練
+  strategy: "ddp"                                  # 分佈式策略: ddp, horovod
+  nodes: 1                                         # 節點數
+  gpus_per_node: 1                                 # 每個節點的GPU數量
+
+# 計算資源
+resources:
+  gpu_ids: [0]                                     # GPU ID列表（若有多個）
+  precision: "float32"                             # 計算精度: float32, float16, bfloat16
+  deterministic: true                              # 是否確定性計算
+  benchmark: false                                 # 是否啟用benchmark模式
+  memory_efficient: true                           # 是否啟用記憶體效率模式
+
+# 環境配置
+environment:
+  amp: false                                       # 是否使用自動混合精度
+  cudnn_benchmark: false                           # 是否啟用cuDNN基準測試
+  deterministic: true                              # 是否確定性計算
+  random_seed: 42                                  # 隨機種子

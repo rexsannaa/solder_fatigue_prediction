@@ -1,0 +1,114 @@
+# 混合PINN-LSTM模型配置文件
+# 用於銲錫接點疲勞壽命預測
+
+# 模型架構參數
+model:
+  name: "HybridPINNLSTM"  # 模型名稱
+  description: "混合物理資訊神經網絡和長短期記憶網絡用於銲錫接點疲勞壽命預測"
+  
+  # 輸入特徵參數
+  input:
+    static_features: ["Die", "stud", "mold", "PCB", "Unit_warpage"]  # 靜態結構參數
+    time_series_features: ["NLPLWK_up", "NLPLWK_down"]               # 時間序列特徵
+    time_steps: 4                                                     # 時間步數 (3600, 7200, 10800, 14400)
+  
+  # PINN分支參數
+  pinn:
+    hidden_layers: [64, 32, 16]                                       # 隱藏層維度
+    activation: "relu"                                                # 激活函數
+    dropout_rate: 0.2                                                 # Dropout比率
+    use_batch_norm: true                                              # 是否使用批次正規化
+    use_physics_layer: true                                           # 是否使用物理約束層
+  
+  # LSTM分支參數
+  lstm:
+    hidden_size: 64                                                   # LSTM隱藏層大小
+    num_layers: 2                                                     # LSTM層數
+    bidirectional: true                                               # 是否使用雙向LSTM
+    dropout_rate: 0.2                                                 # Dropout比率
+    use_attention: true                                               # 是否使用注意力機制
+  
+  # 特徵融合參數
+  fusion:
+    fusion_dim: 32                                                    # 融合特徵維度
+    use_attention_gate: true                                          # 是否使用注意力門控機制
+  
+  # 物理約束參數
+  physics:
+    a_coefficient: 55.83                                              # 物理模型係數a
+    b_coefficient: -2.259                                             # 物理模型係數b
+    enforce_constraints: true                                         # 是否強制執行物理約束
+
+# 訓練參數
+training:
+  # 資料分割
+  data_split:
+    test_size: 0.15                                                   # 測試集比例
+    val_size: 0.15                                                    # 驗證集比例
+    random_seed: 42                                                   # 隨機種子
+  
+  # 批次大小 - 考慮到小樣本資料集(81筆)
+  batch_size: 8                                                       # 批次大小
+  
+  # 優化器
+  optimizer:
+    name: "adam"                                                      # 優化器類型
+    learning_rate: 0.001                                              # 學習率
+    weight_decay: 0.0001                                              # 權重衰減
+  
+  # 學習率調度
+  lr_scheduler:
+    name: "cosine"                                                    # 調度類型: step, exp, cosine, plateau
+    T_max: 100                                                        # 週期
+    min_lr: 0.00001                                                   # 最小學習率
+  
+  # 損失函數
+  loss:
+    type: "adaptive"                                                  # 損失函數類型: hybrid, adaptive
+    initial_lambda_physics: 0.01                                      # 初始物理約束損失權重
+    max_lambda_physics: 0.5                                           # 最大物理約束損失權重
+    initial_lambda_consistency: 0.01                                  # 初始一致性損失權重
+    max_lambda_consistency: 0.3                                       # 最大一致性損失權重
+    epochs_to_max: 50                                                 # 達到最大權重的訓練輪數
+  
+  # 訓練控制
+  epochs: 200                                                         # 最大訓練輪數
+  early_stopping:
+    patience: 20                                                      # 早停耐心值
+    min_delta: 0.0001                                                 # 最小改善閾值
+    monitor: "val_loss"                                               # 監控指標
+    mode: "min"                                                       # 監控模式
+  
+  # 梯度裁剪
+  clip_grad_norm: 1.0                                                 # 梯度裁剪最大範數
+
+# 資料預處理
+preprocessing:
+  # 特徵標準化
+  scaler_type: "standard"                                             # 標準化類型: standard, minmax
+  
+  # 時間序列處理
+  time_series:
+    normalize_each_feature: true                                      # 是否對每個特徵單獨標準化
+    normalize_each_sample: false                                      # 是否對每個樣本單獨標準化
+
+# 評估指標
+evaluation:
+  metrics: ["rmse", "r2", "mae", "mape", "rel_error_mean", "rel_error_median"]
+  # 對數尺度評估
+  use_log_metrics: true                                               # 是否使用對數尺度評估
+
+# 路徑配置
+paths:
+  data: "data/raw/Training_data_warpage_final_20250321_v1.2.csv"     # 資料路徑
+  output_dir: "outputs"                                               # 輸出目錄
+  model_save_dir: "outputs/models"                                    # 模型保存目錄
+  tensorboard_dir: "outputs/logs"                                     # TensorBoard日誌目錄
+
+# 隨機種子設定
+random_seed: 42                                                       # 全局隨機種子
+
+# 硬體加速設定
+device: "cuda"                                                        # 計算設備: cuda, cpu
+num_workers: 0                                                        # 資料載入工作執行緒數量
+pin_memory: true                                                      # 是否使用固定內存

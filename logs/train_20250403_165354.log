@@ -1,0 +1,154 @@
+2025-04-03 16:53:54,133 - __main__ - INFO - 載入配置文件: configs/model_config.yaml
+2025-04-03 16:53:54,145 - __main__ - INFO - 載入訓練配置文件: configs/train_config.yaml
+2025-04-03 16:53:54,171 - __main__ - INFO - 使用計算設備: cpu
+2025-04-03 16:53:54,191 - __main__ - INFO - 載入資料: data/raw/Training_data_warpage_final_20250321_v1.2.csv
+2025-04-03 16:53:54,192 - src.data.preprocess - INFO - 正在讀取資料: data/raw/Training_data_warpage_final_20250321_v1.2.csv
+2025-04-03 16:53:54,246 - src.data.preprocess - INFO - 時間序列資料形狀: (81, 4, 2)
+2025-04-03 16:53:54,250 - src.data.preprocess - INFO - 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-03 16:53:54,252 - __main__ - INFO - 創建資料載入器，批次大小: 8
+2025-04-03 16:53:54,254 - src.data.dataset - INFO - 創建資料載入器完成，批次大小=8，訓練集批次數=7，驗證集批次數=2，測試集批次數=2
+2025-04-03 16:53:54,254 - __main__ - INFO - 資料集大小 - 訓練: 56, 驗證: 12, 測試: 13
+2025-04-03 16:53:54,254 - __main__ - INFO - 創建模型: hybrid
+2025-04-03 16:53:54,256 - src.models.pinn - INFO - 初始化PINNModel，輸入維度: 5, 隱藏層: [64, 32, 16], 使用物理層: True
+2025-04-03 16:53:54,260 - src.models.lstm - INFO - 初始化LSTMModel，輸入維度: 2, 隱藏層大小: 64, LSTM層數: 2, 雙向: True, 使用注意力: True
+2025-04-03 16:53:54,270 - src.models.hybrid_model - INFO - 初始化HybridPINNLSTMModel: 靜態特徵維度=5, 時間序列特徵維度=2, 時間步數=4, 融合維度=32
+2025-04-03 16:53:54,272 - __main__ - INFO - 模型參數總數: 154,181
+2025-04-03 16:53:56,579 - src.training.losses - INFO - 初始化HybridLoss: lambda_physics=0.01, lambda_consistency=0.01, a=55.83, b=-2.259
+2025-04-03 16:53:56,579 - src.training.losses - INFO - 初始化AdaptiveHybridLoss: physics權重從0.01增加到0.5, consistency權重從0.01增加到0.3, 在50個輪次內達到最大值
+2025-04-03 16:53:56,580 - src.training.trainer - INFO - 初始化LearningRateScheduler: mode=cosine, 初始學習率=[0.001]
+2025-04-03 16:53:56,581 - src.training.callbacks - INFO - 初始化ModelCheckpoint: 保存目錄=outputs\HybridPINNLSTM_20250403_165356\checkpoints, 保存頻率=5, 只保存最佳=False, 監控指標=val_loss, 模式=min
+2025-04-03 16:53:56,581 - src.training.callbacks - INFO - 初始化LossHistory: 保存路徑=outputs\HybridPINNLSTM_20250403_165356\history.json, 保存頻率=1
+2025-04-03 16:53:56,585 - src.training.trainer - INFO - 初始化EarlyStopping: patience=20, mode=min
+2025-04-03 16:53:56,586 - src.training.trainer - INFO - 初始化Trainer: model=HybridPINNLSTMModel, device=cpu
+2025-04-03 16:53:56,587 - __main__ - INFO - 開始訓練 - 模型: HybridPINNLSTM, 輪次: 200
+2025-04-03 16:53:56,587 - src.training.trainer - INFO - 開始訓練: epochs=200, 訓練批次數=7, 驗證批次數=2
+2025-04-03 16:53:56,947 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:53:56,948 - src.training.trainer - INFO - 指標改善: 1648624.406250 -> 1648624.406250，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:53:56,972 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_001.pt
+2025-04-03 16:53:58,169 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:53:58,169 - src.training.trainer - INFO - 指標改善: 1648592.750000 -> 1648592.750000，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:53:58,207 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_006.pt
+2025-04-03 16:53:58,406 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:53:58,406 - src.training.trainer - INFO - 指標改善: 1648253.343750 -> 1648253.343750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:53:58,814 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:53:58,815 - src.training.trainer - INFO - 指標改善: 1647702.562500 -> 1647702.562500，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:53:59,051 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:53:59,051 - src.training.trainer - INFO - 指標改善: 1647224.656250 -> 1647224.656250，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:53:59,286 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:53:59,287 - src.training.trainer - INFO - 指標改善: 1645105.281250 -> 1645105.281250，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:53:59,321 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_011.pt
+2025-04-03 16:53:59,531 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:53:59,532 - src.training.trainer - INFO - 指標改善: 1626187.625000 -> 1626187.625000，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:53:59,766 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:53:59,767 - src.training.trainer - INFO - 指標改善: 1605020.781250 -> 1605020.781250，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:00,037 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:00,037 - src.training.trainer - INFO - 指標改善: 1553501.968750 -> 1553501.968750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:00,439 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_016.pt
+2025-04-03 16:54:01,482 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:01,483 - src.training.trainer - INFO - 指標改善: 1545612.750000 -> 1545612.750000，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:01,521 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_021.pt
+2025-04-03 16:54:02,495 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_026.pt
+2025-04-03 16:54:03,512 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_031.pt
+2025-04-03 16:54:04,512 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_036.pt
+2025-04-03 16:54:05,408 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:05,408 - src.training.trainer - INFO - 指標改善: 1542924.250000 -> 1542924.250000，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:05,637 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_041.pt
+2025-04-03 16:54:05,860 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:05,861 - src.training.trainer - INFO - 指標改善: 1527010.437500 -> 1527010.437500，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:06,075 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:06,075 - src.training.trainer - INFO - 指標改善: 1501373.218750 -> 1501373.218750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:06,321 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:06,322 - src.training.trainer - INFO - 指標改善: 1500662.281250 -> 1500662.281250，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:06,736 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_046.pt
+2025-04-03 16:54:07,713 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_051.pt
+2025-04-03 16:54:08,781 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_056.pt
+2025-04-03 16:54:09,602 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:09,603 - src.training.trainer - INFO - 指標改善: 1472931.687500 -> 1472931.687500，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:09,833 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_061.pt
+2025-04-03 16:54:10,433 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:10,433 - src.training.trainer - INFO - 指標改善: 1463488.593750 -> 1463488.593750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:10,922 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:10,923 - src.training.trainer - INFO - 指標改善: 1463275.593750 -> 1463275.593750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:10,956 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_066.pt
+2025-04-03 16:54:11,175 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:11,176 - src.training.trainer - INFO - 指標改善: 1459182.406250 -> 1459182.406250，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:11,945 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_071.pt
+2025-04-03 16:54:12,896 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_076.pt
+2025-04-03 16:54:13,963 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:13,964 - src.training.trainer - INFO - 指標改善: 1456924.843750 -> 1456924.843750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:14,003 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_081.pt
+2025-04-03 16:54:14,226 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:14,227 - src.training.trainer - INFO - 指標改善: 1451867.250000 -> 1451867.250000，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:15,061 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_086.pt
+2025-04-03 16:54:15,382 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:15,383 - src.training.trainer - INFO - 指標改善: 1447559.187500 -> 1447559.187500，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:15,564 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:15,564 - src.training.trainer - INFO - 指標改善: 1446256.718750 -> 1446256.718750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:15,852 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_091.pt
+2025-04-03 16:54:16,168 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:16,168 - src.training.trainer - INFO - 指標改善: 1445421.562500 -> 1445421.562500，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:16,649 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_096.pt
+2025-04-03 16:54:17,392 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_101.pt
+2025-04-03 16:54:18,129 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:18,129 - src.training.trainer - INFO - 指標改善: 1443721.812500 -> 1443721.812500，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:18,152 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_106.pt
+2025-04-03 16:54:19,148 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_111.pt
+2025-04-03 16:54:19,485 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:19,486 - src.training.trainer - INFO - 指標改善: 1441954.000000 -> 1441954.000000，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:20,068 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_116.pt
+2025-04-03 16:54:20,361 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:20,361 - src.training.trainer - INFO - 指標改善: 1437504.656250 -> 1437504.656250，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:20,851 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_121.pt
+2025-04-03 16:54:21,636 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_126.pt
+2025-04-03 16:54:22,445 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:22,446 - src.training.trainer - INFO - 指標改善: 1437281.843750 -> 1437281.843750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:22,471 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_131.pt
+2025-04-03 16:54:22,695 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:22,695 - src.training.trainer - INFO - 指標改善: 1427855.562500 -> 1427855.562500，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:22,906 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:22,906 - src.training.trainer - INFO - 指標改善: 1378348.437500 -> 1378348.437500，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:23,090 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:23,091 - src.training.trainer - INFO - 指標改善: 1146812.093750 -> 1146812.093750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:23,417 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_136.pt
+2025-04-03 16:54:24,091 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:24,092 - src.training.trainer - INFO - 指標改善: 852130.843750 -> 852130.843750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:24,325 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:24,326 - src.training.trainer - INFO - 指標改善: 735760.531250 -> 735760.531250，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:24,362 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_141.pt
+2025-04-03 16:54:25,155 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_146.pt
+2025-04-03 16:54:25,849 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_151.pt
+2025-04-03 16:54:26,515 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:26,515 - src.training.trainer - INFO - 指標改善: 718336.781250 -> 718336.781250，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:26,678 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_156.pt
+2025-04-03 16:54:27,440 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_161.pt
+2025-04-03 16:54:28,302 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_166.pt
+2025-04-03 16:54:29,079 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_171.pt
+2025-04-03 16:54:29,474 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:29,475 - src.training.trainer - INFO - 指標改善: 704410.125000 -> 704410.125000，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:30,034 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_176.pt
+2025-04-03 16:54:30,772 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:30,772 - src.training.trainer - INFO - 指標改善: 668483.375000 -> 668483.375000，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:30,807 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_181.pt
+2025-04-03 16:54:31,540 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_186.pt
+2025-04-03 16:54:31,870 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:31,871 - src.training.trainer - INFO - 指標改善: 577986.343750 -> 577986.343750，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:32,044 - src.training.trainer - INFO - 模型已保存至 outputs\models\last_model.pt
+2025-04-03 16:54:32,045 - src.training.trainer - INFO - 指標改善: 545424.406250 -> 545424.406250，保存模型至 outputs\models\best_model.pt
+2025-04-03 16:54:32,363 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_191.pt
+2025-04-03 16:54:33,153 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\HybridPINNLSTM_20250403_165356\checkpoints\HybridPINNLSTM_epoch_196.pt
+2025-04-03 16:54:33,729 - src.training.trainer - INFO - 訓練完成: 總時間: 37.14s, 最佳驗證損失: 545424.406250
+2025-04-03 16:54:33,731 - __main__ - INFO - 訓練完成 - 耗時: 37.14秒, 最佳驗證損失: 545424.406250
+2025-04-03 16:54:39,936 - __main__ - INFO - 訓練完成，評估模型性能...
+2025-04-03 16:54:39,938 - src.training.trainer - INFO - 初始化Trainer: model=HybridPINNLSTMModel, device=cpu
+2025-04-03 16:54:39,938 - __main__ - INFO - 評估模型性能...
+2025-04-03 16:54:39,945 - __main__ - ERROR - 執行過程中發生錯誤: 'NoneType' object is not callable
+Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 598, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 537, in main
+    evaluate_and_visualize(model, dataloaders, output_dir, device, config)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 373, in evaluate_and_visualize
+    _, metrics, predictions, targets = trainer.evaluate(test_loader, return_predictions=True)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 428, in evaluate
+    loss = self.loss_fn(outputs['nf_pred'], targets)
+TypeError: 'NoneType' object is not callable

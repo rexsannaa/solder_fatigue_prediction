@@ -1,0 +1,44 @@
+Metadata-Version: 2.2
+Name: solder_fatigue_prediction
+Version: 0.1.0
+Summary: 銲錫接點疲勞壽命預測混合PINN-LSTM模型
+Home-page: https://github.com/yourusername/solder_fatigue_prediction
+Author: 專案研發團隊
+Author-email: your.email@example.com
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Manufacturing
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.7
+Requires-Dist: numpy>=1.20.0
+Requires-Dist: pandas>=1.3.0
+Requires-Dist: matplotlib>=3.4.0
+Requires-Dist: seaborn>=0.11.0
+Requires-Dist: scikit-learn>=1.0.0
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: torch>=1.10.0
+Requires-Dist: tqdm>=4.62.0
+Requires-Dist: scipy>=1.7.0
+Requires-Dist: plotly>=5.3.0
+Requires-Dist: pathlib>=1.0.1
+Provides-Extra: dev
+Requires-Dist: jupyter>=1.0.0; extra == "dev"
+Requires-Dist: ipykernel>=6.0.0; extra == "dev"
+Requires-Dist: tensorboard>=2.7.0; extra == "dev"
+Requires-Dist: pytest>=6.0.0; extra == "dev"
+Requires-Dist: black>=21.5b2; extra == "dev"
+Requires-Dist: flake8>=3.9.0; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: home-page
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

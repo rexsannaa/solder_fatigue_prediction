@@ -1,0 +1,4 @@
+[console_scripts]
+solder-evaluate = scripts.evaluate:main
+solder-predict = scripts.predict:main
+solder-train = scripts.train:main

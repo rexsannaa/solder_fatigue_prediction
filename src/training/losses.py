@@ -17,6 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class PhysicsConstraintLoss(nn.Module):
         
         # 3. 確保物理守恆: 應變能量與壽命的反比關係
         conservation_loss = F.mse_loss(delta_w * torch.pow(nf_pred, 1/self.b), 
-                                      torch.ones_like(nf_pred) * torch.pow(self.a, 1/self.b),
+                                      torch.ones_like(nf_pred) * math.pow(self.a, 1/self.b),
                                       reduction=self.reduction)
         
         # 綜合物理損失

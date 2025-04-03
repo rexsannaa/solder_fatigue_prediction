@@ -1,0 +1,10 @@
+setup.py
+scripts/evaluate.py
+scripts/predict.py
+scripts/train.py
+solder_fatigue_prediction.egg-info/PKG-INFO
+solder_fatigue_prediction.egg-info/SOURCES.txt
+solder_fatigue_prediction.egg-info/dependency_links.txt
+solder_fatigue_prediction.egg-info/entry_points.txt
+solder_fatigue_prediction.egg-info/requires.txt
+solder_fatigue_prediction.egg-info/top_level.txt

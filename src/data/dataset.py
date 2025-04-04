@@ -1,333 +1,211 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-improved_dataset.py - 改進的資料集封裝模組
+dataset.py - 資料集封裝模組
 本模組提供自定義資料集的封裝，用於銲錫接點疲勞壽命預測模型訓練和評估。
 實現了適合混合PINN-LSTM模型所需的資料載入與批次處理功能，並針對小樣本進行優化。
 
-主要改進:
-1. 針對小樣本數據集增強的資料封裝和批次處理策略
-2. 提供更靈活的時間序列資料處理機制
+主要功能:
+1. 針對小樣本數據集優化的資料封裝和批次處理策略
+2. 提供靈活的時間序列資料處理機制
 3. 支援物理知識驅動的資料增強和特徵轉換
-4. 加強資料集的可視化和統計分析功能
-5. 優化分層抽樣的訓練-驗證-測試集分割策略
+4. 處理結構參數與時間序列的混合輸入
+5. 針對不平衡數據提供加權採樣機制
 """
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader, TensorDataset, WeightedRandomSampler
 import logging
-import matplotlib.pyplot as plt
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import train_test_split, StratifiedKFold
 import pandas as pd
-from pathlib import Path
-import os
 import math
+import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
 
 class SolderFatigueDataset(Dataset):
     """
     銲錫接點疲勞壽命資料集
     處理靜態特徵（結構參數）與預測目標（疲勞壽命）
-    
-    增強功能：
-    1. 支援權重賦值，平衡稀有樣本
-    2. 提供基本資料擴增
-    3. 支援特徵轉換與標準化
     """
-    def __init__(self, features, targets=None, transform=None, normalization=None, 
-                 enable_augmentation=False, augmentation_factor=0.1, sample_weights=None,
-                 feature_names=None):
+    def __init__(self, static_features, time_series_features, targets=None, 
+                 static_transform=None, time_transform=None,
+                 static_normalizer=None, time_normalizer=None,
+                 augmentation=False, augmentation_factor=0.1):
         """
         初始化資料集
         
         參數:
-            features (numpy.ndarray): 特徵資料，形狀為 (樣本數, 特徵數)
-            targets (numpy.ndarray, optional): 目標資料，形狀為 (樣本數,)
-            transform (callable, optional): 應用於特徵的轉換函數
-            normalization (dict, optional): 標準化參數，包含'mean'和'std'
-            enable_augmentation (bool): 是否啟用資料擴增
-            augmentation_factor (float): 擴增強度係數
-            sample_weights (numpy.ndarray, optional): 樣本權重
-            feature_names (list, optional): 特徵名稱列表
+            static_features (numpy.ndarray): 靜態特徵，形狀為 (樣本數, 特徵數)
+            time_series_features (numpy.ndarray): 時間序列特徵，形狀為 (樣本數, 時間步數, 特徵數)
+            targets (numpy.ndarray, optional): 目標值，形狀為 (樣本數,)
+            static_transform (callable, optional): 靜態特徵轉換函數
+            time_transform (callable, optional): 時間序列轉換函數
+            static_normalizer (object, optional): 靜態特徵標準化器
+            time_normalizer (object, optional): 時間序列標準化器
+            augmentation (bool): 是否啟用資料增強
+            augmentation_factor (float): 增強因子
         """
-        self.features = torch.FloatTensor(features)
+        self.static_features = torch.FloatTensor(static_features)
+        self.time_series_features = torch.FloatTensor(time_series_features)
         self.targets = torch.FloatTensor(targets) if targets is not None else None
-        self.transform = transform
-        self.normalization = normalization
-        self.enable_augmentation = enable_augmentation
+        
+        self.static_transform = static_transform
+        self.time_transform = time_transform
+        self.static_normalizer = static_normalizer
+        self.time_normalizer = time_normalizer
+        
+        self.augmentation = augmentation
         self.augmentation_factor = augmentation_factor
-        self.sample_weights = sample_weights
-        self.feature_names = feature_names
         
-        # 應用標準化（如果有）
-        if self.normalization is not None:
-            self._apply_normalization()
+        # 應用標準化
+        if self.static_normalizer is not None:
+            self._normalize_static_features()
         
-        self.n_samples = len(self.features)
-        self.n_features = self.features.shape[1]
+        if self.time_normalizer is not None:
+            self._normalize_time_series()
         
-        logger.debug(f"初始化SolderFatigueDataset，特徵形狀: {self.features.shape}, "
-                    f"目標形狀: {None if self.targets is None else self.targets.shape}, "
-                    f"啟用擴增: {enable_augmentation}")
-
-    def _apply_normalization(self):
-        """應用標準化"""
-        if 'mean' in self.normalization and 'std' in self.normalization:
-            mean = torch.FloatTensor(self.normalization['mean'])
-            std = torch.FloatTensor(self.normalization['std'])
-            
-            # 確保維度匹配
-            if mean.shape[0] == self.features.shape[1]:
-                self.features = (self.features - mean) / (std + 1e-8)
+        self.n_samples = len(self.static_features)
+        logger.debug(f"初始化SolderFatigueDataset，樣本數: {self.n_samples}")
     
-    def _augment_sample(self, features, target=None):
+    def _normalize_static_features(self):
+        """標準化靜態特徵"""
+        if hasattr(self.static_normalizer, 'transform'):
+            # scikit-learn風格標準化器
+            self.static_features = torch.FloatTensor(
+                self.static_normalizer.transform(self.static_features.numpy())
+            )
+        elif isinstance(self.static_normalizer, dict) and 'mean' in self.static_normalizer and 'std' in self.static_normalizer:
+            # 使用提供的均值和標準差
+            mean = torch.FloatTensor(self.static_normalizer['mean'])
+            std = torch.FloatTensor(self.static_normalizer['std'])
+            self.static_features = (self.static_features - mean) / (std + 1e-8)
+    
+    def _normalize_time_series(self):
+        """標準化時間序列特徵"""
+        if hasattr(self.time_normalizer, 'transform'):
+            # 將時間序列展平進行標準化，然後恢復形狀
+            orig_shape = self.time_series_features.shape
+            flattened = self.time_series_features.view(-1, orig_shape[-1])
+            normalized = torch.FloatTensor(
+                self.time_normalizer.transform(flattened.numpy())
+            )
+            self.time_series_features = normalized.view(orig_shape)
+        elif isinstance(self.time_normalizer, dict) and 'mean' in self.time_normalizer and 'std' in self.time_normalizer:
+            # 使用提供的均值和標準差
+            mean = torch.FloatTensor(self.time_normalizer['mean'])
+            std = torch.FloatTensor(self.time_normalizer['std'])
+            # 擴展維度以匹配時間序列形狀
+            if mean.dim() == 1:
+                mean = mean.view(1, 1, -1)
+                std = std.view(1, 1, -1)
+            self.time_series_features = (self.time_series_features - mean) / (std + 1e-8)
+    
+    def _augment_sample(self, static, time_series, target=None):
         """
-        對單個樣本進行擴增
+        對樣本進行資料增強
         
         參數:
-            features (torch.Tensor): 特徵張量
-            target (torch.Tensor, optional): 目標張量
+            static (torch.Tensor): 靜態特徵
+            time_series (torch.Tensor): 時間序列特徵
+            target (torch.Tensor, optional): 目標值
             
         返回:
-            tuple: (擴增特徵, 擴增目標)
+            tuple: (增強的靜態特徵, 增強的時間序列特徵, 增強的目標值)
         """
-        # 簡單的高斯噪聲擴增
-        noise = torch.randn_like(features) * self.augmentation_factor
-        augmented_features = features + noise
+        # 對靜態特徵增加小噪聲
+        static_noise = torch.randn_like(static) * self.augmentation_factor
+        augmented_static = static + static_noise
         
+        # 對時間序列增加小噪聲，並保持時間順序
+        time_noise = torch.randn_like(time_series) * self.augmentation_factor
+        augmented_time = time_series + time_noise
+        
+        # 確保時間序列保持單調性（如果適用）
+        # 假設時間序列是單調遞增的（如累積應變能量）
+        if augmented_time.dim() == 2:  # (time_steps, features)
+            for i in range(augmented_time.shape[1]):
+                augmented_time[:, i] = torch.cummax(augmented_time[:, i], dim=0)[0]
+        
+        # 如果有目標值，也對其增加小噪聲
         augmented_target = target
         if target is not None:
-            # 對目標值進行輕微擾動
-            # 使用對數正態分佈避免負值
-            noise_factor = torch.exp(torch.randn(1) * 0.05)  # 小擾動
-            augmented_target = target * noise_factor
+            # 使用對數正態噪聲確保目標值保持正數
+            target_noise = torch.exp(torch.randn(1) * 0.05)  # 小噪聲
+            augmented_target = target * target_noise
         
-        return augmented_features, augmented_target
-
+        return augmented_static, augmented_time, augmented_target
+    
     def __len__(self):
-        """返回資料集中的樣本數量"""
+        """返回樣本數量"""
         return self.n_samples
-
+    
     def __getitem__(self, idx):
-        """獲取指定索引的樣本"""
-        features = self.features[idx]
+        """
+        獲取指定索引的樣本
+        
+        參數:
+            idx (int): 樣本索引
+            
+        返回:
+            tuple: (靜態特徵, 時間序列特徵, 目標值) 或 (靜態特徵, 時間序列特徵)
+        """
+        static = self.static_features[idx]
+        time_series = self.time_series_features[idx]
         
         # 應用轉換（如果有）
-        if self.transform:
-            features = self.transform(features)
+        if self.static_transform is not None:
+            static = self.static_transform(static)
         
-        # 如果啟用擴增且不是在評估模式（有目標值）
-        if self.enable_augmentation and self.targets is not None and torch.rand(1).item() < 0.5:
-            # 50%機率進行擴增
-            features, target = self._augment_sample(features, self.targets[idx] if self.targets is not None else None)
+        if self.time_transform is not None:
+            time_series = self.time_transform(time_series)
+        
+        # 如果啟用了資料增強且處於訓練模式（有目標值），有一定概率進行增強
+        if self.augmentation and self.targets is not None and torch.rand(1).item() < 0.3:  # 30%機率增強
+            static, time_series, target = self._augment_sample(
+                static, time_series, 
+                self.targets[idx] if self.targets is not None else None
+            )
         else:
             target = self.targets[idx] if self.targets is not None else None
         
-        # 如果有目標，返回特徵和目標；否則只返回特徵
         if target is not None:
-            return features, target
+            return static, time_series, target
         else:
-            return features
-    
-    def get_sample_weights(self):
-        """獲取樣本權重用於加權抽樣"""
-        if self.sample_weights is not None:
-            return self.sample_weights
-        
-        # 如果未提供權重且有目標值，根據目標分佈計算權重
-        if self.targets is not None:
-            # 將目標分成bins以計算權重
-            bins = min(10, len(self.targets) // 5)  # 確保每個bin至少有5個樣本
-            target_np = self.targets.numpy()
-            
-            # 使用分位數確保每個bin有均衡數量的樣本
-            quantiles = np.percentile(target_np, np.linspace(0, 100, bins+1))
-            
-            # 計算每個bin的樣本數
-            bin_counts = np.zeros(bins)
-            for i in range(bins):
-                if i == bins - 1:
-                    bin_counts[i] = np.sum((log_targets >= quantiles[i]) & (log_targets <= quantiles[i+1]))
-                else:
-                    bin_counts[i] = np.sum((log_targets >= quantiles[i]) & (log_targets < quantiles[i+1]))
-            
-            # 為每個樣本分配權重
-            weights = np.ones(len(log_targets))
-            for i in range(bins):
-                if i == bins - 1:
-                    mask = (log_targets >= quantiles[i]) & (log_targets <= quantiles[i+1])
-                else:
-                    mask = (log_targets >= quantiles[i]) & (log_targets < quantiles[i+1])
-                
-                if bin_counts[i] > 0:
-                    weights[mask] = 1.0 / (bin_counts[i] / len(log_targets))
-            
-            # 標準化權重使總和為len(log_targets)
-            weights = weights * len(log_targets) / np.sum(weights)
-            
-            return weights
-        
-        # 默認使用均勻權重
-        return np.ones(self.n_samples)
-    
-    def visualize_distributions(self, figsize=(12, 8), save_path=None):
-        """
-        視覺化資料分佈
-        
-        參數:
-            figsize (tuple): 圖像尺寸
-            save_path (str, optional): 保存路徑
-            
-        返回:
-            matplotlib.figure.Figure: 圖像對象
-        """
-        import matplotlib.pyplot as plt
-        import matplotlib.gridspec as gridspec
-        
-        # 創建圖像
-        fig = plt.figure(figsize=figsize)
-        gs = gridspec.GridSpec(2, 2)
-        
-        # 1. 目標分佈（如果有）
-        if self.targets is not None:
-            target_np = self.targets.numpy()
-            
-            # 線性空間
-            ax1 = fig.add_subplot(gs[0, 0])
-            ax1.hist(target_np, bins=30, alpha=0.7, color='blue')
-            ax1.set_title('目標分佈（線性空間）')
-            ax1.set_xlabel('壽命值')
-            ax1.set_ylabel('頻率')
-            ax1.grid(True, linestyle='--', alpha=0.7)
-            
-            # 對數空間
-            ax2 = fig.add_subplot(gs[0, 1])
-            ax2.hist(np.log10(target_np + 1e-8), bins=30, alpha=0.7, color='green')
-            ax2.set_title('目標分佈（對數空間）')
-            ax2.set_xlabel('log10(壽命值)')
-            ax2.set_ylabel('頻率')
-            ax2.grid(True, linestyle='--', alpha=0.7)
-        
-        # 2. 靜態特徵分佈
-        ax3 = fig.add_subplot(gs[1, 0])
-        feature_np = self.features.numpy()
-        
-        if self.feature_names is not None and len(self.feature_names) == feature_np.shape[1]:
-            labels = self.feature_names
-        else:
-            labels = [f'特徵{i}' for i in range(feature_np.shape[1])]
-        
-        # 使用箱形圖顯示每個特徵的分佈
-        ax3.boxplot(feature_np, labels=labels)
-        ax3.set_title('靜態特徵分佈')
-        ax3.set_xlabel('特徵')
-        ax3.set_ylabel('值')
-        ax3.grid(True, linestyle='--', alpha=0.7)
-        
-        # 3. 時間序列特徵分佈
-        ax4 = fig.add_subplot(gs[1, 1])
-        
-        # 計算每個時間步的平均值和標準差
-        ts_mean = self.time_series.mean(dim=0).numpy()
-        ts_std = self.time_series.std(dim=0).numpy()
-        
-        # 繪製時間序列平均值
-        time_steps = np.arange(self.n_time_steps)
-        for i in range(self.n_ts_features):
-            ax4.plot(time_steps, ts_mean[:, i], label=f'特徵{i+1}')
-            ax4.fill_between(
-                time_steps, 
-                ts_mean[:, i] - ts_std[:, i], 
-                ts_mean[:, i] + ts_std[:, i], 
-                alpha=0.3
-            )
-        
-        ax4.set_title('時間序列特徵分佈')
-        ax4.set_xlabel('時間步')
-        ax4.set_ylabel('平均值±標準差')
-        ax4.legend()
-        ax4.grid(True, linestyle='--', alpha=0.7)
-        
-        plt.tight_layout()
-        
-        # 保存圖像
-        if save_path:
-            try:
-                plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            except Exception as e:
-                print(f"保存圖像失敗: {str(e)}")
-        
-        return fig bins - 1:
-                    bin_counts[i] = np.sum((target_np >= quantiles[i]) & (target_np <= quantiles[i+1]))
-                else:
-                    bin_counts[i] = np.sum((target_np >= quantiles[i]) & (target_np < quantiles[i+1]))
-            
-            # 為每個樣本分配權重
-            weights = np.ones(len(target_np))
-            for i in range(bins):
-                if i == bins - 1:
-                    mask = (target_np >= quantiles[i]) & (target_np <= quantiles[i+1])
-                else:
-                    mask = (target_np >= quantiles[i]) & (target_np < quantiles[i+1])
-                
-                if bin_counts[i] > 0:
-                    weights[mask] = 1.0 / (bin_counts[i] / len(target_np))
-            
-            # 標準化權重使總和為len(target_np)
-            weights = weights * len(target_np) / np.sum(weights)
-            
-            return weights
-        
-        # 默認使用均勻權重
-        return np.ones(self.n_samples)
+            return static, time_series
 
 
 class TimeSeriesDataset(Dataset):
     """
     時間序列資料集
-    處理時間序列特徵（非線性塑性應變功時間序列）
-    
-    增強功能：
-    1. 支援多種時間序列標準化策略
-    2. 提供時間序列擴增
-    3. 允許可變長度時間序列處理
-    4. 支援時間步重要性加權
+    專門處理銲錫接點的時間序列資料（如非線性塑性應變功時間序列）
     """
-    def __init__(self, time_series, targets=None, transform=None, normalization=None,
-                 normalize_per_feature=True, normalize_per_sample=False,
-                 enable_augmentation=False, augmentation_factor=0.05,
-                 time_step_weights=None, mask_value=None):
+    def __init__(self, time_series, targets=None, transform=None, normalizer=None,
+                normalize_per_feature=True, normalize_per_sample=False):
         """
         初始化時間序列資料集
         
         參數:
             time_series (numpy.ndarray): 時間序列資料，形狀為 (樣本數, 時間步數, 特徵數)
             targets (numpy.ndarray, optional): 目標資料，形狀為 (樣本數,)
-            transform (callable, optional): 應用於時間序列的轉換函數
-            normalization (dict, optional): 標準化參數
-            normalize_per_feature (bool): 是否對每個特徵單獨標準化
-            normalize_per_sample (bool): 是否對每個樣本單獨標準化
-            enable_augmentation (bool): 是否啟用資料擴增
-            augmentation_factor (float): 擴增強度係數
-            time_step_weights (numpy.ndarray, optional): 時間步權重
-            mask_value (float, optional): 用於填充缺失值的遮罩值
+            transform (callable, optional): 轉換函數
+            normalizer (object, optional): 標準化器
+            normalize_per_feature (bool): 是否對每個特徵分別標準化
+            normalize_per_sample (bool): 是否對每個樣本分別標準化
         """
         self.time_series = torch.FloatTensor(time_series)
         self.targets = torch.FloatTensor(targets) if targets is not None else None
         self.transform = transform
-        self.normalization = normalization
+        self.normalizer = normalizer
         self.normalize_per_feature = normalize_per_feature
         self.normalize_per_sample = normalize_per_sample
-        self.enable_augmentation = enable_augmentation
-        self.augmentation_factor = augmentation_factor
-        self.time_step_weights = time_step_weights
-        self.mask_value = mask_value
         
-        # 應用標準化（如果有）
-        if self.normalization is not None:
-            self._apply_normalization()
+        # 應用標準化
+        if self.normalizer is not None:
+            self._normalize_time_series_with_normalizer()
         elif self.normalize_per_feature or self.normalize_per_sample:
             self._normalize_time_series()
         
@@ -335,343 +213,450 @@ class TimeSeriesDataset(Dataset):
         self.n_time_steps = self.time_series.shape[1]
         self.n_features = self.time_series.shape[2]
         
-        logger.debug(f"初始化TimeSeriesDataset，時間序列形狀: {self.time_series.shape}, "
-                    f"目標形狀: {None if self.targets is None else self.targets.shape}, "
-                    f"啟用擴增: {enable_augmentation}")
-
-    def _apply_normalization(self):
-        """應用提供的標準化參數"""
-        if 'mean' in self.normalization and 'std' in self.normalization:
-            mean = torch.FloatTensor(self.normalization['mean'])
-            std = torch.FloatTensor(self.normalization['std'])
-            
-            # 根據維度擴展均值和標準差
-            if mean.dim() == 1 and mean.shape[0] == self.time_series.shape[2]:
-                # 對每個特徵標準化
-                mean = mean.view(1, 1, -1)
-                std = std.view(1, 1, -1)
-                self.time_series = (self.time_series - mean) / (std + 1e-8)
+        logger.debug(f"初始化TimeSeriesDataset，樣本數: {self.n_samples}, "
+                    f"時間步數: {self.n_time_steps}, 特徵數: {self.n_features}")
+    
+    def _normalize_time_series_with_normalizer(self):
+        """使用提供的標準化器標準化時間序列"""
+        if hasattr(self.normalizer, 'transform'):
+            # scikit-learn風格標準化器
+            # 將時間序列展平進行標準化，然後恢復形狀
+            orig_shape = self.time_series.shape
+            flattened = self.time_series.reshape(-1, orig_shape[-1])
+            normalized = self.normalizer.transform(flattened)
+            self.time_series = torch.FloatTensor(normalized.reshape(orig_shape))
     
     def _normalize_time_series(self):
-        """根據策略標準化時間序列"""
-        # 創建標準化參數儲存
-        self._normalization_params = {}
-        
+        """根據指定策略標準化時間序列"""
         if self.normalize_per_feature:
-            # 對每個特徵進行標準化
-            mean = torch.mean(self.time_series.reshape(-1, self.n_features), dim=0)
-            std = torch.std(self.time_series.reshape(-1, self.n_features), dim=0)
+            # 對每個特徵分別計算均值和標準差
+            reshaped = self.time_series.reshape(-1, self.n_features)
+            mean = torch.mean(reshaped, dim=0)
+            std = torch.std(reshaped, dim=0)
             
             # 儲存標準化參數
-            self._normalization_params['feature_mean'] = mean
-            self._normalization_params['feature_std'] = std
+            self._norm_params = {'mean': mean, 'std': std}
             
             # 應用標準化
-            mean = mean.view(1, 1, self.n_features)
-            std = std.view(1, 1, self.n_features)
-            self.time_series = (self.time_series - mean) / (std + 1e-8)
+            for i in range(self.n_samples):
+                for j in range(self.n_features):
+                    self.time_series[i, :, j] = (self.time_series[i, :, j] - mean[j]) / (std[j] + 1e-8)
         
         if self.normalize_per_sample:
             # 對每個樣本分別標準化
-            # 這個操作會覆蓋之前的標準化（如果有）
             for i in range(self.n_samples):
-                sample = self.time_series[i]
-                mean = torch.mean(sample, dim=0, keepdim=True)
-                std = torch.std(sample, dim=0, keepdim=True)
-                self.time_series[i] = (sample - mean) / (std + 1e-8)
+                for j in range(self.n_features):
+                    series = self.time_series[i, :, j]
+                    mean = torch.mean(series)
+                    std = torch.std(series)
+                    self.time_series[i, :, j] = (series - mean) / (std + 1e-8)
     
-    def _augment_time_series(self, time_series, target=None):
+    def __len__(self):
+        """返回樣本數量"""
+        return self.n_samples
+    
+    def __getitem__(self, idx):
         """
-        對時間序列樣本進行擴增
+        獲取指定索引的樣本
         
         參數:
-            time_series (torch.Tensor): 時間序列張量
-            target (torch.Tensor, optional): 目標張量
+            idx (int): 樣本索引
             
         返回:
-            tuple: (擴增時間序列, 擴增目標)
+            tuple: (時間序列特徵, 目標值) 或 (時間序列特徵)
         """
-        # 時間序列擴增策略
-        aug_type = torch.randint(0, 4, (1,)).item()  # 隨機選擇擴增類型
-        
-        if aug_type == 0:
-            # 添加高斯噪聲
-            noise = torch.randn_like(time_series) * self.augmentation_factor
-            augmented_ts = time_series + noise
-        elif aug_type == 1:
-            # 時間尺度擴展：輕微縮放時間軸
-            scale = 1.0 + (torch.rand(1).item() * 2 - 1) * 0.1  # 0.9到1.1之間
-            indices = torch.linspace(0, time_series.shape[0]-1, time_series.shape[0])
-            new_indices = torch.clamp(indices * scale, 0, time_series.shape[0]-1).long()
-            augmented_ts = time_series[new_indices]
-        elif aug_type == 2:
-            # 值尺度擴展：輕微縮放值
-            scale = 1.0 + (torch.rand(1).item() * 2 - 1) * 0.1  # 0.9到1.1之間
-            augmented_ts = time_series * scale
-        else:
-            # 微小時間偏移
-            shift = int((torch.rand(1).item() * 2 - 1) * 2)  # -2到2之間的整數
-            if shift > 0:
-                augmented_ts = torch.cat([time_series[shift:], time_series[-1].repeat(shift, 1)])
-            elif shift < 0:
-                augmented_ts = torch.cat([time_series[0].repeat(-shift, 1), time_series[:shift]])
-            else:
-                augmented_ts = time_series.clone()
-        
-        augmented_target = target
-        if target is not None:
-            # 時間序列擴增可能影響目標值
-            # 使用小擾動模擬這種影響
-            noise_factor = torch.exp(torch.randn(1) * 0.03)  # 較小擾動
-            augmented_target = target * noise_factor
-        
-        return augmented_ts, augmented_target
-
-    def __len__(self):
-        """返回資料集中的樣本數量"""
-        return self.n_samples
-
-    def __getitem__(self, idx):
-        """獲取指定索引的樣本"""
         time_series = self.time_series[idx]
         
         # 應用轉換（如果有）
-        if self.transform:
+        if self.transform is not None:
             time_series = self.transform(time_series)
         
-        # 如果啟用擴增且不是在評估模式（有目標值）
-        if self.enable_augmentation and self.targets is not None and torch.rand(1).item() < 0.3:
-            # 30%機率進行擴增
-            time_series, target = self._augment_time_series(
-                time_series, 
-                self.targets[idx] if self.targets is not None else None
-            )
-        else:
-            target = self.targets[idx] if self.targets is not None else None
-        
-        # 如果有目標，返回時間序列和目標；否則只返回時間序列
-        if target is not None:
-            return time_series, target
+        if self.targets is not None:
+            return time_series, self.targets[idx]
         else:
             return time_series
 
 
-class HybridDataset(Dataset):
+def create_dataloaders(X_train, X_val, X_test, 
+                      time_series_train, time_series_val, time_series_test,
+                      y_train, y_val, y_test,
+                      batch_size=8, num_workers=0, pin_memory=False,
+                      use_weighted_sampler=False, augmentation=False):
     """
-    混合資料集
-    同時處理靜態特徵和時間序列特徵
+    創建訓練、驗證和測試資料載入器
     
-    增強功能：
-    1. 支援兩種特徵類型的統一處理
-    2. 提供更靈活的擴增策略
-    3. 支援物理知識驅動的樣本生成
-    4. 允許樣本重要性加權
+    參數:
+        X_train, X_val, X_test (numpy.ndarray): 靜態特徵
+        time_series_train, time_series_val, time_series_test (numpy.ndarray): 時間序列特徵
+        y_train, y_val, y_test (numpy.ndarray): 目標值
+        batch_size (int): 批次大小
+        num_workers (int): 資料載入工作執行緒數量
+        pin_memory (bool): 是否使用固定記憶體
+        use_weighted_sampler (bool): 是否使用加權採樣器
+        augmentation (bool): 是否啟用資料增強
+        
+    返回:
+        dict: 包含訓練、驗證和測試資料載入器的字典
     """
-    def __init__(self, features, time_series, targets=None, 
-                 feature_transform=None, time_series_transform=None,
-                 feature_normalization=None, time_series_normalization=None,
-                 enable_augmentation=False, augmentation_policy=None,
-                 sample_weights=None, use_physics_constraints=False,
-                 physics_params=None, feature_names=None):
-        """
-        初始化混合資料集
-        
-        參數:
-            features (numpy.ndarray): 靜態特徵資料，形狀為 (樣本數, 特徵數)
-            time_series (numpy.ndarray): 時間序列資料，形狀為 (樣本數, 時間步數, 特徵數)
-            targets (numpy.ndarray, optional): 目標資料，形狀為 (樣本數,)
-            feature_transform (callable, optional): 應用於靜態特徵的轉換函數
-            time_series_transform (callable, optional): 應用於時間序列的轉換函數
-            feature_normalization (dict, optional): 靜態特徵標準化參數
-            time_series_normalization (dict, optional): 時間序列標準化參數
-            enable_augmentation (bool): 是否啟用資料擴增
-            augmentation_policy (dict, optional): 擴增策略
-            sample_weights (numpy.ndarray, optional): 樣本權重
-            use_physics_constraints (bool): 是否使用物理約束
-            physics_params (dict, optional): 物理模型參數
-            feature_names (list, optional): 特徵名稱列表
-        """
-        if len(features) != len(time_series):
-            raise ValueError("特徵資料和時間序列資料的樣本數量必須相同")
-        
-        self.features = torch.FloatTensor(features)
-        self.time_series = torch.FloatTensor(time_series)
-        self.targets = torch.FloatTensor(targets) if targets is not None else None
-        self.feature_transform = feature_transform
-        self.time_series_transform = time_series_transform
-        self.feature_normalization = feature_normalization
-        self.time_series_normalization = time_series_normalization
-        self.enable_augmentation = enable_augmentation
-        self.augmentation_policy = augmentation_policy or {'prob': 0.3, 'strength': 0.1}
-        self.sample_weights = sample_weights
-        self.use_physics_constraints = use_physics_constraints
-        self.physics_params = physics_params or {'a': 55.83, 'b': -2.259}
-        self.feature_names = feature_names
-        
-        # 應用標準化（如果有）
-        if self.feature_normalization is not None:
-            self._apply_feature_normalization()
-        
-        if self.time_series_normalization is not None:
-            self._apply_time_series_normalization()
-        
-        self.n_samples = len(self.features)
-        self.n_features = self.features.shape[1]
-        self.n_time_steps = self.time_series.shape[1]
-        self.n_ts_features = self.time_series.shape[2]
-        
-        logger.debug(f"初始化HybridDataset，特徵形狀: {self.features.shape}, "
-                    f"時間序列形狀: {self.time_series.shape}, "
-                    f"目標形狀: {None if self.targets is None else self.targets.shape}, "
-                    f"啟用擴增: {enable_augmentation}")
-
-    def _apply_feature_normalization(self):
-        """應用靜態特徵標準化"""
-        if 'mean' in self.feature_normalization and 'std' in self.feature_normalization:
-            mean = torch.FloatTensor(self.feature_normalization['mean'])
-            std = torch.FloatTensor(self.feature_normalization['std'])
-            
-            # 確保維度匹配
-            if mean.shape[0] == self.features.shape[1]:
-                self.features = (self.features - mean) / (std + 1e-8)
+    # 創建訓練資料集
+    train_dataset = SolderFatigueDataset(
+        static_features=X_train,
+        time_series_features=time_series_train,
+        targets=y_train,
+        augmentation=augmentation
+    )
     
-    def _apply_time_series_normalization(self):
-        """應用時間序列標準化"""
-        if 'mean' in self.time_series_normalization and 'std' in self.time_series_normalization:
-            mean = torch.FloatTensor(self.time_series_normalization['mean'])
-            std = torch.FloatTensor(self.time_series_normalization['std'])
-            
-            # 根據維度擴展均值和標準差
-            if mean.dim() == 1 and mean.shape[0] == self.time_series.shape[2]:
-                # 對每個特徵標準化
-                mean = mean.view(1, 1, -1)
-                std = std.view(1, 1, -1)
-                self.time_series = (self.time_series - mean) / (std + 1e-8)
+    # 創建驗證資料集
+    val_dataset = SolderFatigueDataset(
+        static_features=X_val,
+        time_series_features=time_series_val,
+        targets=y_val
+    )
     
-    def _augment_sample(self, features, time_series, target=None):
-        """
-        對樣本進行綜合擴增
-        
-        參數:
-            features (torch.Tensor): 靜態特徵張量
-            time_series (torch.Tensor): 時間序列張量
-            target (torch.Tensor, optional): 目標張量
-            
-        返回:
-            tuple: (擴增特徵, 擴增時間序列, 擴增目標)
-        """
-        # 獲取擴增參數
-        strength = self.augmentation_policy.get('strength', 0.1)
-        
-        # 結構參數擴增
-        # 使用小幅高斯噪聲
-        feature_noise = torch.randn_like(features) * strength
-        augmented_features = features + feature_noise
-        
-        # 時間序列擴增
-        aug_type = torch.randint(0, 3, (1,)).item()  # 隨機選擇擴增類型
-        
-        if aug_type == 0:
-            # 添加高斯噪聲
-            ts_noise = torch.randn_like(time_series) * strength
-            augmented_ts = time_series + ts_noise
-        elif aug_type == 1:
-            # 輕微縮放
-            scale = 1.0 + (torch.rand(1).item() * 2 - 1) * 0.1  # 0.9到1.1之間
-            augmented_ts = time_series * scale
-        else:
-            # 時間軸抖動
-            # 對每個時間步添加小擾動
-            jitter = torch.randn_like(time_series) * strength * 0.5
-            augmented_ts = time_series + jitter
-            # 確保時間序列單調遞增（如果適用）
-            if self.use_physics_constraints:
-                # 對每個特徵分別確保單調性
-                for i in range(augmented_ts.shape[1]):
-                    augmented_ts[:, i] = torch.cummax(augmented_ts[:, i], dim=0)[0]
-        
-        augmented_target = target
-        if target is not None and self.use_physics_constraints:
-            # 使用物理約束計算調整後的目標
-            # 估算應變能密度變化量
-            try:
-                # 假設時間序列最後一步包含最終的應變能密度
-                delta_w_up = augmented_ts[-1, 0].item()
-                delta_w_down = augmented_ts[-1, 1].item() if augmented_ts.shape[1] > 1 else delta_w_up
-                
-                # 取加權平均
-                delta_w = 0.5 * delta_w_up + 0.5 * delta_w_down
-                
-                # 使用物理模型計算壽命
-                a = self.physics_params['a']
-                b = self.physics_params['b']
-                physics_nf = a * (delta_w ** b)
-                
-                # 添加小擾動
-                noise_factor = torch.exp(torch.randn(1) * 0.05)  # 小擾動
-                augmented_target = torch.tensor(physics_nf) * noise_factor
-            except:
-                # 如果物理計算失敗，使用原始目標加擾動
-                noise_factor = torch.exp(torch.randn(1) * 0.05)  # 小擾動
-                augmented_target = target * noise_factor
-        elif target is not None:
-            # 簡單擾動
-            noise_factor = torch.exp(torch.randn(1) * 0.03)  # 更小擾動
-            augmented_target = target * noise_factor
-        
-        return augmented_features, augmented_ts, augmented_target
-
-    def __len__(self):
-        """返回資料集中的樣本數量"""
-        return self.n_samples
-
-    def __getitem__(self, idx):
-        """獲取指定索引的樣本"""
-        features = self.features[idx]
-        time_series = self.time_series[idx]
-        
-        # 應用轉換（如果有）
-        if self.feature_transform:
-            features = self.feature_transform(features)
-        
-        if self.time_series_transform:
-            time_series = self.time_series_transform(time_series)
-        
-        # 如果啟用擴增且不是在評估模式（有目標值）
-        if self.enable_augmentation and self.targets is not None and torch.rand(1).item() < self.augmentation_policy.get('prob', 0.3):
-            # 對樣本進行擴增
-            features, time_series, target = self._augment_sample(
-                features, 
-                time_series, 
-                self.targets[idx] if self.targets is not None else None
-            )
-        else:
-            target = self.targets[idx] if self.targets is not None else None
-        
-        # 如果有目標，返回特徵、時間序列和目標；否則只返回特徵和時間序列
-        if target is not None:
-            return features, time_series, target
-        else:
-            return features, time_series
+    # 創建測試資料集
+    test_dataset = SolderFatigueDataset(
+        static_features=X_test,
+        time_series_features=time_series_test,
+        targets=y_test
+    )
     
-    def get_sample_weights(self):
-        """獲取樣本權重用於加權抽樣"""
-        if self.sample_weights is not None:
-            return self.sample_weights
+    # 如果需要，創建加權採樣器
+    train_sampler = None
+    if use_weighted_sampler and y_train is not None:
+        # 計算類別權重（對於回歸問題，可以將目標值分組）
+        y_train_np = y_train
         
-        # 如果未提供權重且有目標值，根據目標分佈計算權重
-        if self.targets is not None:
-            # 使用對數空間計算權重，適合疲勞壽命這種跨度大的數據
-            target_np = self.targets.numpy()
-            log_targets = np.log(target_np + 1e-8)
-            
-            # 分成bins
-            bins = min(10, len(log_targets) // 5)  # 確保每個bin至少有5個樣本
-            
-            # 使用分位數確保每個bin有均衡數量的樣本
-            quantiles = np.percentile(log_targets, np.linspace(0, 100, bins+1))
-            
-            # 計算每個bin的樣本數
-            bin_counts = np.zeros(bins)
-            for i in range(bins):
-                if i ==
+        # 對疲勞壽命進行對數轉換以更均勻地分組
+        log_targets = np.log(y_train_np + 1e-8)
+        
+        # 將目標值分成n_bins組
+        n_bins = min(10, len(log_targets) // 5)  # 至少5個樣本每組
+        bins = np.linspace(log_targets.min(), log_targets.max(), n_bins + 1)
+        bin_indices = np.digitize(log_targets, bins) - 1
+        
+        # 計算每組的權重（反比於樣本數量）
+        bin_counts = np.bincount(bin_indices, minlength=n_bins)
+        bin_weights = 1.0 / (bin_counts + 1e-8)
+        
+        # 標準化權重使總和為len(log_targets)
+        bin_weights = bin_weights * len(log_targets) / np.sum(bin_weights)
+        
+        # 為每個樣本分配權重
+        weights = np.array([bin_weights[i] for i in bin_indices])
+        
+        # 創建加權採樣器
+        train_sampler = WeightedRandomSampler(
+            weights=weights,
+            num_samples=len(weights),
+            replacement=True
+        )
+    
+    # 創建資料載入器
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=train_sampler is None,  # 如果有採樣器就不需要shuffle
+        sampler=train_sampler,
+        num_workers=num_workers,
+        pin_memory=pin_memory
+    )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory
+    )
+    
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory
+    )
+    
+    logger.info(f"已創建資料載入器 - 訓練: {len(train_dataset)} 樣本, "
+                f"驗證: {len(val_dataset)} 樣本, 測試: {len(test_dataset)} 樣本, "
+                f"批次大小: {batch_size}")
+    
+    return {
+        'train_loader': train_loader,
+        'val_loader': val_loader,
+        'test_loader': test_loader
+    }
+
+
+def create_stratified_split(X, time_series, y, test_size=0.15, val_size=0.15, random_state=42):
+    """
+    使用分層抽樣創建訓練、驗證和測試資料分割
+    
+    參數:
+        X (numpy.ndarray): 靜態特徵
+        time_series (numpy.ndarray): 時間序列特徵
+        y (numpy.ndarray): 目標值
+        test_size (float): 測試集比例
+        val_size (float): 驗證集比例
+        random_state (int): 隨機種子
+        
+    返回:
+        dict: 包含分割後資料的字典
+    """
+    # 為分層抽樣創建類別標籤
+    # 對於回歸問題，可以將目標值分組
+    y_log = np.log(y + 1e-8)
+    
+    # 將目標值分成n_bins組
+    n_bins = min(10, len(y) // 8)  # 確保每組至少有8個樣本
+    bins = np.linspace(y_log.min(), y_log.max(), n_bins + 1)
+    y_binned = np.digitize(y_log, bins)
+    
+    # 首先分割出測試集
+    X_temp, X_test, time_series_temp, time_series_test, y_temp, y_test, y_binned_temp = train_test_split(
+        X, time_series, y, y_binned, test_size=test_size, random_state=random_state, stratify=y_binned
+    )
+    
+    # 從剩餘資料中分割出驗證集
+    val_ratio = val_size / (1 - test_size)
+    X_train, X_val, time_series_train, time_series_val, y_train, y_val = train_test_split(
+        X_temp, time_series_temp, y_temp, test_size=val_ratio, random_state=random_state, stratify=y_binned_temp
+    )
+    
+    logger.info(f"分層資料分割 - 訓練: {len(X_train)} 樣本, "
+                f"驗證: {len(X_val)} 樣本, 測試: {len(X_test)} 樣本")
+    
+    return {
+        'X_train': X_train, 'time_series_train': time_series_train, 'y_train': y_train,
+        'X_val': X_val, 'time_series_val': time_series_val, 'y_val': y_val,
+        'X_test': X_test, 'time_series_test': time_series_test, 'y_test': y_test
+    }
+
+
+def create_k_fold_cv(X, time_series, y, n_splits=5, shuffle=True, random_state=42):
+    """
+    創建k折交叉驗證分割
+    
+    參數:
+        X (numpy.ndarray): 靜態特徵
+        time_series (numpy.ndarray): 時間序列特徵
+        y (numpy.ndarray): 目標值
+        n_splits (int): 折數
+        shuffle (bool): 是否打亂資料
+        random_state (int): 隨機種子
+        
+    返回:
+        list: 包含每折分割索引的列表
+    """
+    # 為分層交叉驗證創建類別標籤
+    y_log = np.log(y + 1e-8)
+    
+    # 將目標值分成n_bins組
+    n_bins = min(10, len(y) // (2 * n_splits))  # 確保每組至少有2*n_splits個樣本
+    bins = np.linspace(y_log.min(), y_log.max(), n_bins + 1)
+    y_binned = np.digitize(y_log, bins)
+    
+    # 創建分層k折交叉驗證
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
+    
+    # 創建分割索引
+    fold_indices = []
+    for train_idx, val_idx in skf.split(X, y_binned):
+        fold_indices.append((train_idx, val_idx))
+    
+    logger.info(f"創建{n_splits}折交叉驗證分割")
+    
+    return fold_indices
+
+
+def create_leave_one_out_cv(X, time_series, y):
+    """
+    創建留一法交叉驗證分割
+    適用於小樣本數據集
+    
+    參數:
+        X (numpy.ndarray): 靜態特徵
+        time_series (numpy.ndarray): 時間序列特徵
+        y (numpy.ndarray): 目標值
+        
+    返回:
+        list: 包含每折分割索引的列表
+    """
+    n_samples = len(X)
+    fold_indices = []
+    
+    for i in range(n_samples):
+        val_idx = [i]
+        train_idx = [j for j in range(n_samples) if j != i]
+        fold_indices.append((train_idx, val_idx))
+    
+    logger.info(f"創建留一法交叉驗證分割，共{n_samples}折")
+    
+    return fold_indices
+
+
+def create_dataset_from_fold(X, time_series, y, fold_indices, fold_idx,
+                           normalizers=None, augmentation=False):
+    """
+    從交叉驗證分割創建資料集
+    
+    參數:
+        X (numpy.ndarray): 靜態特徵
+        time_series (numpy.ndarray): 時間序列特徵
+        y (numpy.ndarray): 目標值
+        fold_indices (list): 分割索引列表
+        fold_idx (int): 當前折索引
+        normalizers (dict, optional): 標準化器字典
+        augmentation (bool): 是否啟用資料增強
+        
+    返回:
+        dict: 包含訓練和驗證資料集的字典
+    """
+    train_idx, val_idx = fold_indices[fold_idx]
+    
+    # 分割資料
+    X_train, X_val = X[train_idx], X[val_idx]
+    time_series_train, time_series_val = time_series[train_idx], time_series[val_idx]
+    y_train, y_val = y[train_idx], y[val_idx]
+    
+    # 創建標準化器（如果沒有提供）
+    if normalizers is None:
+        normalizers = {}
+        
+        # 靜態特徵標準化
+        from sklearn.preprocessing import StandardScaler
+        static_scaler = StandardScaler()
+        static_scaler.fit(X_train)
+        normalizers['static_scaler'] = static_scaler
+        
+        # 時間序列標準化（對每個特徵單獨標準化）
+        time_series_reshaped = time_series_train.reshape(-1, time_series_train.shape[-1])
+        time_scaler = StandardScaler()
+        time_scaler.fit(time_series_reshaped)
+        normalizers['time_scaler'] = time_scaler
+    
+    # 創建資料集
+    train_dataset = SolderFatigueDataset(
+        static_features=X_train,
+        time_series_features=time_series_train,
+        targets=y_train,
+        static_normalizer=normalizers.get('static_scaler'),
+        time_normalizer=normalizers.get('time_scaler'),
+        augmentation=augmentation
+    )
+    
+    val_dataset = SolderFatigueDataset(
+        static_features=X_val,
+        time_series_features=time_series_val,
+        targets=y_val,
+        static_normalizer=normalizers.get('static_scaler'),
+        time_normalizer=normalizers.get('time_scaler')
+    )
+    
+    logger.info(f"從第{fold_idx+1}折創建資料集 - 訓練: {len(train_dataset)} 樣本, "
+                f"驗證: {len(val_dataset)} 樣本")
+    
+    return {
+        'train_dataset': train_dataset,
+        'val_dataset': val_dataset,
+        'normalizers': normalizers
+    }
+
+
+if __name__ == "__main__":
+    # 設定日誌
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # 測試代碼
+    logger.info("創建測試資料")
+    
+    # 生成隨機測試資料
+    n_samples = 100
+    n_static_features = 5
+    n_time_steps = 4
+    n_time_features = 2
+    
+    # 靜態特徵
+    X = np.random.rand(n_samples, n_static_features)
+    
+    # 時間序列特徵（確保遞增）
+    time_series = np.zeros((n_samples, n_time_steps, n_time_features))
+    for i in range(n_samples):
+        for j in range(n_time_features):
+            time_series[i, :, j] = np.sort(np.random.rand(n_time_steps))
+    
+    # 目標值（疲勞壽命）- 使用指數分佈模擬跨度大的壽命數據
+    y = np.exp(2 + 3 * np.random.rand(n_samples))
+    
+    # 測試資料集
+    logger.info("測試SolderFatigueDataset")
+    dataset = SolderFatigueDataset(X, time_series, y, augmentation=True)
+    logger.info(f"資料集大小: {len(dataset)}")
+    
+    static, ts, target = dataset[0]
+    logger.info(f"靜態特徵形狀: {static.shape}")
+    logger.info(f"時間序列形狀: {ts.shape}")
+    logger.info(f"目標形狀: {target.shape if hasattr(target, 'shape') else 'scalar'}")
+    
+    # 測試加權採樣
+    logger.info("測試加權採樣資料載入器")
+    dataloaders = create_dataloaders(
+        X[:70], X[70:85], X[85:],
+        time_series[:70], time_series[70:85], time_series[85:],
+        y[:70], y[70:85], y[85:],
+        batch_size=16,
+        use_weighted_sampler=True,
+        augmentation=True
+    )
+    
+    train_loader = dataloaders['train_loader']
+    logger.info(f"訓練資料載入器批次數: {len(train_loader)}")
+    
+    # 取出一個批次查看形狀
+    for static_batch, ts_batch, target_batch in train_loader:
+        logger.info(f"批次靜態特徵形狀: {static_batch.shape}")
+        logger.info(f"批次時間序列形狀: {ts_batch.shape}")
+        logger.info(f"批次目標形狀: {target_batch.shape}")
+        break
+    
+    # 測試分層資料分割
+    logger.info("測試分層資料分割")
+    split_data = create_stratified_split(X, time_series, y, 
+                                        test_size=0.15, val_size=0.15)
+    
+    # 檢查分割後的資料大小
+    logger.info(f"訓練集: {len(split_data['X_train'])}")
+    logger.info(f"驗證集: {len(split_data['X_val'])}")
+    logger.info(f"測試集: {len(split_data['X_test'])}")
+    
+    # 測試k折交叉驗證
+    logger.info("測試k折交叉驗證")
+    fold_indices = create_k_fold_cv(X, time_series, y, n_splits=5)
+    logger.info(f"交叉驗證折數: {len(fold_indices)}")
+    
+    # 測試從交叉驗證折創建資料集
+    logger.info("測試從交叉驗證折創建資料集")
+    fold_data = create_dataset_from_fold(X, time_series, y, fold_indices, fold_idx=0,
+                                       augmentation=True)
+    
+    train_dataset = fold_data['train_dataset']
+    val_dataset = fold_data['val_dataset']
+    
+    logger.info(f"訓練集大小: {len(train_dataset)}")
+    logger.info(f"驗證集大小: {len(val_dataset)}")
+    
+    # 如果數據集很小，測試留一法交叉驗證
+    if n_samples <= 100:
+        logger.info("測試留一法交叉驗證")
+        loo_indices = create_leave_one_out_cv(X, time_series, y)
+        logger.info(f"留一法折數: {len(loo_indices)}")
+        
+        # 使用第一折測試
+        loo_data = create_dataset_from_fold(X, time_series, y, loo_indices, fold_idx=0)
+        logger.info(f"留一法訓練集大小: {len(loo_data['train_dataset'])}")
+        logger.info(f"留一法驗證集大小: {len(loo_data['val_dataset'])}")
+    
+    logger.info("測試完成")

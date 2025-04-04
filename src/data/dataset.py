@@ -660,3 +660,50 @@ if __name__ == "__main__":
         logger.info(f"留一法驗證集大小: {len(loo_data['val_dataset'])}")
     
     logger.info("測試完成")
+
+
+
+def load_dataset(
+    csv_path,
+    static_features,
+    time_series_features,
+    target_feature,
+    sequence_length=10,
+    batch_size=32,
+    val_ratio=0.2,
+    random_seed=42,
+    num_workers=0
+):
+    """從 CSV 載入資料並建立 DataLoader"""
+    df = pd.read_csv(csv_path)
+
+    # 靜態特徵
+    static_data = df[static_features].values
+
+    # 時間序列特徵需要 reshape 成 (樣本數, 時間步數, 特徵數)
+    time_data = df[time_series_features].values
+    num_samples = len(df)
+    time_data = time_data.reshape((num_samples, sequence_length, -1))
+
+    # 預測目標
+    targets = df[target_feature].values
+
+    # 切分訓練與驗證
+    X_static_train, X_static_val, X_time_train, X_time_val, y_train, y_val = train_test_split(
+        static_data, time_data, targets, test_size=val_ratio, random_state=random_seed
+    )
+
+    # 建立 Dataset
+    train_dataset = SolderFatigueDataset(X_static_train, X_time_train, y_train)
+    val_dataset = SolderFatigueDataset(X_static_val, X_time_val, y_val)
+
+    # 建立 DataLoader
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
+    return {
+        "train_loader": train_loader,
+        "val_loader": val_loader,
+        "train_dataset": train_dataset,
+        "val_dataset": val_dataset
+    }

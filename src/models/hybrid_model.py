@@ -1155,3 +1155,25 @@ class HybridPINNLSTMModel(nn.Module):
                 result['attention_weights'] = lstm_output['attention_weights']
         
         return result
+
+
+import torch
+import torch.nn as nn
+import logging
+
+logger = logging.getLogger(__name__)
+
+class PINNLSTMTrainer(nn.Module):
+    def __init__(self, pinn_model, lstm_model, fusion_layer):
+        super(PINNLSTMTrainer, self).__init__()
+        self.pinn_model = pinn_model
+        self.lstm_model = lstm_model
+        self.fusion_layer = fusion_layer
+
+    def forward(self, static_input, temporal_input):
+        pinn_output = self.pinn_model(static_input)
+        lstm_output, _ = self.lstm_model(temporal_input)
+        combined = torch.cat([pinn_output, lstm_output[:, -1, :]], dim=1)
+        output = self.fusion_layer(combined)
+        logger.info("模型正向推論完成")
+        return output

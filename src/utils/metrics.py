@@ -357,3 +357,25 @@ if __name__ == "__main__":
         plt.show()
     except Exception as e:
         logger.error(f"繪圖錯誤: {str(e)}")
+
+
+import numpy as np
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+import logging
+
+logger = logging.getLogger(__name__)
+
+def evaluate_model(y_true, y_pred):
+    mse = mean_squared_error(y_true, y_pred)
+    rmse = np.sqrt(mse)
+    mae = mean_absolute_error(y_true, y_pred)
+    r2 = r2_score(y_true, y_pred)
+    logger.info(f"模型評估完成: RMSE={rmse}, MAE={mae}, R2={r2}")
+    return {"RMSE": rmse, "MAE": mae, "R2": r2}
+
+def compare_models(results_dict):
+    for model_name, metrics in results_dict.items():
+        logger.info(f"模型 {model_name} 評估結果: {metrics}")
+    best_model = min(results_dict, key=lambda k: results_dict[k]["RMSE"])
+    logger.info(f"最佳模型為: {best_model}")
+    return best_model

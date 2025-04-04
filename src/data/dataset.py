@@ -707,3 +707,34 @@ def load_dataset(
         "train_dataset": train_dataset,
         "val_dataset": val_dataset
     }
+<<<<<<< HEAD
+=======
+
+
+
+import pandas as pd
+from torch.utils.data import DataLoader, TensorDataset
+import torch
+from sklearn.model_selection import train_test_split
+import logging
+
+logger = logging.getLogger(__name__)
+
+def load_dataset(csv_path, feature_cols, target_col, batch_size=32, val_ratio=0.2):
+    df = pd.read_csv(csv_path)
+    X = df[feature_cols].values
+    y = df[target_col].values
+
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=val_ratio)
+
+    train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.float32),
+                                  torch.tensor(y_train, dtype=torch.float32))
+    val_dataset = TensorDataset(torch.tensor(X_val, dtype=torch.float32),
+                                torch.tensor(y_val, dtype=torch.float32))
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    logger.info(f"訓練集大小: {len(train_dataset)}, 驗證集大小: {len(val_dataset)}")
+    return train_loader, val_loader
+>>>>>>> 8c8dd0fb9324810b35472cb7998182e44470a38d

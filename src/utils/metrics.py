@@ -91,7 +91,10 @@ def calculate_mape(y_true, y_pred, sample_weight=None):
         return mean_absolute_percentage_error(y_true, y_pred) * 100
     except (AttributeError, ImportError):
         # 手動實現MAPE（較舊版本相容）
-        mape = np.mean(np.abs((y_true - y_pred) / y_true_safe)) * 100
+        if sample_weight is None:
+            mape = np.mean(np.abs((y_true - y_pred) / y_true_safe)) * 100
+        else:
+            mape = np.average(np.abs((y_true - y_pred) / y_true_safe), weights=sample_weight) * 100
         return mape
 
 
@@ -357,25 +360,3 @@ if __name__ == "__main__":
         plt.show()
     except Exception as e:
         logger.error(f"繪圖錯誤: {str(e)}")
-
-
-import numpy as np
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
-import logging
-
-logger = logging.getLogger(__name__)
-
-def evaluate_model(y_true, y_pred):
-    mse = mean_squared_error(y_true, y_pred)
-    rmse = np.sqrt(mse)
-    mae = mean_absolute_error(y_true, y_pred)
-    r2 = r2_score(y_true, y_pred)
-    logger.info(f"模型評估完成: RMSE={rmse}, MAE={mae}, R2={r2}")
-    return {"RMSE": rmse, "MAE": mae, "R2": r2}
-
-def compare_models(results_dict):
-    for model_name, metrics in results_dict.items():
-        logger.info(f"模型 {model_name} 評估結果: {metrics}")
-    best_model = min(results_dict, key=lambda k: results_dict[k]["RMSE"])
-    logger.info(f"最佳模型為: {best_model}")
-    return best_model

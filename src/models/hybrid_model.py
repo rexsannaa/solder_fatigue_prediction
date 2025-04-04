@@ -842,6 +842,60 @@ class PINNLSTMTrainer:
             'val_losses': checkpoint.get('val_losses', {}),
             'val_metrics': checkpoint.get('val_metrics', {})
         }
+    
+    def _save_model(self, path, val_losses, val_metrics):
+        """
+        保存模型
+        
+        參數:
+            path (str): 保存路徑
+            val_losses (dict): 驗證損失
+            val_metrics (dict): 驗證指標
+        """
+        # 確保目錄存在
+        import os
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        # 保存模型
+        torch.save({
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'val_losses': val_losses,
+            'val_metrics': val_metrics,
+            'epoch': self.current_epoch,
+            'best_val_loss': self.best_val_loss,
+            'lambda_physics': self.lambda_physics,
+            'lambda_consistency': self.lambda_consistency
+        }, path)
+        
+        logger.info(f"模型已保存至 {path}")
+    
+    def load_model(self, path):
+        """
+        載入模型
+        
+        參數:
+            path (str): 模型路徑
+            
+        返回:
+            dict: 包含模型指標的字典
+        """
+        checkpoint = torch.load(path, map_location=self.device)
+        
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        self.current_epoch = checkpoint.get('epoch', 0)
+        self.best_val_loss = checkpoint.get('best_val_loss', float('inf'))
+        self.lambda_physics = checkpoint.get('lambda_physics', self.lambda_physics)
+        self.lambda_consistency = checkpoint.get('lambda_consistency', self.lambda_consistency)
+        
+        logger.info(f"模型已從 {path} 載入")
+        
+        return {
+            'val_losses': checkpoint.get('val_losses', {}),
+            'val_metrics': checkpoint.get('val_metrics', {})
+        }
 
 
 class FeatureFusionLayer(nn.Module):
@@ -1155,6 +1209,73 @@ class HybridPINNLSTMModel(nn.Module):
                 result['attention_weights'] = lstm_output['attention_weights']
         
         return result
+    def calculate_loss(self, outputs, targets, lambda_physics=0.5, lambda_consistency=0.1):
+     """
+        計算混合損失
+    
+        參數:
+            outputs (dict): 模型輸出
+            targets (torch.Tensor): 目標疲勞壽命
+            lambda_physics (float): 物理約束損失權重
+            lambda_consistency (float): 分支間一致性損失權重
+        
+        返回:
+            dict: 包含各部分損失的字典
+        """
+        # 獲取對數空間的目標值和預測值，用於計算相對誤差
+        log_targets = torch.log(targets + 1e-8)
+        log_predictions = torch.log(outputs['nf_pred'] + 1e-8)
+    
+        # 1. 主要預測損失 - 結合MSE和相對誤差
+        # 使用均方誤差
+        mse_loss = F.mse_loss(outputs['nf_pred'], targets)
+    
+        # 對數空間的均方誤差 (相對誤差)
+        log_mse_loss = F.mse_loss(log_predictions, log_targets)
+    
+        # 組合損失函數，同時考慮絕對誤差和相對誤差
+        # 對小樣本數據集，相對誤差更重要
+        pred_loss = 0.3 * mse_loss + 0.7 * log_mse_loss
+    
+        # 2. 物理約束損失
+        if self.use_physics_layer and 'delta_w' in outputs:
+            # 從真實壽命推算的理論上的delta_w (使用物理公式)
+            delta_w_theory = torch.pow(targets / self.a_coefficient, 1/self.b_coefficient)
+            delta_w_theory = torch.clamp(delta_w_theory, min=1e-8)
+        
+            # delta_w預測損失
+            delta_w_loss = F.mse_loss(outputs['delta_w'], delta_w_theory)
+        
+            # 物理預測一致性損失 - 預測的nf應符合物理模型
+            nf_physics = self.a_coefficient * torch.pow(outputs['delta_w'], self.b_coefficient)
+            physics_consistency_loss = F.mse_loss(outputs['pinn_nf_pred'], nf_physics)
+        
+            # 組合物理損失
+            physics_loss = 0.6 * delta_w_loss + 0.4 * physics_consistency_loss
+        else:
+            physics_loss = torch.tensor(0.0, device=targets.device)
+    
+        # 3. 分支間一致性損失 - 要求PINN和LSTM分支預測結果相近
+        # 使用對數空間進行比較以處理相對誤差
+        log_pinn_pred = torch.log(outputs['pinn_nf_pred'] + 1e-8)
+        log_lstm_pred = torch.log(outputs['lstm_nf_pred'] + 1e-8)
+        consistency_loss = F.mse_loss(log_pinn_pred, log_lstm_pred)
+    
+        # 4. L2正則化損失
+        l2_loss = outputs.get('l2_penalty', 0.0)
+    
+        # 5. 總損失
+        total_loss = pred_loss + lambda_physics * physics_loss + lambda_consistency * consistency_loss + l2_loss
+    
+        return {
+            'total_loss': total_loss,
+            'pred_loss': pred_loss,
+            'physics_loss': physics_loss,
+            'consistency_loss': consistency_loss,
+            'mse_loss': mse_loss,
+            'log_mse_loss': log_mse_loss,
+            'l2_loss': l2_loss
+        }
 
 
 import torch
@@ -1162,18 +1283,3 @@ import torch.nn as nn
 import logging
 
 logger = logging.getLogger(__name__)
-
-class PINNLSTMTrainer(nn.Module):
-    def __init__(self, pinn_model, lstm_model, fusion_layer):
-        super(PINNLSTMTrainer, self).__init__()
-        self.pinn_model = pinn_model
-        self.lstm_model = lstm_model
-        self.fusion_layer = fusion_layer
-
-    def forward(self, static_input, temporal_input):
-        pinn_output = self.pinn_model(static_input)
-        lstm_output, _ = self.lstm_model(temporal_input)
-        combined = torch.cat([pinn_output, lstm_output[:, -1, :]], dim=1)
-        output = self.fusion_layer(combined)
-        logger.info("模型正向推論完成")
-        return output

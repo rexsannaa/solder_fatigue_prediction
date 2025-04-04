@@ -839,6 +839,9 @@ class PINNLSTMTrainer:
         參數:
             epoch (int): 當前訓練輪次
         """
+        if self.lambda_ramp_epochs <= 0:
+            return
+            
         progress = min(epoch / self.lambda_ramp_epochs, 1.0)
         self.lambda_physics = self.lambda_physics_init + (self.lambda_physics_max - self.lambda_physics_init) * progress
         self.lambda_consistency = self.lambda_consistency_init + (self.lambda_consistency_max - self.lambda_consistency_init) * progress
@@ -858,8 +861,17 @@ class PINNLSTMTrainer:
         self.model.train()
         epoch_losses = {'total': 0.0, 'pred': 0.0, 'physics': 0.0, 'consistency': 0.0}
         num_batches = len(train_loader)
+        all_targets = []
+        all_predictions = []
         
-        for batch_idx, (static_features, time_series, targets) in enumerate(train_loader):
+        # 使用 tqdm 顯示進度條（如果可用）
+        try:
+            from tqdm import tqdm
+            pbar = tqdm(enumerate(train_loader), total=num_batches, desc="Training", leave=False)
+        except ImportError:
+            pbar = enumerate(train_loader)
+        
+        for batch_idx, (static_features, time_series, targets) in pbar:
             # 將資料移至設備
             static_features = static_features.to(self.device)
             time_series = time_series.to(self.device)
@@ -898,12 +910,28 @@ class PINNLSTMTrainer:
                         epoch_losses[name] += v.item()
                     else:
                         epoch_losses[name] = v.item()
+                        
+            # 收集預測和目標，用於計算指標
+            all_predictions.append(outputs['nf_pred'].detach().cpu().numpy())
+            all_targets.append(targets.detach().cpu().numpy())
+            
+            # 更新進度條
+            if hasattr(pbar, 'set_postfix'):
+                pbar.set_postfix({'loss': loss.item()})
         
         # 計算平均損失
         for k in epoch_losses:
             epoch_losses[k] /= num_batches
         
-        return epoch_losses
+        # 計算訓練指標
+        if all_predictions and all_targets:
+            all_predictions = np.concatenate(all_predictions)
+            all_targets = np.concatenate(all_targets)
+            train_metrics = self._calculate_metrics(all_predictions, all_targets)
+        else:
+            train_metrics = {}
+            
+        return {'losses': epoch_losses, 'metrics': train_metrics}
     
     def evaluate(self, val_loader):
         """
@@ -928,7 +956,7 @@ class PINNLSTMTrainer:
                 targets = targets.to(self.device)
                 
                 # 前向傳播
-                outputs = self.model(static_features, time_series)
+                outputs = self.model(static_features, time_series, return_features=True)
                 
                 # 計算損失
                 losses = self.model.calculate_loss(
@@ -962,7 +990,16 @@ class PINNLSTMTrainer:
         # 計算指標
         metrics = self._calculate_metrics(all_predictions, all_targets)
         
-        return val_losses, metrics, all_predictions, all_targets
+        # 合併所有輸出的特徵
+        merged_outputs = {}
+        for key in all_outputs[0].keys():
+            if isinstance(all_outputs[0][key], torch.Tensor):
+                merged_outputs[key] = torch.cat([o[key].cpu() for o in all_outputs]).numpy()
+        
+        merged_outputs['predictions'] = all_predictions
+        merged_outputs['targets'] = all_targets
+        
+        return val_losses, metrics, merged_outputs
     
     def _calculate_metrics(self, predictions, targets):
         """
@@ -975,33 +1012,37 @@ class PINNLSTMTrainer:
         返回:
             dict: 包含評估指標的字典
         """
-        from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
-        
-        # 計算基本指標
-        mse = mean_squared_error(targets, predictions)
-        rmse = np.sqrt(mse)
-        r2 = r2_score(targets, predictions)
-        mae = mean_absolute_error(targets, predictions)
-        
-        # 計算相對誤差
-        rel_error = np.abs((targets - predictions) / (targets + 1e-8)) * 100
-        mean_rel_error = np.mean(rel_error)
-        median_rel_error = np.median(rel_error)
-        
-        # 計算對數空間的指標
-        log_targets = np.log(targets + 1e-8)
-        log_predictions = np.log(predictions + 1e-8)
-        log_mse = mean_squared_error(log_targets, log_predictions)
-        log_rmse = np.sqrt(log_mse)
-        
-        return {
-            'rmse': rmse,
-            'r2': r2,
-            'mae': mae,
-            'mean_rel_error': mean_rel_error,
-            'median_rel_error': median_rel_error,
-            'log_rmse': log_rmse
-        }
+        try:
+            from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+            
+            # 計算基本指標
+            mse = mean_squared_error(targets, predictions)
+            rmse = np.sqrt(mse)
+            r2 = r2_score(targets, predictions)
+            mae = mean_absolute_error(targets, predictions)
+            
+            # 計算相對誤差
+            rel_error = np.abs((targets - predictions) / (targets + 1e-8)) * 100
+            mean_rel_error = np.mean(rel_error)
+            median_rel_error = np.median(rel_error)
+            
+            # 計算對數空間的指標
+            log_targets = np.log(targets + 1e-8)
+            log_predictions = np.log(predictions + 1e-8)
+            log_mse = mean_squared_error(log_targets, log_predictions)
+            log_rmse = np.sqrt(log_mse)
+            
+            return {
+                'rmse': rmse,
+                'r2': r2,
+                'mae': mae,
+                'mean_rel_error': mean_rel_error,
+                'median_rel_error': median_rel_error,
+                'log_rmse': log_rmse
+            }
+        except Exception as e:
+            logger.error(f"計算指標時出錯: {str(e)}")
+            return {}
     
     def train(self, train_loader, val_loader, epochs, early_stopping_patience=20,
              save_path=None, callbacks=None):
@@ -1022,6 +1063,19 @@ class PINNLSTMTrainer:
         callbacks = callbacks or []
         best_val_loss = float('inf')
         patience_counter = 0
+        history = {
+            'train_losses': [],
+            'val_losses': [],
+            'train_metrics': {},
+            'val_metrics': {},
+            'best_val_loss': float('inf')
+        }
+        
+        # 初始化指標記錄
+        self.train_losses = []
+        self.val_losses = []
+        self.train_metrics = {}
+        self.val_metrics = {}
         
         for epoch in range(epochs):
             self.current_epoch = epoch
@@ -1030,14 +1084,23 @@ class PINNLSTMTrainer:
             self.update_loss_weights(epoch)
             
             # 訓練一個輪次
-            train_losses = self.train_epoch(train_loader)
+            train_results = self.train_epoch(train_loader)
+            train_losses = train_results['losses']
+            train_metrics = train_results.get('metrics', {})
+            
             self.train_losses.append(train_losses)
             
+            # 更新訓練指標記錄
+            for k, v in train_metrics.items():
+                if k not in self.train_metrics:
+                    self.train_metrics[k] = []
+                self.train_metrics[k].append(v)
+            
             # 評估
-            val_losses, val_metrics, _, _ = self.evaluate(val_loader)
+            val_losses, val_metrics, val_outputs = self.evaluate(val_loader)
             self.val_losses.append(val_losses)
             
-            # 更新指標記錄
+            # 更新驗證指標記錄
             for k, v in val_metrics.items():
                 if k not in self.val_metrics:
                     self.val_metrics[k] = []
@@ -1056,8 +1119,8 @@ class PINNLSTMTrainer:
                 log_msg = (f"輪次 {epoch+1}/{epochs} - "
                           f"訓練損失: {train_losses['total']:.4f}, "
                           f"驗證損失: {val_losses['total']:.4f}, "
-                          f"RMSE: {val_metrics['rmse']:.4f}, "
-                          f"R²: {val_metrics['r2']:.4f}, "
+                          f"RMSE: {val_metrics.get('rmse', 0):.4f}, "
+                          f"R²: {val_metrics.get('r2', 0):.4f}, "
                           f"學習率: {curr_lr:.6f}")
                 logger.info(log_msg)
             
@@ -1073,6 +1136,9 @@ class PINNLSTMTrainer:
                 # 保存最佳模型狀態
                 self.best_val_loss = best_val_loss
                 self.best_model_state = {k: v.cpu().clone() for k, v in self.model.state_dict().items()}
+                
+                # 更新歷史記錄
+                history['best_val_loss'] = best_val_loss
             else:
                 patience_counter += 1
                 
@@ -1087,19 +1153,21 @@ class PINNLSTMTrainer:
                     'optimizer': self.optimizer,
                     'train_loss': train_losses['total'],
                     'val_loss': val_losses['total'],
-                    'metrics': val_metrics
+                    'metrics': val_metrics,
+                    'epoch': epoch
                 })
+        
+        # 更新歷史記錄
+        history['train_losses'] = self.train_losses
+        history['val_losses'] = self.val_losses
+        history['train_metrics'] = self.train_metrics
+        history['val_metrics'] = self.val_metrics
         
         # 恢復最佳模型
         if self.best_model_state is not None:
             self.model.load_state_dict(self.best_model_state)
         
-        return {
-            'train_losses': self.train_losses,
-            'val_losses': self.val_losses,
-            'val_metrics': self.val_metrics,
-            'best_val_loss': self.best_val_loss
-        }
+        return history
     
     def _save_model(self, path, val_losses, val_metrics):
         """
@@ -1123,7 +1191,11 @@ class PINNLSTMTrainer:
             'epoch': self.current_epoch,
             'best_val_loss': self.best_val_loss,
             'lambda_physics': self.lambda_physics,
-            'lambda_consistency': self.lambda_consistency
+            'lambda_consistency': self.lambda_consistency,
+            'train_losses': self.train_losses,
+            'val_losses': self.val_losses,
+            'train_metrics': self.train_metrics,
+            'val_metrics': self.val_metrics
         }, path)
         
         logger.info(f"模型已保存至 {path}")
@@ -1147,6 +1219,16 @@ class PINNLSTMTrainer:
         self.best_val_loss = checkpoint.get('best_val_loss', float('inf'))
         self.lambda_physics = checkpoint.get('lambda_physics', self.lambda_physics)
         self.lambda_consistency = checkpoint.get('lambda_consistency', self.lambda_consistency)
+        
+        # 載入訓練記錄
+        if 'train_losses' in checkpoint:
+            self.train_losses = checkpoint['train_losses']
+        if 'val_losses' in checkpoint:
+            self.val_losses = checkpoint['val_losses']
+        if 'train_metrics' in checkpoint:
+            self.train_metrics = checkpoint['train_metrics']
+        if 'val_metrics' in checkpoint:
+            self.val_metrics = checkpoint['val_metrics']
         
         logger.info(f"模型已從 {path} 載入")
         

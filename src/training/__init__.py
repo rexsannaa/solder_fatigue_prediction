@@ -13,9 +13,9 @@ training package - 訓練模組
 
 from src.training.losses import (
     MSELoss,
-    PhysicsConstraintLoss,
-    ConsistencyLoss,
-    HybridLoss
+    EnhancedPhysicsConstraintLoss as PhysicsConstraintLoss,  # 使用別名
+    EnhancedConsistencyLoss as ConsistencyLoss,
+    EnhancedHybridLoss as HybridLoss
 )
 
 from src.training.trainer import (

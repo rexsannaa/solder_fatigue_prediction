@@ -506,11 +506,4 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def validate_physical_constraints(predictions, lower_bound, upper_bound):
-    violations = np.logical_or(predictions < lower_bound, predictions > upper_bound)
-    num_violations = np.sum(violations)
-    if num_violations > 0:
-        logger.warning(f"物理約束違反次數: {num_violations}")
-    else:
-        logger.info("所有預測皆符合物理約束")
-    return num_violations
+

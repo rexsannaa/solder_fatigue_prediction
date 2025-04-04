@@ -912,3 +912,29 @@ if __name__ == "__main__":
         logger.info(f"輪次 {epoch}: 總損失={adaptive_result['total_loss'].item():.4f}, "
                   f"物理權重={adaptive_loss.lambda_physics:.4f}, "
                   f"一致性權重={adaptive_loss.lambda_consistency:.4f}")
+
+
+class HybridLoss(nn.Module):
+    """
+    基本版 Hybrid 損失函數：
+    結合 MSE 與 Physics-based Loss，可透過權重調整貢獻度
+    """
+    def __init__(self, mse_weight=1.0, physics_weight=1.0, reduction='mean'):
+        super(HybridLoss, self).__init__()
+        self.mse_weight = mse_weight
+        self.physics_weight = physics_weight
+        self.mse = nn.MSELoss(reduction=reduction)
+
+    def forward(self, predictions, targets, physics_loss=None):
+        """
+        計算綜合損失
+        :param predictions: 預測值
+        :param targets: 真實值
+        :param physics_loss: 額外傳入的物理損失 (tensor 或 None)
+        """
+        mse_loss = self.mse(predictions, targets)
+        if physics_loss is not None:
+            total_loss = self.mse_weight * mse_loss + self.physics_weight * physics_loss
+        else:
+            total_loss = self.mse_weight * mse_loss
+        return total_loss

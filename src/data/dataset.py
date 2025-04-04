@@ -660,3 +660,78 @@ if __name__ == "__main__":
         logger.info(f"留一法驗證集大小: {len(loo_data['val_dataset'])}")
     
     logger.info("測試完成")
+
+
+
+def load_dataset(
+    csv_path,
+    static_features,
+    time_series_features,
+    target_feature,
+    sequence_length=10,
+    batch_size=32,
+    val_ratio=0.2,
+    random_seed=42,
+    num_workers=0
+):
+    """從 CSV 載入資料並建立 DataLoader"""
+    df = pd.read_csv(csv_path)
+
+    # 靜態特徵
+    static_data = df[static_features].values
+
+    # 時間序列特徵需要 reshape 成 (樣本數, 時間步數, 特徵數)
+    time_data = df[time_series_features].values
+    num_samples = len(df)
+    time_data = time_data.reshape((num_samples, sequence_length, -1))
+
+    # 預測目標
+    targets = df[target_feature].values
+
+    # 切分訓練與驗證
+    X_static_train, X_static_val, X_time_train, X_time_val, y_train, y_val = train_test_split(
+        static_data, time_data, targets, test_size=val_ratio, random_state=random_seed
+    )
+
+    # 建立 Dataset
+    train_dataset = SolderFatigueDataset(X_static_train, X_time_train, y_train)
+    val_dataset = SolderFatigueDataset(X_static_val, X_time_val, y_val)
+
+    # 建立 DataLoader
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
+    return {
+        "train_loader": train_loader,
+        "val_loader": val_loader,
+        "train_dataset": train_dataset,
+        "val_dataset": val_dataset
+    }
+
+
+
+import pandas as pd
+from torch.utils.data import DataLoader, TensorDataset
+import torch
+from sklearn.model_selection import train_test_split
+import logging
+
+logger = logging.getLogger(__name__)
+
+def load_dataset(csv_path, feature_cols, target_col, batch_size=32, val_ratio=0.2):
+    df = pd.read_csv(csv_path)
+    X = df[feature_cols].values
+    y = df[target_col].values
+
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=val_ratio)
+
+    train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.float32),
+                                  torch.tensor(y_train, dtype=torch.float32))
+    val_dataset = TensorDataset(torch.tensor(X_val, dtype=torch.float32),
+                                torch.tensor(y_val, dtype=torch.float32))
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    logger.info(f"訓練集大小: {len(train_dataset)}, 驗證集大小: {len(val_dataset)}")
+    return train_loader, val_loader

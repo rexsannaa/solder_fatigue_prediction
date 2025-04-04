@@ -664,3 +664,69 @@ def evaluate_model_performance(model, data_loader, device, config, output_dir):
         "metrics": metrics,
         "outputs": all_outputs
     }
+
+
+if __name__ == "__main__":
+    import argparse
+    import yaml
+    import torch
+    import os
+    from src.data.dataset import load_dataset
+    from src.training.trainer import get_pinn_lstm_trainer, train_hybrid_model_with_stages
+    from src.models.hybrid_model import HybridPINNLSTMModel
+    from src.training.losses import HybridLoss
+
+    parser = argparse.ArgumentParser(description="Train Hybrid PINN-LSTM model")
+    parser.add_argument("--config", type=str, required=True, help="Path to model config YAML")
+    parser.add_argument("--train-config", type=str, required=True, help="Path to training config YAML")
+    parser.add_argument("--data", type=str, required=True, help="Path to CSV data file")
+    args = parser.parse_args()
+
+    # 載入 config
+    with open(args.config, "r", encoding="utf-8") as f:
+        model_config = yaml.safe_load(f)
+    with open(args.train_config, "r", encoding="utf-8") as f:
+        train_config = yaml.safe_load(f)
+
+    # 設定設備
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # 載入資料
+    dataloaders = load_dataset(
+        args.data,
+        static_features=model_config["model"]["input"]["static_features"],
+        time_series_features=model_config["model"]["input"]["time_series_features"],
+        target_feature=model_config["model"]["input"]["target"],
+        batch_size=model_config["training"]["batch_size"],
+        sequence_length=model_config["model"].get("sequence_length", 10),
+        num_workers=0
+    )
+
+    # 初始化模型
+    model = HybridPINNLSTMModel(
+        static_input_dim=len(model_config["model"]["input"]["static_features"]),
+        temporal_input_dim=len(model_config["model"]["input"]["time_series_features"]),
+        pinn_hidden_layers=model_config["model"]["pinn"]["hidden_layers"],
+        lstm_hidden_size=model_config["model"]["lstm"]["hidden_size"],
+        lstm_num_layers=model_config["model"]["lstm"]["num_layers"],
+        dropout_rate=model_config["model"]["fusion"]["dropout_rate"],
+        use_attention=model_config["model"]["lstm"]["use_attention"],
+        fusion_type=model_config["model"]["fusion"]["type"],
+        ensemble_method=model_config["model"]["fusion"]["ensemble_method"],
+        l2_reg=model_config["training"].get("l2_reg", 0.001)
+    ).to(device)
+
+    # 訓練
+    output_dir = "outputs/HybridPINNLSTM_run"
+    os.makedirs(output_dir, exist_ok=True)
+
+    history = train_hybrid_model_with_stages(
+        model=model,
+        dataloaders=dataloaders,
+        config=model_config,
+        train_config=train_config,
+        device=device,
+        output_dir=output_dir,
+        use_physics=model_config["model"].get("use_physics", True),
+        stages=["warmup", "main", "finetune"]
+    )

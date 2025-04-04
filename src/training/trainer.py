@@ -947,34 +947,192 @@ class Trainer:
         return fig
 
 
+def prepare_training_config(config, train_config, stage="all", start_epoch=0):
+    """
+    根據訓練階段準備訓練配置
+    
+    參數:
+        config (dict): 模型配置
+        train_config (dict): 訓練配置
+        stage (str): 訓練階段: all, warmup, main, finetune
+        start_epoch (int): 起始輪次
+        
+    返回:
+        dict: 訓練配置
+    """
+    # 獲取分階段訓練配置
+    training_strategy = train_config.get("training_strategy", {})
+    stages = training_strategy.get("stages", [])
+    
+    # 如果沒有分階段配置或選擇了'all'，使用默認配置
+    if not stages or stage == "all":
+        return {
+            "epochs": config["training"]["epochs"],
+            "learning_rate": config["training"]["optimizer"]["learning_rate"],
+            "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
+            "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
+            "batch_size": config["training"]["batch_size"],
+            "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
+            "description": "完整訓練"
+        }
+    
+    # 根據指定階段獲取配置
+    for stage_config in stages:
+        if stage_config["name"] == stage:
+            # 計算學習率
+            base_lr = config["training"]["optimizer"]["learning_rate"]
+            lr_factor = stage_config.get("learning_rate_factor", 1.0)
+            
+            # 獲取物理約束和一致性權重
+            if stage == "warmup":
+                lambda_physics = stage_config.get("lambda_physics", 0.01)
+                lambda_consistency = stage_config.get("lambda_consistency", 0.01)
+            elif stage == "main":
+                lambda_physics = stage_config.get("lambda_physics_start", 0.05)
+                lambda_consistency = stage_config.get("lambda_consistency_start", 0.05)
+            elif stage == "finetune":
+                lambda_physics = stage_config.get("lambda_physics", 0.5)
+                lambda_consistency = stage_config.get("lambda_consistency", 0.3)
+            
+            return {
+                "epochs": stage_config["epochs"],
+                "learning_rate": base_lr * lr_factor,
+                "lambda_physics": lambda_physics,
+                "lambda_consistency": lambda_consistency,
+                "batch_size": config["training"]["batch_size"],
+                "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
+                "description": stage_config.get("description", f"{stage}階段訓練")
+            }
+    
+    # 如果找不到指定階段，使用默認配置
+    logger.warning(f"找不到指定訓練階段: {stage}，使用默認配置")
+    return {
+        "epochs": config["training"]["epochs"],
+        "learning_rate": config["training"]["optimizer"]["learning_rate"],
+        "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
+        "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
+        "batch_size": config["training"]["batch_size"],
+        "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
+        "description": "默認訓練"
+    }
+
+
+def create_optimizer(model, config, stage_config=None):
+    """
+    創建優化器
+    
+    參數:
+        model (torch.nn.Module): 模型
+        config (dict): 配置
+        stage_config (dict, optional): 階段配置
+        
+    返回:
+        torch.optim.Optimizer: 優化器
+    """
+    optimizer_config = config["training"]["optimizer"]
+    
+    # 使用階段配置中的學習率（如果有）
+    if stage_config and "learning_rate" in stage_config:
+        lr = stage_config["learning_rate"]
+    else:
+        lr = optimizer_config["learning_rate"]
+    
+    weight_decay = optimizer_config["weight_decay"]
+    
+    if optimizer_config["name"].lower() == "adam":
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    elif optimizer_config["name"].lower() == "adamw":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    elif optimizer_config["name"].lower() == "sgd":
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
+    else:
+        logger.warning(f"不支援的優化器類型: {optimizer_config['name']}，使用Adam")
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    
+    logger.info(f"創建{optimizer_config['name']}優化器，學習率: {lr}，權重衰減: {weight_decay}")
+    return optimizer
+
+
+def create_lr_scheduler(optimizer, config, stage_config=None, total_epochs=None):
+    """
+    創建學習率調度器
+    
+    參數:
+        optimizer (torch.optim.Optimizer): 優化器
+        config (dict): 配置
+        stage_config (dict, optional): 階段配置
+        total_epochs (int, optional): 總訓練輪數
+        
+    返回:
+        LearningRateScheduler: 學習率調度器
+    """
+    scheduler_config = config["training"]["lr_scheduler"]
+    
+    if not scheduler_config:
+        return None
+    
+    # 使用階段特定的輪數（如果有）
+    if stage_config and "epochs" in stage_config:
+        epochs = stage_config["epochs"]
+    elif total_epochs:
+        epochs = total_epochs
+    else:
+        epochs = config["training"]["epochs"]
+    
+    scheduler_type = scheduler_config["name"]
+    
+    if scheduler_type == "step":
+        step_size = scheduler_config.get("step_size", 10)
+        gamma = scheduler_config.get("gamma", 0.1)
+        scheduler = LearningRateScheduler(optimizer, mode="step", step_size=step_size, gamma=gamma)
+        logger.info(f"創建步進式學習率調度器，步長: {step_size}，衰減因子: {gamma}")
+    elif scheduler_type == "exp":
+        gamma = scheduler_config.get("gamma", 0.95)
+        scheduler = LearningRateScheduler(optimizer, mode="exp", gamma=gamma)
+        logger.info(f"創建指數式學習率調度器，衰減因子: {gamma}")
+    elif scheduler_type == "cosine":
+        T_max = scheduler_config.get("T_max", epochs)
+        min_lr = scheduler_config.get("min_lr", 0)
+        scheduler = LearningRateScheduler(optimizer, mode="cosine", T_max=T_max, min_lr=min_lr)
+        logger.info(f"創建餘弦退火學習率調度器，週期: {T_max}，最小學習率: {min_lr}")
+    elif scheduler_type == "plateau":
+        factor = scheduler_config.get("factor", 0.1)
+        patience = scheduler_config.get("patience", 10)
+        min_lr = scheduler_config.get("min_lr", 0)
+        scheduler = LearningRateScheduler(optimizer, mode="plateau", factor=factor, 
+                                       patience=patience, min_lr=min_lr)
+        logger.info(f"創建平原式學習率調度器，衰減因子: {factor}，耐心值: {patience}，最小學習率: {min_lr}")
+    else:
+        logger.warning(f"不支援的學習率調度器類型: {scheduler_type}，不使用學習率調度")
+        scheduler = None
+    
+    return scheduler
+
+
 def get_pinn_lstm_trainer(model, optimizer, config, device, 
                         lambda_physics=0.1, lambda_consistency=0.1, 
                         clip_grad_norm=1.0, scheduler=None):
     """
-    獲取PINN-LSTM專用訓練器
+    創建PINN-LSTM訓練器
     
     參數:
         model (HybridPINNLSTMModel): 混合模型
         optimizer (torch.optim.Optimizer): 優化器
-        config (dict): 配置字典
+        config (dict): 配置
         device (torch.device): 計算設備
         lambda_physics (float): 物理約束損失權重
         lambda_consistency (float): 一致性損失權重
         clip_grad_norm (float): 梯度裁剪範數
-        scheduler (LearningRateScheduler, optional): 學習率調度器
+        scheduler (LearningRateScheduler): 學習率調度器
         
     返回:
-        PINNLSTMTrainer: PINN-LSTM專用訓練器
+        PINNLSTMTrainer: PINN-LSTM訓練器
     """
-    # 這裡需要導入PINNLSTMTrainer類
-    try:
-        from src.models.hybrid_model import PINNLSTMTrainer
-    except ImportError:
-        logger.error("無法導入PINNLSTMTrainer類，請確保src/models/hybrid_model.py正確實現")
-        raise
-    
     # 獲取損失配置
-    loss_config = config.get("training", {}).get("loss", {})
+    loss_config = config["training"]["loss"]
+    
+    # 導入專用訓練器
+    from src.models.hybrid_model import PINNLSTMTrainer
     
     # 創建專用訓練器
     trainer = PINNLSTMTrainer(
@@ -1006,13 +1164,13 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
     
     參數:
         model (HybridPINNLSTMModel): 混合模型
-        dataloaders (dict): 資料載入器字典，包含train_loader和val_loader
+        dataloaders (dict): 資料載入器
         config (dict): 模型配置
         train_config (dict): 訓練配置
         device (torch.device): 計算設備
         output_dir (str): 輸出目錄
         use_physics (bool): 是否使用物理約束
-        stages (list, optional): 要執行的訓練階段列表，默認為["warmup", "main", "finetune"]
+        stages (list): 要執行的訓練階段列表
         
     返回:
         dict: 訓練歷史記錄
@@ -1022,18 +1180,10 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
         stages = ["warmup", "main", "finetune"]
     
     # 從hybrid_model模組導入PINNLSTMTrainer類
-    try:
-        from src.models.hybrid_model import PINNLSTMTrainer
-    except ImportError:
-        logger.error("無法導入PINNLSTMTrainer類，請確保src/models/hybrid_model.py正確實現")
-        raise
+    from src.models.hybrid_model import PINNLSTMTrainer
     
-    # 創建整體回調
-    try:
-        from src.training.callbacks import AdaptiveCallbacks, ModelCheckpoint, TensorBoardLogger, ProgressBar
-    except ImportError:
-        logger.error("無法導入回調函數類，請確保src/training/callbacks.py正確實現")
-        raise
+    # 導入回調函數
+    from src.training.callbacks import AdaptiveCallbacks
     
     all_history = {}
     
@@ -1052,7 +1202,7 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
         logger.info(f"開始 {stage} 階段訓練")
         
         # 獲取階段配置
-        stage_config = _prepare_training_config(config, train_config, stage=stage, start_epoch=current_epoch)
+        stage_config = prepare_training_config(config, train_config, stage=stage, start_epoch=current_epoch)
         logger.info(f"階段描述: {stage_config['description']}")
         logger.info(f"訓練輪數: {stage_config['epochs']}")
         logger.info(f"學習率: {stage_config['learning_rate']}")
@@ -1064,10 +1214,10 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
         os.makedirs(stage_dir, exist_ok=True)
         
         # 創建階段優化器
-        optimizer = _create_optimizer(model, config, stage_config)
+        optimizer = create_optimizer(model, config, stage_config)
         
         # 創建階段學習率調度器
-        scheduler = _create_lr_scheduler(optimizer, config, stage_config)
+        scheduler = create_lr_scheduler(optimizer, config, stage_config)
         
         # 創建專用訓練器
         trainer = PINNLSTMTrainer(
@@ -1145,168 +1295,6 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
     logger.info(f"分階段訓練完成，最終模型已保存至: {final_model_path}")
     
     return all_history
-
-
-def _prepare_training_config(config, train_config, stage="all", start_epoch=0):
-    """
-    準備訓練配置
-    
-    參數:
-        config (dict): 模型配置
-        train_config (dict): 訓練配置
-        stage (str): 訓練階段: all, warmup, main, finetune
-        start_epoch (int): 起始輪次
-        
-    返回:
-        dict: 階段訓練配置
-    """
-    # 獲取分階段訓練配置
-    training_strategy = train_config.get("training_strategy", {})
-    stages = training_strategy.get("stages", [])
-    
-    # 如果沒有分階段配置或選擇了'all'，使用默認配置
-    if not stages or stage == "all":
-        return {
-            "epochs": config["training"]["epochs"],
-            "learning_rate": config["training"]["optimizer"]["learning_rate"],
-            "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
-            "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
-            "batch_size": config["training"]["batch_size"],
-            "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-            "description": "完整訓練"
-        }
-    
-    # 根據指定階段獲取配置
-    for stage_config in stages:
-        if stage_config["name"] == stage:
-            # 計算學習率
-            base_lr = config["training"]["optimizer"]["learning_rate"]
-            lr_factor = stage_config.get("learning_rate_factor", 1.0)
-            
-            # 獲取物理約束和一致性權重
-            if stage == "warmup":
-                lambda_physics = stage_config.get("lambda_physics", 0.01)
-                lambda_consistency = stage_config.get("lambda_consistency", 0.01)
-            elif stage == "main":
-                lambda_physics = stage_config.get("lambda_physics_start", 0.05)
-                lambda_consistency = stage_config.get("lambda_consistency_start", 0.05)
-            elif stage == "finetune":
-                lambda_physics = stage_config.get("lambda_physics", 0.5)
-                lambda_consistency = stage_config.get("lambda_consistency", 0.3)
-            
-            return {
-                "epochs": stage_config["epochs"],
-                "learning_rate": base_lr * lr_factor,
-                "lambda_physics": lambda_physics,
-                "lambda_consistency": lambda_consistency,
-                "batch_size": config["training"]["batch_size"],
-                "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-                "description": stage_config.get("description", f"{stage}階段訓練")
-            }
-    
-    # 如果找不到指定階段，使用默認配置
-    logger.warning(f"找不到指定訓練階段: {stage}，使用默認配置")
-    return {
-        "epochs": config["training"]["epochs"],
-        "learning_rate": config["training"]["optimizer"]["learning_rate"],
-        "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
-        "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
-        "batch_size": config["training"]["batch_size"],
-        "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-        "description": "默認訓練"
-    }
-
-
-def _create_optimizer(model, config, stage_config=None):
-    """
-    創建優化器
-    
-    參數:
-        model (torch.nn.Module): 模型
-        config (dict): 配置
-        stage_config (dict, optional): 階段配置
-        
-    返回:
-        torch.optim.Optimizer: 優化器
-    """
-    optimizer_config = config["training"]["optimizer"]
-    
-    # 使用階段配置中的學習率（如果有）
-    if stage_config and "learning_rate" in stage_config:
-        lr = stage_config["learning_rate"]
-    else:
-        lr = optimizer_config["learning_rate"]
-    
-    weight_decay = optimizer_config["weight_decay"]
-    
-    if optimizer_config["name"].lower() == "adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    elif optimizer_config["name"].lower() == "adamw":
-        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-    elif optimizer_config["name"].lower() == "sgd":
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
-    else:
-        logger.warning(f"不支援的優化器類型: {optimizer_config['name']}，使用Adam")
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    
-    logger.info(f"創建{optimizer_config['name']}優化器，學習率: {lr}，權重衰減: {weight_decay}")
-    return optimizer
-
-
-def _create_lr_scheduler(optimizer, config, stage_config=None, total_epochs=None):
-    """
-    創建學習率調度器
-    
-    參數:
-        optimizer (torch.optim.Optimizer): 優化器
-        config (dict): 配置
-        stage_config (dict, optional): 階段配置
-        total_epochs (int, optional): 總訓練輪數
-        
-    返回:
-        LearningRateScheduler: 學習率調度器
-    """
-    scheduler_config = config["training"]["lr_scheduler"]
-    
-    if not scheduler_config:
-        return None
-    
-    # 使用階段特定的輪數（如果有）
-    if stage_config and "epochs" in stage_config:
-        epochs = stage_config["epochs"]
-    elif total_epochs:
-        epochs = total_epochs
-    else:
-        epochs = config["training"]["epochs"]
-    
-    scheduler_type = scheduler_config["name"]
-    
-    if scheduler_type == "step":
-        step_size = scheduler_config.get("step_size", 10)
-        gamma = scheduler_config.get("gamma", 0.1)
-        scheduler = LearningRateScheduler(optimizer, mode="step", step_size=step_size, gamma=gamma)
-        logger.info(f"創建步進式學習率調度器，步長: {step_size}，衰減因子: {gamma}")
-    elif scheduler_type == "exp":
-        gamma = scheduler_config.get("gamma", 0.95)
-        scheduler = LearningRateScheduler(optimizer, mode="exp", gamma=gamma)
-        logger.info(f"創建指數式學習率調度器，衰減因子: {gamma}")
-    elif scheduler_type == "cosine":
-        T_max = scheduler_config.get("T_max", epochs)
-        min_lr = scheduler_config.get("min_lr", 0)
-        scheduler = LearningRateScheduler(optimizer, mode="cosine", T_max=T_max, min_lr=min_lr)
-        logger.info(f"創建餘弦退火學習率調度器，週期: {T_max}，最小學習率: {min_lr}")
-    elif scheduler_type == "plateau":
-        factor = scheduler_config.get("factor", 0.1)
-        patience = scheduler_config.get("patience", 10)
-        min_lr = scheduler_config.get("min_lr", 0)
-        scheduler = LearningRateScheduler(optimizer, mode="plateau", factor=factor, 
-                                       patience=patience, min_lr=min_lr)
-        logger.info(f"創建平原式學習率調度器，衰減因子: {factor}，耐心值: {patience}，最小學習率: {min_lr}")
-    else:
-        logger.warning(f"不支援的學習率調度器類型: {scheduler_type}，不使用學習率調度")
-        scheduler = None
-    
-    return scheduler
 
 
 if __name__ == "__main__":

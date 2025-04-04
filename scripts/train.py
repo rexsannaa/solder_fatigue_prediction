@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-improved_train.py - 優化的模型訓練腳本
+train.py - 模型訓練腳本
 本腳本用於訓練銲錫接點疲勞壽命預測的混合PINN-LSTM模型，
 整合了改進的預處理、物理知識驅動的資料增強和分階段訓練策略。
 
-主要改進:
+主要特點:
 1. 整合物理知識驅動的資料增強
 2. 支援分階段訓練策略，優化微調流程
 3. 實現自適應損失權重調整
@@ -33,11 +33,19 @@ sys.path.insert(0, project_root)
 # 導入專案模組
 from src.data.preprocess import process_pipeline
 from src.data.dataset import create_dataloaders
-from src.models.hybrid_model import HybridPINNLSTMModel, PINNLSTMTrainer
+from src.models.hybrid_model import HybridPINNLSTMModel
 from src.models.pinn import PINNModel
 from src.models.lstm import LSTMModel
 from src.training.losses import get_loss_function, AdaptiveHybridLoss
-from src.training.trainer import Trainer, EarlyStopping, LearningRateScheduler
+from src.training.trainer import (
+    Trainer, 
+    EarlyStopping, 
+    LearningRateScheduler, 
+    prepare_training_config, 
+    create_optimizer, 
+    create_lr_scheduler, 
+    train_hybrid_model_with_stages
+)
 from src.training.callbacks import AdaptiveCallbacks
 from src.utils.metrics import evaluate_model, compare_models
 from src.utils.visualization import plot_prediction_vs_true, visualize_model_results
@@ -194,429 +202,276 @@ def create_model(config, model_type="hybrid", use_physics=True):
     return model
 
 
-def prepare_training_config(config, train_config, stage="all", start_epoch=0):
+def apply_data_augmentation(data_dict, train_config, config):
     """
-    根據訓練階段準備訓練配置
+    應用資料增強
     
     參數:
-        config (dict): 模型配置
+        data_dict (dict): 包含分割後資料的字典
         train_config (dict): 訓練配置
-        stage (str): 訓練階段: all, warmup, main, finetune
-        start_epoch (int): 起始輪次
+        config (dict): 模型配置
         
     返回:
-        dict: 訓練配置
+        dict: 包含增強後資料的字典
     """
-    # 獲取分階段訓練配置
-    training_strategy = train_config.get("training_strategy", {})
-    stages = training_strategy.get("stages", [])
+    # 檢查是否需要資料增強
+    augmentation_config = train_config.get("training_strategy", {}).get("data_augmentation", {})
+    if not augmentation_config.get("enabled", False):
+        logger.info("資料增強已禁用")
+        return data_dict
     
-    # 如果沒有分階段配置或選擇了'all'，使用默認配置
-    if not stages or stage == "all":
-        return {
-            "epochs": config["training"]["epochs"],
-            "learning_rate": config["training"]["optimizer"]["learning_rate"],
-            "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
-            "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
-            "batch_size": config["training"]["batch_size"],
-            "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-            "description": "完整訓練"
-        }
+    try:
+        # 導入資料增強模組
+        from src.data.dataset import augment_training_data
+        
+        logger.info("應用資料增強...")
+        
+        # 應用資料增強
+        augmented_dict = augment_training_data(
+            X_train=data_dict["X_train"],
+            time_series_train=data_dict["time_series_train"],
+            y_train=data_dict["y_train"],
+            synthetic_samples=augmentation_config.get("synthetic_samples", 20),
+            noise_level=augmentation_config.get("noise_level", 0.05),
+            physics_guided=augmentation_config.get("physics_guided", True),
+            a_coefficient=config["model"]["physics"]["a_coefficient"],
+            b_coefficient=config["model"]["physics"]["b_coefficient"]
+        )
+        
+        # 更新訓練資料
+        data_dict["X_train"] = augmented_dict["X_train"]
+        data_dict["time_series_train"] = augmented_dict["time_series_train"]
+        data_dict["y_train"] = augmented_dict["y_train"]
+        
+        logger.info(f"資料增強完成，增強後的訓練集大小: {len(data_dict['X_train'])} 樣本")
+        
+    except ImportError:
+        logger.warning("資料增強模組未找到，跳過資料增強")
+    except Exception as e:
+        logger.error(f"資料增強時發生錯誤: {str(e)}")
+        logger.warning("使用原始資料繼續訓練")
     
-    # 根據指定階段獲取配置
-    for stage_config in stages:
-        if stage_config["name"] == stage:
-            # 計算學習率
-            base_lr = config["training"]["optimizer"]["learning_rate"]
-            lr_factor = stage_config.get("learning_rate_factor", 1.0)
-            
-            # 獲取物理約束和一致性權重
-            if stage == "warmup":
-                lambda_physics = stage_config.get("lambda_physics", 0.01)
-                lambda_consistency = stage_config.get("lambda_consistency", 0.01)
-            elif stage == "main":
-                lambda_physics = stage_config.get("lambda_physics_start", 0.05)
-                lambda_consistency = stage_config.get("lambda_consistency_start", 0.05)
-            elif stage == "finetune":
-                lambda_physics = stage_config.get("lambda_physics", 0.5)
-                lambda_consistency = stage_config.get("lambda_consistency", 0.3)
-            
-            return {
-                "epochs": stage_config["epochs"],
-                "learning_rate": base_lr * lr_factor,
-                "lambda_physics": lambda_physics,
-                "lambda_consistency": lambda_consistency,
-                "batch_size": config["training"]["batch_size"],
-                "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-                "description": stage_config.get("description", f"{stage}階段訓練")
-            }
-    
-    # 如果找不到指定階段，使用默認配置
-    logger.warning(f"找不到指定訓練階段: {stage}，使用默認配置")
-    return {
-        "epochs": config["training"]["epochs"],
-        "learning_rate": config["training"]["optimizer"]["learning_rate"],
-        "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
-        "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
-        "batch_size": config["training"]["batch_size"],
-        "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-        "description": "默認訓練"
-    }
+    return data_dict
 
 
-def create_optimizer(model, config, stage_config=None):
+def train_model(model, data_dict, config, train_config, args, device, output_dir):
     """
-    創建優化器
+    訓練模型
     
     參數:
         model (torch.nn.Module): 模型
-        config (dict): 配置
-        stage_config (dict, optional): 階段配置
-        
-    返回:
-        torch.optim.Optimizer: 優化器
-    """
-    optimizer_config = config["training"]["optimizer"]
-    
-    # 使用階段配置中的學習率（如果有）
-    if stage_config and "learning_rate" in stage_config:
-        lr = stage_config["learning_rate"]
-    else:
-        lr = optimizer_config["learning_rate"]
-    
-    weight_decay = optimizer_config["weight_decay"]
-    
-    if optimizer_config["name"].lower() == "adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    elif optimizer_config["name"].lower() == "adamw":
-        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-    elif optimizer_config["name"].lower() == "sgd":
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
-    else:
-        logger.warning(f"不支援的優化器類型: {optimizer_config['name']}，使用Adam")
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    
-    logger.info(f"創建{optimizer_config['name']}優化器，學習率: {lr}，權重衰減: {weight_decay}")
-    return optimizer
-
-
-def create_lr_scheduler(optimizer, config, stage_config=None, total_epochs=None):
-    """
-    創建學習率調度器
-    
-    參數:
-        optimizer (torch.optim.Optimizer): 優化器
-        config (dict): 配置
-        stage_config (dict, optional): 階段配置
-        total_epochs (int, optional): 總訓練輪數
-        
-    返回:
-        LearningRateScheduler: 學習率調度器
-    """
-    scheduler_config = config["training"]["lr_scheduler"]
-    
-    if not scheduler_config:
-        return None
-    
-    # 使用階段特定的輪數（如果有）
-    if stage_config and "epochs" in stage_config:
-        epochs = stage_config["epochs"]
-    elif total_epochs:
-        epochs = total_epochs
-    else:
-        epochs = config["training"]["epochs"]
-    
-    scheduler_type = scheduler_config["name"]
-    
-    if scheduler_type == "step":
-        step_size = scheduler_config.get("step_size", 10)
-        gamma = scheduler_config.get("gamma", 0.1)
-        scheduler = LearningRateScheduler(optimizer, mode="step", step_size=step_size, gamma=gamma)
-        logger.info(f"創建步進式學習率調度器，步長: {step_size}，衰減因子: {gamma}")
-    elif scheduler_type == "exp":
-        gamma = scheduler_config.get("gamma", 0.95)
-        scheduler = LearningRateScheduler(optimizer, mode="exp", gamma=gamma)
-        logger.info(f"創建指數式學習率調度器，衰減因子: {gamma}")
-    elif scheduler_type == "cosine":
-        T_max = scheduler_config.get("T_max", epochs)
-        min_lr = scheduler_config.get("min_lr", 0)
-        scheduler = LearningRateScheduler(optimizer, mode="cosine", T_max=T_max, min_lr=min_lr)
-        logger.info(f"創建餘弦退火學習率調度器，週期: {T_max}，最小學習率: {min_lr}")
-    elif scheduler_type == "plateau":
-        factor = scheduler_config.get("factor", 0.1)
-        patience = scheduler_config.get("patience", 10)
-        min_lr = scheduler_config.get("min_lr", 0)
-        scheduler = LearningRateScheduler(optimizer, mode="plateau", factor=factor, 
-                                       patience=patience, min_lr=min_lr)
-        logger.info(f"創建平原式學習率調度器，衰減因子: {factor}，耐心值: {patience}，最小學習率: {min_lr}")
-    else:
-        logger.warning(f"不支援的學習率調度器類型: {scheduler_type}，不使用學習率調度")
-        scheduler = None
-    
-    return scheduler
-
-
-def get_pinn_lstm_trainer(model, optimizer, config, device, 
-                         lambda_physics=0.1, lambda_consistency=0.1, 
-                         clip_grad_norm=1.0, scheduler=None):
-    """
-    創建PINN-LSTM訓練器
-    
-    參數:
-        model (HybridPINNLSTMModel): 混合模型
-        optimizer (torch.optim.Optimizer): 優化器
-        config (dict): 配置
-        device (torch.device): 計算設備
-        lambda_physics (float): 物理約束損失權重
-        lambda_consistency (float): 一致性損失權重
-        clip_grad_norm (float): 梯度裁剪範數
-        scheduler (LearningRateScheduler): 學習率調度器
-        
-    返回:
-        PINNLSTMTrainer: PINN-LSTM訓練器
-    """
-    # 獲取損失配置
-    loss_config = config["training"]["loss"]
-    
-    # 創建專用訓練器
-    trainer = PINNLSTMTrainer(
-        model=model,
-        optimizer=optimizer,
-        device=device,
-        lambda_physics_init=lambda_physics,
-        lambda_physics_max=loss_config.get("max_lambda_physics", lambda_physics * 5),
-        lambda_consistency_init=lambda_consistency,
-        lambda_consistency_max=loss_config.get("max_lambda_consistency", lambda_consistency * 3),
-        lambda_ramp_epochs=loss_config.get("epochs_to_max", 50),
-        clip_grad_norm=clip_grad_norm,
-        scheduler=scheduler,
-        log_interval=config.get("debug", {}).get("verbose", 1)
-    )
-    
-    logger.info(f"創建PINN-LSTM專用訓練器，"
-               f"初始物理約束權重: {lambda_physics}，"
-               f"初始一致性約束權重: {lambda_consistency}，"
-               f"梯度裁剪範數: {clip_grad_norm}")
-    
-    return trainer
-
-
-def train_hybrid_model_with_stages(model, dataloaders, config, train_config, device, output_dir, 
-                                  use_physics=True, stages=["warmup", "main", "finetune"]):
-    """
-    使用分階段策略訓練混合模型
-    
-    參數:
-        model (HybridPINNLSTMModel): 混合模型
-        dataloaders (dict): 資料載入器
+        data_dict (dict): 包含資料的字典
         config (dict): 模型配置
         train_config (dict): 訓練配置
+        args (argparse.Namespace): 命令行參數
         device (torch.device): 計算設備
         output_dir (str): 輸出目錄
-        use_physics (bool): 是否使用物理約束
-        stages (list): 要執行的訓練階段列表
         
     返回:
         dict: 訓練歷史記錄
     """
-    all_history = {}
+    # 創建資料載入器
+    batch_size = args.batch_size if args.batch_size else config["training"]["batch_size"]
+    dataloaders = create_dataloaders(
+        X_train=data_dict["X_train"],
+        X_val=data_dict["X_val"],
+        X_test=data_dict["X_test"],
+        time_series_train=data_dict["time_series_train"],
+        time_series_val=data_dict["time_series_val"],
+        time_series_test=data_dict["time_series_test"],
+        y_train=data_dict["y_train"],
+        y_val=data_dict["y_val"],
+        y_test=data_dict["y_test"],
+        batch_size=batch_size,
+        num_workers=0,
+        use_weighted_sampler=config["training"].get("use_weighted_sampler", False),
+        augmentation=not args.no_augmentation
+    )
     
-    # 定義階段訓練記錄檔案
-    stage_log_file = os.path.join(output_dir, "stage_training_log.txt")
-    with open(stage_log_file, "w") as f:
-        f.write(f"分階段訓練日誌 - 開始時間: {datetime.datetime.now()}\n")
-        f.write(f"模型: {config['model']['name']}, 使用物理約束: {use_physics}\n")
-        f.write("="*50 + "\n")
-    
-    current_epoch = 0
-    
-    # 遍歷每個訓練階段
-    for stage in stages:
-        logger.info("="*50)
-        logger.info(f"開始 {stage} 階段訓練")
+    # 根據模型類型和訓練階段選擇訓練策略
+    if args.stage != "all" and args.model_type == "hybrid":
+        # 使用分階段訓練 (僅限混合模型)
+        stages = [args.stage] if args.stage != "all" else ["warmup", "main", "finetune"]
         
-        # 獲取階段配置
-        stage_config = prepare_training_config(config, train_config, stage=stage, start_epoch=current_epoch)
-        logger.info(f"階段描述: {stage_config['description']}")
-        logger.info(f"訓練輪數: {stage_config['epochs']}")
-        logger.info(f"學習率: {stage_config['learning_rate']}")
-        logger.info(f"物理約束權重: {stage_config['lambda_physics']}")
-        logger.info(f"一致性約束權重: {stage_config['lambda_consistency']}")
-        
-        # 創建階段特定的輸出目錄
-        stage_dir = os.path.join(output_dir, f"stage_{stage}")
-        os.makedirs(stage_dir, exist_ok=True)
-        
-        # 創建階段優化器
-        optimizer = create_optimizer(model, config, stage_config)
-        
-        # 創建階段學習率調度器
-        scheduler = create_lr_scheduler(optimizer, config, stage_config)
-        
-        # 創建專用訓練器
-        trainer = get_pinn_lstm_trainer(
+        # 分階段訓練
+        history = train_hybrid_model_with_stages(
             model=model,
-            optimizer=optimizer,
+            dataloaders=dataloaders,
             config=config,
+            train_config=train_config,
             device=device,
-            lambda_physics=stage_config["lambda_physics"] if use_physics else 0.0,
-            lambda_consistency=stage_config["lambda_consistency"],
-            clip_grad_norm=stage_config["clip_grad_norm"],
-            scheduler=scheduler
+            output_dir=output_dir,
+            use_physics=not args.no_physics,
+            stages=stages
+        )
+    else:
+        # 使用標準訓練流程
+        # 獲取訓練配置
+        train_config_dict = prepare_training_config(config, train_config, stage=args.stage)
+        
+        # 創建優化器
+        optimizer = create_optimizer(model, config, train_config_dict)
+        
+        # 創建損失函數
+        loss_type = config["training"]["loss"]["type"]
+        loss_function = get_loss_function(
+            loss_type=loss_type,
+            lambda_physics=train_config_dict["lambda_physics"] if not args.no_physics else 0.0,
+            lambda_consistency=train_config_dict["lambda_consistency"],
+            a=config["model"]["physics"]["a_coefficient"],
+            b=config["model"]["physics"]["b_coefficient"],
+            log_space=config["model"].get("use_log_transform", True),
+            relative_error_weight=0.3,
+            l2_reg=config["training"].get("l2_reg", 0.001)
         )
         
-        # 創建階段回調函數
+        # 創建學習率調度器
+        scheduler = create_lr_scheduler(optimizer, config, train_config_dict)
+        
+        # 創建早停機制
+        early_stopping = EarlyStopping(
+            patience=config["training"]["early_stopping"]["patience"],
+            min_delta=config["training"]["early_stopping"]["min_delta"],
+            verbose=True,
+            mode=config["training"]["early_stopping"]["mode"]
+        )
+        
+        # 創建回調函數
         callbacks = AdaptiveCallbacks.create_callbacks(
             model=model,
             dataset_size=len(dataloaders["train_loader"].dataset),
-            epochs=stage_config["epochs"],
-            output_dir=stage_dir,
+            epochs=train_config_dict["epochs"],
+            output_dir=output_dir,
             use_tensorboard=True,
             use_progress_bar=True,
             use_early_stopping=True,
             patience=config["training"]["early_stopping"]["patience"],
             monitor="val_loss",
-            mode="min",
-            save_freq=5
+            mode="min"
         )
         
-        # 訓練階段
-        start_time = time.time()
+        # 創建訓練器
+        trainer = Trainer(
+            model=model,
+            criterion=loss_function,
+            optimizer=optimizer,
+            device=device,
+            scheduler=scheduler,
+            clip_grad_norm=train_config_dict["clip_grad_norm"],
+            log_interval=config["debug"]["verbose"] if "debug" in config else 10,
+        )
         
-        stage_history = trainer.train(
+        # 訓練模型
+        logger.info(f"開始訓練，總輪數: {train_config_dict['epochs']}")
+        history = trainer.train(
             train_loader=dataloaders["train_loader"],
             val_loader=dataloaders["val_loader"],
-            epochs=stage_config["epochs"],
-            early_stopping_patience=config["training"]["early_stopping"]["patience"],
-            save_path=os.path.join(stage_dir, "models", "best_model.pt"),
-            callbacks=callbacks
+            epochs=train_config_dict["epochs"],
+            early_stopping=early_stopping,
+            callbacks=callbacks,
+            save_path=os.path.join(output_dir, "models", "best_model.pt")
         )
-        
-        train_time = time.time() - start_time
-        
-        # 記錄階段訓練結果
-        with open(stage_log_file, "a") as f:
-            f.write(f"\n階段: {stage}\n")
-            f.write(f"描述: {stage_config['description']}\n")
-            f.write(f"訓練輪數: {stage_config['epochs']}\n")
-            f.write(f"訓練時間: {train_time:.2f}秒\n")
-            f.write(f"最佳驗證損失: {stage_history['best_val_loss']:.6f}\n")
-            if 'val_metrics' in stage_history and 'rmse' in stage_history['val_metrics']:
-                f.write(f"RMSE: {stage_history['val_metrics']['rmse'][-1]:.4f}\n")
-            if 'val_metrics' in stage_history and 'r2' in stage_history['val_metrics']:
-                f.write(f"R²: {stage_history['val_metrics']['r2'][-1]:.4f}\n")
-            f.write("-"*40 + "\n")
-        
-        # 將階段歷史添加到總歷史
-        all_history[stage] = stage_history
-        
-        # 更新當前輪次
-        current_epoch += stage_config["epochs"]
-        
-        logger.info(f"{stage} 階段訓練完成 - 耗時: {train_time:.2f}秒, 最佳驗證損失: {stage_history['best_val_loss']:.6f}")
     
-    # 最終模型保存
+    # 保存最終模型
     final_model_path = os.path.join(output_dir, "models", "final_model.pt")
+    os.makedirs(os.path.dirname(final_model_path), exist_ok=True)
     torch.save({
         'model_state_dict': model.state_dict(),
-        'training_history': all_history,
-        'final_epoch': current_epoch
+        'history': history
     }, final_model_path)
     
-    logger.info(f"分階段訓練完成，最終模型已保存至: {final_model_path}")
+    logger.info(f"訓練完成，最終模型已保存至: {final_model_path}")
     
-    return all_history
+    return history
 
 
-def evaluate_model_performance(model, data_loader, device, config, output_dir):
+def evaluate_trained_model(model, data_dict, device, output_dir):
     """
-    評估模型性能
+    評估訓練好的模型
     
     參數:
         model (torch.nn.Module): 模型
-        data_loader (DataLoader): 數據載入器
+        data_dict (dict): 包含資料的字典
         device (torch.device): 計算設備
-        config (dict): 配置
         output_dir (str): 輸出目錄
         
     返回:
         dict: 評估結果
     """
+    # 創建測試資料載入器
+    test_dataset = torch.utils.data.TensorDataset(
+        torch.FloatTensor(data_dict["X_test"]),
+        torch.FloatTensor(data_dict["time_series_test"]),
+        torch.FloatTensor(data_dict["y_test"])
+    )
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=16,
+        shuffle=False
+    )
+    
     # 創建評估目錄
     eval_dir = os.path.join(output_dir, "evaluation")
     os.makedirs(eval_dir, exist_ok=True)
     
-    logger.info("開始評估模型性能...")
-    
-    # 設定模型為評估模式
+    # 模型評估
     model.eval()
-    
     all_predictions = []
     all_targets = []
     all_outputs = {}
     
-    # 收集預測結果
     with torch.no_grad():
-        for batch_data in data_loader:
-            if len(batch_data) == 3:
-                static_features, time_series, targets = batch_data
-                static_features = static_features.to(device)
-                time_series = time_series.to(device)
-                targets = targets.to(device)
+        for static_features, time_series, targets in test_loader:
+            # 將資料移至設備
+            static_features = static_features.to(device)
+            time_series = time_series.to(device)
+            targets = targets.to(device)
+            
+            # 前向傳播
+            if hasattr(model, 'forward') and 'static_features' in model.forward.__code__.co_varnames:
+                # 混合模型
+                outputs = model(static_features, time_series, return_features=True)
+                predictions = outputs["nf_pred"]
                 
-                if isinstance(model, HybridPINNLSTMModel):
-                    outputs = model(static_features, time_series, return_features=True)
-                    predictions = outputs["nf_pred"]
+                # 收集輸出
+                for key, value in outputs.items():
+                    if key not in all_outputs:
+                        all_outputs[key] = []
                     
-                    # 收集其他輸出
-                    for key, value in outputs.items():
-                        if key not in all_outputs:
-                            all_outputs[key] = []
-                        
-                        if isinstance(value, torch.Tensor):
-                            all_outputs[key].append(value.cpu().numpy())
-                        else:
-                            all_outputs[key].append(value)
-                elif isinstance(model, PINNModel):
+                    if isinstance(value, torch.Tensor):
+                        all_outputs[key].append(value.cpu().numpy())
+                    else:
+                        all_outputs[key].append(value)
+            else:
+                # 單一模型
+                if isinstance(model, PINNModel):
                     outputs = model(static_features)
                     predictions = outputs["nf_pred"]
-                    
-                    # 收集其他輸出
-                    for key, value in outputs.items():
-                        if key not in all_outputs:
-                            all_outputs[key] = []
-                        
-                        if isinstance(value, torch.Tensor):
-                            all_outputs[key].append(value.cpu().numpy())
-                        else:
-                            all_outputs[key].append(value)
-                elif isinstance(model, LSTMModel):
+                else:  # LSTM模型
                     outputs = model(time_series)
                     predictions = outputs["output"]
-                    
-                    # 收集其他輸出
-                    for key, value in outputs.items():
-                        if key not in all_outputs:
-                            all_outputs[key] = []
-                        
-                        if isinstance(value, torch.Tensor):
-                            all_outputs[key].append(value.cpu().numpy())
-                        else:
-                            all_outputs[key].append(value)
-                else:
-                    raise ValueError(f"不支援的模型類型: {type(model)}")
                 
-                # 收集預測和目標
-                all_predictions.append(predictions.cpu().numpy())
-                all_targets.append(targets.cpu().numpy())
+                # 收集輸出
+                for key, value in outputs.items():
+                    if key not in all_outputs:
+                        all_outputs[key] = []
+                    
+                    if isinstance(value, torch.Tensor):
+                        all_outputs[key].append(value.cpu().numpy())
+                    else:
+                        all_outputs[key].append(value)
+            
+            # 收集預測和目標
+            all_predictions.append(predictions.cpu().numpy())
+            all_targets.append(targets.cpu().numpy())
     
-    # 合併批次結果
+    # 合併結果
     all_predictions = np.concatenate(all_predictions)
     all_targets = np.concatenate(all_targets)
     
-    # 合併模型輸出
+    # 合併所有輸出
     for key in all_outputs:
-        if all_outputs[key] and isinstance(all_outputs[key][0], np.ndarray):
+        if isinstance(all_outputs[key][0], np.ndarray):
             all_outputs[key] = np.concatenate(all_outputs[key])
     
     # 添加預測和目標到輸出
@@ -624,9 +479,9 @@ def evaluate_model_performance(model, data_loader, device, config, output_dir):
     all_outputs["targets"] = all_targets
     
     # 計算評估指標
-    metrics = evaluate_model(all_targets, all_predictions, model_name=config["model"]["name"], verbose=True)
+    metrics = evaluate_model(all_targets, all_predictions, model_name=type(model).__name__, verbose=True)
     
-    # 保存評估指標
+    # 保存評估結果
     metrics_path = os.path.join(eval_dir, "metrics.csv")
     pd.DataFrame([metrics]).to_csv(metrics_path, index=False)
     logger.info(f"評估指標已保存至: {metrics_path}")
@@ -634,99 +489,121 @@ def evaluate_model_performance(model, data_loader, device, config, output_dir):
     # 產生視覺化結果
     logger.info("生成視覺化結果...")
     vis_dir = os.path.join(eval_dir, "visualizations")
-    visualization_paths = visualize_model_results(all_outputs, output_dir=vis_dir)
+    os.makedirs(vis_dir, exist_ok=True)
     
-    # 驗證物理約束
-    if "delta_w" in all_outputs and all_outputs["delta_w"] is not None:
-        a_coefficient = config["model"]["physics"]["a_coefficient"]
-        b_coefficient = config["model"]["physics"]["b_coefficient"]
-        
-        logger.info("驗證物理約束...")
-        physics_result = validate_physical_constraints(
-            all_outputs["delta_w"], all_predictions, 
-            a=a_coefficient, b=b_coefficient, 
-            threshold=20.0, verbose=True
-        )
-        
-        # 保存物理約束驗證結果
-        physics_result_path = os.path.join(eval_dir, "physics_validation.txt")
-        with open(physics_result_path, "w") as f:
-            f.write(f"物理約束驗證結果:\n")
-            f.write(f"通過: {physics_result[0]}\n")
-            f.write(f"違反約束的樣本數: {len(physics_result[2])}\n")
-            f.write(f"最大相對殘差: {np.max(physics_result[1]):.2f}%\n")
-            f.write(f"平均相對殘差: {np.mean(physics_result[1]):.2f}%\n")
-            f.write(f"中位相對殘差: {np.median(physics_result[1]):.2f}%\n")
+    visualize_model_results(all_outputs, output_dir=vis_dir)
     
-    logger.info("模型評估完成")
+    logger.info(f"評估完成，結果已保存至: {eval_dir}")
     
     return {
         "metrics": metrics,
+        "predictions": all_predictions,
+        "targets": all_targets,
         "outputs": all_outputs
     }
 
 
-if __name__ == "__main__":
-    import argparse
-    import yaml
-    import torch
-    import os
-    from src.data.dataset import load_dataset
-    from src.training.trainer import get_pinn_lstm_trainer, train_hybrid_model_with_stages
-    from src.models.hybrid_model import HybridPINNLSTMModel
-    from src.training.losses import HybridLoss
-
-    parser = argparse.ArgumentParser(description="Train Hybrid PINN-LSTM model")
-    parser.add_argument("--config", type=str, required=True, help="Path to model config YAML")
-    parser.add_argument("--train-config", type=str, required=True, help="Path to training config YAML")
-    parser.add_argument("--data", type=str, required=True, help="Path to CSV data file")
-    args = parser.parse_args()
-
-    # 載入 config
-    with open(args.config, "r", encoding="utf-8") as f:
-        model_config = yaml.safe_load(f)
-    with open(args.train_config, "r", encoding="utf-8") as f:
-        train_config = yaml.safe_load(f)
-
-    # 設定設備
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # 載入資料
-    dataloaders = load_dataset(
-        args.data,
-        static_features=model_config["model"]["input"]["static_features"],
-        time_series_features=model_config["model"]["input"]["time_series_features"],
-        target_feature=model_config["model"]["input"]["target"],
-        batch_size=model_config["training"]["batch_size"],
-        sequence_length=model_config["model"].get("sequence_length", 10),
-        num_workers=0
+def main():
+    """主函數"""
+    # 解析命令行參數
+    args = parse_args()
+    
+    # 設定除錯模式
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+        logger.debug("除錯模式已啟用")
+    
+    # 載入配置文件
+    config = load_config(args.config)
+    train_config = load_config(args.train_config)
+    
+    # 設定隨機種子
+    random_seed = args.seed if args.seed is not None else config.get("random_seed", 42)
+    set_random_seed(random_seed)
+    
+    # 設定計算設備
+    device_name = args.device if args.device else config.get("device", "cuda")
+    device = torch.device(device_name if torch.cuda.is_available() and device_name == "cuda" else "cpu")
+    logger.info(f"使用計算設備: {device}")
+    
+    # 設定輸出目錄
+    output_dir = args.output_dir if args.output_dir else os.path.join(
+        config.get("paths", {}).get("output_dir", "outputs"),
+        f"{args.model_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
     )
-
-    # 初始化模型
-    model = HybridPINNLSTMModel(
-        static_input_dim=len(model_config["model"]["input"]["static_features"]),
-        temporal_input_dim=len(model_config["model"]["input"]["time_series_features"]),
-        pinn_hidden_layers=model_config["model"]["pinn"]["hidden_layers"],
-        lstm_hidden_size=model_config["model"]["lstm"]["hidden_size"],
-        lstm_num_layers=model_config["model"]["lstm"]["num_layers"],
-        dropout_rate=model_config["model"]["fusion"]["dropout_rate"],
-        use_attention=model_config["model"]["lstm"]["use_attention"],
-        fusion_type=model_config["model"]["fusion"]["type"],
-        ensemble_method=model_config["model"]["fusion"]["ensemble_method"],
-        l2_reg=model_config["training"].get("l2_reg", 0.001)
-    ).to(device)
-
-    # 訓練
-    output_dir = "outputs/HybridPINNLSTM_run"
     os.makedirs(output_dir, exist_ok=True)
-
-    history = train_hybrid_model_with_stages(
-        model=model,
-        dataloaders=dataloaders,
-        config=model_config,
-        train_config=train_config,
-        device=device,
-        output_dir=output_dir,
-        use_physics=model_config["model"].get("use_physics", True),
-        stages=["warmup", "main", "finetune"]
+    logger.info(f"輸出目錄: {output_dir}")
+    
+    # 準備資料
+    data_path = args.data if args.data else config["paths"]["data"]
+    feature_cols = config["model"]["input"]["static_features"]
+    target_col = "Nf_pred (cycles)"
+    time_series_prefix = config["model"]["input"]["time_series_features"]
+    
+    logger.info(f"載入資料: {data_path}")
+    data_dict = process_pipeline(
+        filepath=data_path,
+        feature_cols=feature_cols,
+        target_col=target_col,
+        time_series_prefix=time_series_prefix,
+        test_size=config["training"]["data_split"]["test_size"],
+        val_size=config["training"]["data_split"]["val_size"],
+        random_state=config["training"]["data_split"]["random_seed"]
     )
+    
+    logger.info(f"資料分割完成, 訓練集: {len(data_dict['X_train'])} 樣本, "
+               f"驗證集: {len(data_dict['X_val'])} 樣本, "
+               f"測試集: {len(data_dict['X_test'])} 樣本")
+    
+    # 如果需要，應用資料增強
+    if not args.no_augmentation:
+        data_dict = apply_data_augmentation(data_dict, train_config, config)
+    
+    # 根據模式選擇操作
+    if args.evaluate_only:
+        # 僅評估模式
+        if args.model_path is None:
+            logger.error("使用評估模式需要提供模型路徑 (--model-path)")
+            return
+        
+        # 載入模型
+        logger.info(f"載入模型: {args.model_path}")
+        model = create_model(config, model_type=args.model_type, use_physics=not args.no_physics)
+        
+        # 將模型移至設備
+        model = model.to(device)
+        
+        # 載入模型權重
+        checkpoint = torch.load(args.model_path, map_location=device)
+        if "model_state_dict" in checkpoint:
+            model.load_state_dict(checkpoint["model_state_dict"])
+        else:
+            model.load_state_dict(checkpoint)
+        
+        # 評估模型
+        evaluate_trained_model(model, data_dict, device, output_dir)
+    else:
+        # 訓練模式
+        # 創建模型
+        model = create_model(config, model_type=args.model_type, use_physics=not args.no_physics)
+        
+        # 將模型移至設備
+        model = model.to(device)
+        
+        # 訓練模型
+        train_model(model, data_dict, config, train_config, args, device, output_dir)
+        
+        # 評估模型
+        evaluate_trained_model(model, data_dict, device, output_dir)
+    
+    logger.info("任務完成")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.info("用戶中斷訓練")
+    except Exception as e:
+        logger.exception(f"執行過程中發生錯誤: {str(e)}")
+        sys.exit(1)

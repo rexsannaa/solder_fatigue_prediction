@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-complete_evaluate.py - 完整的模型評估腳本
+evaluate.py - 模型評估腳本
 本腳本用於評估銲錫接點疲勞壽命預測模型的性能，提供詳細的評估指標和視覺化結果。
 """
 
@@ -29,7 +29,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(os.path.join(project_root, "logs", "complete_evaluate.log"))
+        logging.FileHandler(os.path.join(project_root, "logs", "evaluate.log"))
     ]
 )
 logger = logging.getLogger(__name__)
@@ -100,7 +100,15 @@ def load_model(model_path, config, model_type="hybrid", device=None):
                 dropout_rate=config["model"]["pinn"]["dropout_rate"],
                 bidirectional=config["model"]["lstm"]["bidirectional"],
                 use_attention=config["model"]["lstm"]["use_attention"],
-                use_physics_layer=config["model"]["pinn"]["use_physics_layer"]
+                use_physics_layer=config["model"]["pinn"]["use_physics_layer"],
+                physics_layer_trainable=config["model"]["pinn"].get("physics_layer_trainable", False),
+                use_batch_norm=config["model"]["pinn"].get("use_batch_norm", True),
+                pinn_weight_init=config["model"]["fusion"].get("pinn_weight_init", 0.7),
+                lstm_weight_init=config["model"]["fusion"].get("lstm_weight_init", 0.3),
+                a_coefficient=config["model"]["physics"]["a_coefficient"],
+                b_coefficient=config["model"]["physics"]["b_coefficient"],
+                use_log_transform=config["model"].get("use_log_transform", True),
+                ensemble_method=config["model"]["fusion"].get("ensemble_method", "weighted")
             )
         elif model_type == "pinn":
             logger.info("創建PINN模型")
@@ -108,7 +116,12 @@ def load_model(model_path, config, model_type="hybrid", device=None):
                 input_dim=len(config["model"]["input"]["static_features"]),
                 hidden_dims=config["model"]["pinn"]["hidden_layers"],
                 dropout_rate=config["model"]["pinn"]["dropout_rate"],
-                use_physics_layer=config["model"]["pinn"]["use_physics_layer"]
+                use_physics_layer=config["model"]["pinn"]["use_physics_layer"],
+                physics_layer_trainable=config["model"]["pinn"].get("physics_layer_trainable", False),
+                use_batch_norm=config["model"]["pinn"].get("use_batch_norm", True),
+                activation=config["model"]["pinn"].get("activation", "relu"),
+                a_coefficient=config["model"]["physics"]["a_coefficient"],
+                b_coefficient=config["model"]["physics"]["b_coefficient"]
             )
         elif model_type == "lstm":
             logger.info("創建LSTM模型")
@@ -264,7 +277,8 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
         
         # 合併模型輸出
         for key in model_outputs:
-            model_outputs[key] = np.concatenate(model_outputs[key])
+            if isinstance(model_outputs[key][0], np.ndarray):
+                model_outputs[key] = np.concatenate(model_outputs[key])
         
         # 添加預測和目標到模型輸出
         model_outputs["predictions"] = all_predictions

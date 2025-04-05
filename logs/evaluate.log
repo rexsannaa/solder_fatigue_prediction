@@ -78,3 +78,36 @@ ValueError: Fan in and fan out can not be computed for tensor with fewer than 2 
     raise ValueError(
 ValueError: Fan in and fan out can not be computed for tensor with fewer than 2 dimensions
 
+2025-04-05 08:27:27,945 - __main__ - INFO - === 開始模型評估 ===
+2025-04-05 08:27:27,947 - __main__ - INFO - 命令行參數: Namespace(model_path='outputs/models/final_model.pt', config='configs/model_config.yaml', data='data/raw/Training_data_warpage_final_20250321_v1.2.csv', output_dir='outputs/evaluation', model_type='hybrid', device=None, batch_size=16, visualize=False, debug=True)
+2025-04-05 08:27:27,947 - __main__ - DEBUG - 除錯模式已啟用
+2025-04-05 08:27:27,961 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-05 08:27:27,961 - __main__ - INFO - 使用計算設備: cpu
+2025-04-05 08:27:27,966 - __main__ - INFO - 創建混合PINN-LSTM模型
+2025-04-05 08:27:27,976 - __main__ - INFO - 從 outputs/models/final_model.pt 載入模型權重
+2025-04-05 08:27:27,978 - __main__ - ERROR - 載入模型失敗: [Errno 2] No such file or directory: 'outputs/models/final_model.pt'
+2025-04-05 08:27:27,980 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\evaluate.py", line 141, in load_model
+    checkpoint = torch.load(model_path, map_location=device)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 1425, in load
+    with _open_file_like(f, "rb") as opened_file:
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 751, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 732, in __init__
+    super().__init__(open(name, mode))
+FileNotFoundError: [Errno 2] No such file or directory: 'outputs/models/final_model.pt'
+
+2025-04-05 08:27:27,980 - __main__ - ERROR - 評估過程中發生錯誤: [Errno 2] No such file or directory: 'outputs/models/final_model.pt'
+2025-04-05 08:27:27,980 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\evaluate.py", line 471, in main
+    model = load_model(args.model_path, config, model_type=args.model_type, device=device)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\evaluate.py", line 141, in load_model
+    checkpoint = torch.load(model_path, map_location=device)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 1425, in load
+    with _open_file_like(f, "rb") as opened_file:
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 751, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 732, in __init__
+    super().__init__(open(name, mode))
+FileNotFoundError: [Errno 2] No such file or directory: 'outputs/models/final_model.pt'
+

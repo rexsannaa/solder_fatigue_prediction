@@ -16,6 +16,7 @@ preprocess.py - 資料預處理模組
 import numpy as np
 import pandas as pd
 import logging
+import traceback
 from pathlib import Path
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
@@ -120,7 +121,10 @@ def prepare_time_series(df, time_series_prefix=None, time_points=None):
         
         # 自動偵測時間點
         if time_points is None:
-            # 尋找所有時間序列欄位
+            # 如果列名中包含明確的時間點數字，則使用這些數字
+            time_points = [3600, 7200, 10800, 14400]  # 設置預設時間點
+            
+            # 嘗試從列名中找出時間點
             all_cols = df.columns
             time_points_set = set()
             
@@ -128,17 +132,15 @@ def prepare_time_series(df, time_series_prefix=None, time_points=None):
                 cols = [col for col in all_cols if col.startswith(prefix)]
                 # 從欄位名稱中擷取時間點
                 for col in cols:
-                    time_point = col.replace(prefix, '')
                     try:
+                        time_point = col.replace(prefix, '')
                         time_point = int(time_point)
                         time_points_set.add(time_point)
                     except ValueError:
                         continue
             
-            time_points = sorted(list(time_points_set))
-        
-        if not time_points:
-            raise ValueError("無法偵測到時間點，請手動指定 time_points 參數")
+            if time_points_set:
+                time_points = sorted(list(time_points_set))
         
         # 構建時間序列資料
         n_samples = len(df)
@@ -263,6 +265,7 @@ def process_pipeline(filepath, feature_cols, target_col, time_series_prefix=None
         
         return split_data
     except Exception as e:
+        logger.error(f"詳細錯誤追蹤: {traceback.format_exc()}")
         logger.error(f"執行資料處理流程時發生錯誤: {str(e)}")
         raise
 

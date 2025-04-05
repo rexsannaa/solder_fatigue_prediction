@@ -23,6 +23,7 @@ import datetime
 import numpy as np
 import pandas as pd
 import torch
+import traceback
 import matplotlib.pyplot as plt
 from pathlib import Path
 
@@ -64,7 +65,10 @@ logger = logging.getLogger(__name__)
 
 # 確保日誌目錄存在
 os.makedirs(os.path.join(project_root, "logs"), exist_ok=True)
-
+# 建立完整的輸出目錄結構
+os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
+os.makedirs(os.path.join(output_dir, "evaluation"), exist_ok=True)
+os.makedirs(os.path.join(output_dir, "visualizations"), exist_ok=True)
 
 def parse_args():
     """解析命令行參數"""
@@ -539,13 +543,15 @@ def main():
     feature_cols = config["model"]["input"]["static_features"]
     target_col = "Nf_pred (cycles)"
     time_series_prefix = config["model"]["input"]["time_series_features"]
-    
+    time_points = [3600, 7200, 10800, 14400]  # 明確指定時間點
+
     logger.info(f"載入資料: {data_path}")
     data_dict = process_pipeline(
         filepath=data_path,
         feature_cols=feature_cols,
         target_col=target_col,
         time_series_prefix=time_series_prefix,
+        time_points=time_points,  # 傳入時間點
         test_size=config["training"]["data_split"]["test_size"],
         val_size=config["training"]["data_split"]["val_size"],
         random_state=config["training"]["data_split"]["random_seed"]
@@ -606,4 +612,6 @@ if __name__ == "__main__":
         logger.info("用戶中斷訓練")
     except Exception as e:
         logger.exception(f"執行過程中發生錯誤: {str(e)}")
+        logger.error(f"詳細錯誤追蹤: {traceback.format_exc()}")
         sys.exit(1)
+

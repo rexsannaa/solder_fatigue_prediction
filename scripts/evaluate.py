@@ -36,7 +36,10 @@ logger = logging.getLogger(__name__)
 
 # 確保日誌目錄存在
 os.makedirs(os.path.join(project_root, "logs"), exist_ok=True)
-
+# 建立完整的輸出目錄結構
+os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
+os.makedirs(os.path.join(output_dir, "evaluation"), exist_ok=True)
+os.makedirs(os.path.join(output_dir, "visualizations"), exist_ok=True)
 
 def parse_args():
     """解析命令行參數"""

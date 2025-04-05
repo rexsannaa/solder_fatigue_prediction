@@ -19,6 +19,7 @@ import torch.nn.functional as F
 import numpy as np
 import logging
 import math
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -494,7 +495,7 @@ class FeatureFusionLayer(nn.Module):
         output_features = self.fusion_layers(fused_features)
         
         return output_features, gate_weights
-
+    
 
 class HybridPINNLSTMModel(nn.Module):
     """

@@ -288,7 +288,7 @@ def train_model(model, data_dict, config, train_config, args, device, output_dir
     # 創建資料載入器
     batch_size = args.batch_size if args.batch_size else config["training"]["batch_size"]
     
-    # 檢查返回的字典鍵名，適應不同的命名方式
+    # 檢查鍵名
     ts_train_key = "time_series_train" if "time_series_train" in data_dict else "ts_train"
     ts_val_key = "time_series_val" if "time_series_val" in data_dict else "ts_val"
     ts_test_key = "time_series_test" if "time_series_test" in data_dict else "ts_test"
@@ -335,14 +335,29 @@ def train_model(model, data_dict, config, train_config, args, device, output_dir
         
         # 創建損失函數
         loss_type = config["training"]["loss"]["type"]
-        loss_function = get_loss_function(
-            loss_type=loss_type,
-            lambda_physics=train_config_dict["lambda_physics"] if not args.no_physics else 0.0,
-            lambda_consistency=train_config_dict["lambda_consistency"],
-            a=config["model"]["physics"]["a_coefficient"],
-            b=config["model"]["physics"]["b_coefficient"],
-            log_space=config["model"].get("use_log_transform", True),
-            relative_error_weight=0.3,
+        if loss_type == "adaptive":
+            loss_function = get_loss_function(
+                loss_type=loss_type,
+                initial_lambda_physics=train_config_dict["lambda_physics"] if not args.no_physics else 0.0,
+                max_lambda_physics=config["training"]["loss"].get("max_lambda_physics", 0.5),
+                initial_lambda_consistency=train_config_dict["lambda_consistency"],
+                max_lambda_consistency=config["training"]["loss"].get("max_lambda_consistency", 0.3),
+                epochs_to_max=config["training"]["loss"].get("epochs_to_max", 50),
+                a=config["model"]["physics"]["a_coefficient"],
+                b=config["model"]["physics"]["b_coefficient"],
+                log_space=config["model"].get("use_log_transform", True),
+                relative_error_weight=0.3,
+                l2_reg=config["training"].get("l2_reg", 0.001)
+            )
+        else:
+            loss_function = get_loss_function(
+                loss_type=loss_type,
+                lambda_physics=train_config_dict["lambda_physics"] if not args.no_physics else 0.0,
+                lambda_consistency=train_config_dict["lambda_consistency"],
+                a=config["model"]["physics"]["a_coefficient"],
+                b=config["model"]["physics"]["b_coefficient"],
+                log_space=config["model"].get("use_log_transform", True),
+                relative_error_weight=0.3,
             l2_reg=config["training"].get("l2_reg", 0.001)
         )
         

@@ -227,10 +227,18 @@ def apply_data_augmentation(data_dict, train_config, config):
         
         logger.info("應用資料增強...")
         
+        # 檢查時間序列數據的鍵名
+        ts_train_key = "time_series_train" if "time_series_train" in data_dict else "ts_train"
+        
+        # 檢查必要的鍵是否存在
+        if "X_train" not in data_dict or ts_train_key not in data_dict or "y_train" not in data_dict:
+            logger.warning(f"資料字典中缺少必要的鍵: X_train, {ts_train_key}, 或 y_train，跳過資料增強")
+            return data_dict
+        
         # 應用資料增強
         augmented_dict = augment_training_data(
             X_train=data_dict["X_train"],
-            time_series_train=data_dict["time_series_train"],
+            time_series_train=data_dict[ts_train_key],
             y_train=data_dict["y_train"],
             synthetic_samples=augmentation_config.get("synthetic_samples", 20),
             noise_level=augmentation_config.get("noise_level", 0.05),
@@ -241,8 +249,14 @@ def apply_data_augmentation(data_dict, train_config, config):
         
         # 更新訓練資料
         data_dict["X_train"] = augmented_dict["X_train"]
-        data_dict["time_series_train"] = augmented_dict["time_series_train"]
+        data_dict[ts_train_key] = augmented_dict["time_series_train"]
         data_dict["y_train"] = augmented_dict["y_train"]
+        
+        # 為相容性同時設置兩種鍵名
+        if ts_train_key == "ts_train" and "time_series_train" not in data_dict:
+            data_dict["time_series_train"] = data_dict["ts_train"]
+        elif ts_train_key == "time_series_train" and "ts_train" not in data_dict:
+            data_dict["ts_train"] = data_dict["time_series_train"]
         
         logger.info(f"資料增強完成，增強後的訓練集大小: {len(data_dict['X_train'])} 樣本")
         
@@ -273,6 +287,12 @@ def train_model(model, data_dict, config, train_config, args, device, output_dir
     """
     # 創建資料載入器
     batch_size = args.batch_size if args.batch_size else config["training"]["batch_size"]
+    
+    # 檢查返回的字典鍵名，適應不同的命名方式
+    ts_train_key = "time_series_train" if "time_series_train" in data_dict else "ts_train"
+    ts_val_key = "time_series_val" if "time_series_val" in data_dict else "ts_val"
+    ts_test_key = "time_series_test" if "time_series_test" in data_dict else "ts_test"
+
     dataloaders = create_dataloaders(
         X_train=data_dict["X_train"],
         X_val=data_dict["X_val"],
@@ -539,7 +559,7 @@ def main():
     os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
     os.makedirs(os.path.join(output_dir, "evaluation"), exist_ok=True)
     os.makedirs(os.path.join(output_dir, "visualizations"), exist_ok=True)
-    
+
     # 準備資料
     data_path = args.data if args.data else config["paths"]["data"]
     feature_cols = config["model"]["input"]["static_features"]

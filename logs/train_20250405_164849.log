@@ -1,0 +1,42 @@
+2025-04-05 16:48:49,913 - __main__ - DEBUG - 除錯模式已啟用
+2025-04-05 16:48:49,932 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-05 16:48:49,953 - __main__ - INFO - 成功載入配置文件: configs/train_config.yaml
+2025-04-05 16:48:49,957 - __main__ - INFO - 已設定隨機種子: 42
+2025-04-05 16:48:49,957 - __main__ - INFO - 使用計算設備: cpu
+2025-04-05 16:48:49,957 - __main__ - INFO - 輸出目錄: outputs\hybrid_20250405_164849
+2025-04-05 16:48:49,960 - __main__ - INFO - 載入資料: data/raw/Training_data_warpage_final_20250321_v1.2.csv
+2025-04-05 16:48:49,964 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-05 16:48:49,968 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-05 16:48:49,970 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-05 16:48:49,972 - src.data.preprocess - INFO - 資料分割完成 - 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-05 16:48:49,972 - src.data.preprocess - INFO - 完整資料處理流程完成
+2025-04-05 16:48:49,972 - __main__ - INFO - 資料分割完成, 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-05 16:48:49,972 - __main__ - INFO - 應用資料增強...
+2025-04-05 16:48:49,972 - src.data.dataset - INFO - 進行資料增強，原始訓練集大小: 56 樣本
+2025-04-05 16:48:50,127 - src.data.dataset - INFO - 資料增強完成，增強後的訓練集大小: 626 樣本
+2025-04-05 16:48:50,127 - __main__ - INFO - 資料增強完成，增強後的訓練集大小: 626 樣本
+2025-04-05 16:48:50,139 - __main__ - INFO - 創建混合PINN-LSTM模型，使用物理約束: True，融合方法: weighted
+2025-04-05 16:48:50,139 - src.data.dataset - INFO - 已創建資料載入器 - 訓練: 626 樣本, 驗證: 12 樣本, 測試: 13 樣本, 批次大小: 8
+2025-04-05 16:48:52,131 - src.training.trainer - INFO - 創建adam優化器，學習率: 0.001，權重衰減: 0.0001
+2025-04-05 16:48:52,131 - __main__ - ERROR - 執行過程中發生錯誤: __init__() got an unexpected keyword argument 'lambda_physics'
+Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 636, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 626, in main
+    train_model(model, data_dict, config, train_config, args, device, output_dir)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 338, in train_model
+    loss_function = get_loss_function(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\losses.py", line 512, in get_loss_function
+    return AdaptiveHybridLoss(**kwargs)
+TypeError: __init__() got an unexpected keyword argument 'lambda_physics'
+2025-04-05 16:48:52,144 - __main__ - ERROR - 詳細錯誤追蹤: Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 636, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 626, in main
+    train_model(model, data_dict, config, train_config, args, device, output_dir)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 338, in train_model
+    loss_function = get_loss_function(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\losses.py", line 512, in get_loss_function
+    return AdaptiveHybridLoss(**kwargs)
+TypeError: __init__() got an unexpected keyword argument 'lambda_physics'
+

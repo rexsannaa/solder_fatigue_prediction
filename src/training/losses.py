@@ -137,13 +137,25 @@ class PhysicsConstraintLoss(nn.Module):
         delta_w_theory = torch.clamp(delta_w_theory, min=1e-8)
         
         # 微觀損失: 預測的delta_w應與理論值一致
+        if delta_w.dim() != delta_w_theory.dim():
+            if delta_w.dim() > delta_w_theory.dim():
+                delta_w_theory = delta_w_theory.view(delta_w.size())
+            else:
+                delta_w = delta_w.view(delta_w_theory.size())
         micro_loss = F.mse_loss(delta_w, delta_w_theory, reduction=self.reduction)
+
+        
         
         # 2. 宏觀物理約束 - 預測值應符合物理模型
         # 從delta_w計算理論壽命
         nf_physics = self.a * torch.pow(delta_w, self.b)
         
         # 宏觀損失: 預測的nf應符合物理模型
+        if nf_pred.dim() != nf_physics.dim():
+            if nf_pred.dim() > nf_physics.dim():
+                nf_physics = nf_physics.view(nf_pred.size())
+        else:
+            nf_pred = nf_pred.view(nf_physics.size())
         macro_loss = F.mse_loss(nf_pred, nf_physics, reduction=self.reduction)
         
         # 總物理約束損失

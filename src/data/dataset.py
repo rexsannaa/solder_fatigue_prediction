@@ -387,26 +387,54 @@ class TimeSeriesDataset(Dataset):
         """返回樣本數量"""
         return self.n_samples
     
+    
+
     def __getitem__(self, idx):
         """
         獲取指定索引的樣本
-        
+
         參數:
             idx (int): 樣本索引
-            
+    
         返回:
-            tuple: (時間序列特徵, 目標值) 或 (時間序列特徵)
+            tuple: (靜態特徵, 時間序列特徵, 目標值) 或 (靜態特徵, 時間序列特徵)
         """
-        time_series = self.time_series[idx]
-        
+        static = self.static_features[idx]
+        time_series = self.time_series_features[idx]
+
         # 應用轉換（如果有）
-        if self.transform is not None:
-            time_series = self.transform(time_series)
-        
-        if self.targets is not None:
-            return time_series, self.targets[idx]
+        if self.static_transform is not None:
+            static = self.static_transform(static)
+
+        if self.time_transform is not None:
+            time_series = self.time_transform(time_series)
+
+        # 如果啟用了資料增強且處於訓練模式（有目標值），有一定概率進行增強
+        if self.augmentation and self.targets is not None and torch.rand(1).item() < 0.3:  # 30%機率增強
+            target = self.targets[idx] if self.targets is not None else None
+            static, time_series, target = self._augment_sample(
+                static, time_series, target
+            )
         else:
-            return time_series
+            target = self.targets[idx] if self.targets is not None else None
+
+        # 確保每個樣本返回的格式一致 - 修復可能有些樣本返回不同維度的問題
+        if target is not None:
+            # 確保目標值是一維張量並且沒有多餘的維度
+            if isinstance(target, torch.Tensor):
+                if target.dim() == 0:
+                    target = target.unsqueeze(0)  # 將標量轉為一維張量
+                elif target.dim() > 1:
+                    target = target.squeeze()  # 去除多餘的維度
+                    if target.dim() == 0:  # 如果只有一個元素，確保是一維
+                        target = target.unsqueeze(0)
+            else:
+                # 如果不是張量，轉換為張量
+                target = torch.tensor([target], dtype=torch.float32)
+        
+            return static, time_series, target
+        else:
+            return static, time_series
 
 
 def create_dataloaders(X_train, X_val, X_test, 

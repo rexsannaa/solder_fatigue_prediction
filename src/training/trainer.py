@@ -462,7 +462,7 @@ class Trainer:
         return {
             'loss': avg_loss,
             'metrics': metrics_values,
-            'predictions': all_predictions if all_predictions else None,
+            'predictions': all_predictions if len(all_predictions) > 0 else None,
             'targets': all_targets if all_targets else None
         }
     
@@ -585,8 +585,8 @@ class Trainer:
         return {
             'loss': avg_loss,
             'metrics': metrics_values,
-            'predictions': all_predictions if all_predictions else None,
-            'targets': all_targets if all_targets else None,
+            'predictions': all_predictions if len(all_predictions) > 0 else None,
+            'targets': all_targets if len(all_targets) > 0 else None,
             'outputs': outputs_merged
         }
     

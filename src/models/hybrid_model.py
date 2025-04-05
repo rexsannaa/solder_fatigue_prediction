@@ -731,13 +731,13 @@ class HybridPINNLSTMModel(nn.Module):
         pinn_nf_pred = pinn_output['nf_pred']
         pinn_delta_w = pinn_output['delta_w']
         pinn_features = pinn_output['features']
-        pinn_l2_penalty = pinn_output.get('l2_penalty', 0.0)
+        pinn_l2_penalty = pinn_output.get('l2_penalty', torch.tensor(0.0, device=static_features.device))
         
         # 2. LSTM分支前向傳播
         lstm_output = self.lstm_branch(time_series, return_attention=return_features)
         lstm_nf_pred = lstm_output['output']
         lstm_features = lstm_output['features']
-        lstm_l2_penalty = lstm_output.get('l2_penalty', 0.0)
+        lstm_l2_penalty = lstm_output.get('l2_penalty', torch.tensor(0.0, device=static_features.device))
         
         # 3. 根據集成方法合併預測結果
         if self.ensemble_method == 'weighted':

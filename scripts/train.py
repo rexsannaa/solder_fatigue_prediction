@@ -512,7 +512,13 @@ def evaluate_trained_model(model, data_dict, device, output_dir):
     # 合併所有輸出
     for key in all_outputs:
         if isinstance(all_outputs[key][0], np.ndarray):
-            all_outputs[key] = np.concatenate(all_outputs[key])
+            try:
+                all_outputs[key] = np.concatenate(all_outputs[key])
+            except ValueError as e:
+                logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
+                # 如果不能合併，保留為列表
+                pass
+            
     
     # 添加預測和目標到輸出
     all_outputs["predictions"] = all_predictions

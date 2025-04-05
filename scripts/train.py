@@ -65,10 +65,7 @@ logger = logging.getLogger(__name__)
 
 # 確保日誌目錄存在
 os.makedirs(os.path.join(project_root, "logs"), exist_ok=True)
-# 建立完整的輸出目錄結構
-os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
-os.makedirs(os.path.join(output_dir, "evaluation"), exist_ok=True)
-os.makedirs(os.path.join(output_dir, "visualizations"), exist_ok=True)
+
 
 def parse_args():
     """解析命令行參數"""
@@ -532,11 +529,16 @@ def main():
     
     # 設定輸出目錄
     output_dir = args.output_dir if args.output_dir else os.path.join(
-        config.get("paths", {}).get("output_dir", "outputs"),
+        config.get("paths", {}).get("output_dir", "outputs"),   
         f"{args.model_type}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
     )
     os.makedirs(output_dir, exist_ok=True)
     logger.info(f"輸出目錄: {output_dir}")
+    
+    # 建立完整的輸出目錄結構
+    os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "evaluation"), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "visualizations"), exist_ok=True)
     
     # 準備資料
     data_path = args.data if args.data else config["paths"]["data"]

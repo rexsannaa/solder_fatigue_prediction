@@ -36,10 +36,7 @@ logger = logging.getLogger(__name__)
 
 # 確保日誌目錄存在
 os.makedirs(os.path.join(project_root, "logs"), exist_ok=True)
-# 建立完整的輸出目錄結構
-os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
-os.makedirs(os.path.join(output_dir, "evaluation"), exist_ok=True)
-os.makedirs(os.path.join(output_dir, "visualizations"), exist_ok=True)
+
 
 def parse_args():
     """解析命令行參數"""
@@ -258,7 +255,11 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
                     for key in outputs:
                         if key not in model_outputs:
                             model_outputs[key] = []
-                        model_outputs[key].append(outputs[key].cpu().numpy())
+
+                        if isinstance(outputs[key], torch.Tensor):
+                            model_outputs[key].append(outputs[key].cpu().numpy())
+                        else:
+                            model_outputs[key].append(outputs[key])
                 elif model_type == "lstm":
                     outputs = model(time_series_batch)
                     predictions = outputs["output"]
@@ -496,6 +497,12 @@ def main():
         # 創建輸出目錄
         output_dir = args.output_dir
         os.makedirs(output_dir, exist_ok=True)
+        logger.info(f"輸出目錄: {output_dir}")
+
+        # 建立完整的輸出目錄結構
+        os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "evaluation"), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "visualizations"), exist_ok=True)
         
         # 保存評估結果
         save_results(results, metrics, physics_validation, output_dir, data_dict["df_original"])

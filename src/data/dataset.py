@@ -185,6 +185,130 @@ class SolderFatigueDataset(Dataset):
         else:
             return static, time_series
 
+def augment_training_data(X_train, time_series_train, y_train, synthetic_samples=20, 
+                       noise_level=0.05, physics_guided=True, a_coefficient=55.83, 
+                       b_coefficient=-2.259):
+    """
+    進行資料增強，適用於小樣本數據集
+    
+    參數:
+        X_train (numpy.ndarray): 靜態特徵訓練集
+        time_series_train (numpy.ndarray): 時間序列特徵訓練集
+        y_train (numpy.ndarray): 目標訓練集
+        synthetic_samples (int): 生成的合成樣本數量
+        noise_level (float): 噪聲水平
+        physics_guided (bool): 是否使用物理知識引導增強
+        a_coefficient (float): 物理模型係數a
+        b_coefficient (float): 物理模型係數b
+        
+    返回:
+        dict: 包含增強後資料的字典
+    """
+    logger.info(f"進行資料增強，原始訓練集大小: {len(X_train)} 樣本")
+    
+    try:
+        # 導入資料增強相關模組
+        from scipy.stats import norm
+        import copy
+        
+        # 基本混合/擾動增強
+        augmented_X = []
+        augmented_time_series = []
+        augmented_y = []
+        
+        # 1. 添加原始數據
+        augmented_X.append(X_train)
+        augmented_time_series.append(time_series_train)
+        augmented_y.append(y_train)
+        
+        # 2. 添加小噪聲擾動樣本
+        n_samples = len(X_train)
+        for _ in range(min(10, synthetic_samples // 2)):
+            # 複製原始樣本
+            X_noise = X_train.copy()
+            ts_noise = time_series_train.copy()
+            y_noise = y_train.copy()
+            
+            # 添加小噪聲
+            X_noise += np.random.normal(0, noise_level * np.std(X_train, axis=0), X_train.shape)
+            
+            # 對時間序列添加噪聲，但保持單調性
+            for i in range(ts_noise.shape[0]):
+                for j in range(ts_noise.shape[2]):  # 對每個特徵
+                    # 添加噪聲
+                    noise = np.random.normal(0, noise_level * np.std(ts_noise[:, :, j]), 
+                                           (ts_noise.shape[0], ts_noise.shape[1]))
+                    ts_noise[:, :, j] += noise
+                    
+                    # 確保時間序列單調增加
+                    for sample_idx in range(ts_noise.shape[0]):
+                        ts_noise[sample_idx, :, j] = np.maximum.accumulate(ts_noise[sample_idx, :, j])
+            
+            # 根據物理知識調整目標值
+            if physics_guided:
+                # 計算物理模型中的delta_w（從時間序列）
+                # 假設最後時間步與初始時間步的差值代表delta_w
+                delta_w = np.mean(ts_noise[:, -1, :] - ts_noise[:, 0, :], axis=1)
+                
+                # 使用物理模型計算新的目標值: Nf = a * (delta_w)^b
+                y_noise = a_coefficient * np.power(np.maximum(delta_w, 1e-10), b_coefficient)
+            else:
+                # 添加一些對數正態噪聲以保持正值
+                y_noise = y_noise * np.exp(np.random.normal(0, noise_level, y_noise.shape))
+            
+            augmented_X.append(X_noise)
+            augmented_time_series.append(ts_noise)
+            augmented_y.append(y_noise)
+        
+        # 3. 插值/混合樣本（僅在樣本數足夠時使用）
+        if n_samples >= 5:
+            for _ in range(min(10, synthetic_samples // 2)):
+                # 隨機選擇兩個樣本進行混合
+                idx1, idx2 = np.random.choice(n_samples, 2, replace=False)
+                alpha = np.random.uniform(0.3, 0.7)  # 混合比例
+                
+                # 線性插值
+                X_mix = alpha * X_train[idx1] + (1 - alpha) * X_train[idx2]
+                ts_mix = alpha * time_series_train[idx1] + (1 - alpha) * time_series_train[idx2]
+                
+                # 使用物理模型計算目標值
+                if physics_guided:
+                    # 對混合後的時間序列計算delta_w
+                    delta_w_mix = np.mean(ts_mix[-1, :] - ts_mix[0, :])
+                    
+                    # 使用物理模型計算新的目標值
+                    y_mix = a_coefficient * np.power(max(delta_w_mix, 1e-10), b_coefficient)
+                else:
+                    # 線性插值目標值
+                    y_mix = alpha * y_train[idx1] + (1 - alpha) * y_train[idx2]
+                
+                # 添加單個樣本
+                augmented_X.append(np.expand_dims(X_mix, axis=0))
+                augmented_time_series.append(np.expand_dims(ts_mix, axis=0))
+                augmented_y.append(np.array([y_mix]))
+        
+        # 合併所有增強樣本
+        X_augmented = np.vstack(augmented_X)
+        time_series_augmented = np.vstack(augmented_time_series)
+        y_augmented = np.concatenate(augmented_y)
+        
+        logger.info(f"資料增強完成，增強後的訓練集大小: {len(X_augmented)} 樣本")
+        
+        return {
+            "X_train": X_augmented,
+            "time_series_train": time_series_augmented,
+            "y_train": y_augmented
+        }
+    except Exception as e:
+        logger.error(f"資料增強時出錯: {str(e)}")
+        logger.warning("返回原始資料繼續訓練")
+        
+        return {
+            "X_train": X_train,
+            "time_series_train": time_series_train,
+            "y_train": y_train
+        }
+
 
 class TimeSeriesDataset(Dataset):
     """

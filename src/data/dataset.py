@@ -107,29 +107,29 @@ class SolderFatigueDataset(Dataset):
     def _augment_sample(self, static, time_series, target=None):
         """
         對樣本進行資料增強
-        
+    
         參數:
             static (torch.Tensor): 靜態特徵
             time_series (torch.Tensor): 時間序列特徵
             target (torch.Tensor, optional): 目標值
-            
+        
         返回:
             tuple: (增強的靜態特徵, 增強的時間序列特徵, 增強的目標值)
         """
         # 對靜態特徵增加小噪聲
         static_noise = torch.randn_like(static) * self.augmentation_factor
         augmented_static = static + static_noise
-        
+    
         # 對時間序列增加小噪聲，並保持時間順序
         time_noise = torch.randn_like(time_series) * self.augmentation_factor
         augmented_time = time_series + time_noise
-        
+    
         # 確保時間序列保持單調性（如果適用）
         # 假設時間序列是單調遞增的（如累積應變能量）
         if augmented_time.dim() == 2:  # (time_steps, features)
             for i in range(augmented_time.shape[1]):
                 augmented_time[:, i] = torch.cummax(augmented_time[:, i], dim=0)[0]
-        
+    
         # 如果有目標值，也對其增加小噪聲
         augmented_target = target
         if target is not None:
@@ -137,6 +137,10 @@ class SolderFatigueDataset(Dataset):
             target_noise = torch.exp(torch.randn(1) * 0.05)  # 小噪聲
             augmented_target = target * target_noise
         
+            # 確保目標值的維度一致
+            if isinstance(augmented_target, torch.Tensor) and augmented_target.dim() == 0:
+                augmented_target = augmented_target.unsqueeze(0)
+    
         return augmented_static, augmented_time, augmented_target
     
     def __len__(self):
@@ -146,33 +150,37 @@ class SolderFatigueDataset(Dataset):
     def __getitem__(self, idx):
         """
         獲取指定索引的樣本
-        
+    
         參數:
             idx (int): 樣本索引
-            
+        
         返回:
             tuple: (靜態特徵, 時間序列特徵, 目標值) 或 (靜態特徵, 時間序列特徵)
         """
         static = self.static_features[idx]
         time_series = self.time_series_features[idx]
-        
+    
         # 應用轉換（如果有）
         if self.static_transform is not None:
             static = self.static_transform(static)
-        
+    
         if self.time_transform is not None:
             time_series = self.time_transform(time_series)
-        
+    
         # 如果啟用了資料增強且處於訓練模式（有目標值），有一定概率進行增強
         if self.augmentation and self.targets is not None and torch.rand(1).item() < 0.3:  # 30%機率增強
+            target = self.targets[idx] if self.targets is not None else None
             static, time_series, target = self._augment_sample(
-                static, time_series, 
-                self.targets[idx] if self.targets is not None else None
+                static, time_series, target
             )
         else:
             target = self.targets[idx] if self.targets is not None else None
-        
+    
+        # 確保每個樣本返回的格式一致 - 修復可能有些樣本返回不同維度的問題
         if target is not None:
+            # 確保目標值是標量
+            if isinstance(target, torch.Tensor) and target.dim() == 0:
+                target = target.unsqueeze(0)  # 將標量轉為一維張量
             return static, time_series, target
         else:
             return static, time_series
@@ -320,9 +328,15 @@ def create_dataloaders(X_train, X_val, X_test,
         targets=y_test
     )
     
+    # 若樣本數量少於批次大小，則調整批次大小
+    actual_batch_size = min(batch_size, len(train_dataset))
+    if actual_batch_size < batch_size:
+        logger.warning(f"樣本數量({len(train_dataset)})少於批次大小({batch_size})，調整批次大小為{actual_batch_size}")
+        batch_size = actual_batch_size
+    
     # 如果需要，創建加權採樣器
     train_sampler = None
-    if use_weighted_sampler and y_train is not None:
+    if use_weighted_sampler and y_train is not None and len(y_train) >= 5:  # 確保有足夠樣本進行加權
         # 計算類別權重（對於回歸問題，可以將目標值分組）
         y_train_np = y_train
         
@@ -330,26 +344,27 @@ def create_dataloaders(X_train, X_val, X_test,
         log_targets = np.log(y_train_np + 1e-8)
         
         # 將目標值分成n_bins組
-        n_bins = min(10, len(log_targets) // 5)  # 至少5個樣本每組
-        bins = np.linspace(log_targets.min(), log_targets.max(), n_bins + 1)
-        bin_indices = np.digitize(log_targets, bins) - 1
-        
-        # 計算每組的權重（反比於樣本數量）
-        bin_counts = np.bincount(bin_indices, minlength=n_bins)
-        bin_weights = 1.0 / (bin_counts + 1e-8)
-        
-        # 標準化權重使總和為len(log_targets)
-        bin_weights = bin_weights * len(log_targets) / np.sum(bin_weights)
-        
-        # 為每個樣本分配權重
-        weights = np.array([bin_weights[i] for i in bin_indices])
-        
-        # 創建加權採樣器
-        train_sampler = WeightedRandomSampler(
-            weights=weights,
-            num_samples=len(weights),
-            replacement=True
-        )
+        n_bins = min(5, len(log_targets) // 2)  # 確保每組至少有2個樣本
+        if n_bins >= 2:  # 確保至少有2個分組
+            bins = np.linspace(log_targets.min(), log_targets.max(), n_bins + 1)
+            bin_indices = np.digitize(log_targets, bins) - 1
+            
+            # 計算每組的權重（反比於樣本數量）
+            bin_counts = np.bincount(bin_indices, minlength=n_bins)
+            bin_weights = 1.0 / (bin_counts + 1e-8)
+            
+            # 標準化權重使總和為len(log_targets)
+            bin_weights = bin_weights * len(log_targets) / np.sum(bin_weights)
+            
+            # 為每個樣本分配權重
+            weights = np.array([bin_weights[i] for i in bin_indices])
+            
+            # 創建加權採樣器
+            train_sampler = WeightedRandomSampler(
+                weights=weights,
+                num_samples=len(weights),
+                replacement=True
+            )
     
     # 創建資料載入器
     train_loader = DataLoader(
@@ -363,7 +378,7 @@ def create_dataloaders(X_train, X_val, X_test,
     
     val_loader = DataLoader(
         val_dataset,
-        batch_size=batch_size,
+        batch_size=min(batch_size, len(val_dataset)),  # 確保批次大小不超過樣本數
         shuffle=False,
         num_workers=num_workers,
         pin_memory=pin_memory
@@ -371,7 +386,7 @@ def create_dataloaders(X_train, X_val, X_test,
     
     test_loader = DataLoader(
         test_dataset,
-        batch_size=batch_size,
+        batch_size=min(batch_size, len(test_dataset)),  # 確保批次大小不超過樣本數
         shuffle=False,
         num_workers=num_workers,
         pin_memory=pin_memory
@@ -386,7 +401,6 @@ def create_dataloaders(X_train, X_val, X_test,
         'val_loader': val_loader,
         'test_loader': test_loader
     }
-
 
 def create_stratified_split(X, time_series, y, test_size=0.15, val_size=0.15, random_state=42):
     """

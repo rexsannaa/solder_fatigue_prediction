@@ -142,15 +142,25 @@ class LSTMModel(nn.Module):
         for name, param in self.named_parameters():
             if 'lstm' in name:
                 if 'weight_ih' in name:
-                    nn.init.xavier_uniform_(param.data)
+                    if param.dim() >= 2:
+                        nn.init.xavier_uniform_(param.data)
                 elif 'weight_hh' in name:
-                    nn.init.orthogonal_(param.data)
+                    if param.dim() >= 2:
+                        nn.init.orthogonal_(param.data)
                 elif 'bias' in name:
                     nn.init.zeros_(param.data)
             elif 'attention_weights' in name:
-                nn.init.xavier_uniform_(param.data)
+                if param.dim() >= 2:
+                    nn.init.xavier_uniform_(param.data)
+                else:
+                    # 處理一維參數
+                    nn.init.uniform_(param.data, -0.1, 0.1)
             elif 'linear' in name and 'weight' in name:
-                nn.init.xavier_uniform_(param.data)
+                if param.dim() >= 2:
+                    nn.init.xavier_uniform_(param.data)
+                else:
+                    # 處理一維參數
+                    nn.init.uniform_(param.data, -0.1, 0.1)
             elif 'linear' in name and 'bias' in name:
                 nn.init.zeros_(param.data)
     

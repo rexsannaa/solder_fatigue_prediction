@@ -147,43 +147,39 @@ class SolderFatigueDataset(Dataset):
         """返回樣本數量"""
         return self.n_samples
     
+
     def __getitem__(self, idx):
         """
         獲取指定索引的樣本
     
         參數:
             idx (int): 樣本索引
-        
+    
         返回:
-            tuple: (靜態特徵, 時間序列特徵, 目標值) 或 (靜態特徵, 時間序列特徵)
+            tuple: (時間序列, 目標值) 或 時間序列
         """
-        static = self.static_features[idx]
-        time_series = self.time_series_features[idx]
+        time_series = self.time_series[idx]
     
         # 應用轉換（如果有）
-        if self.static_transform is not None:
-            static = self.static_transform(static)
+        if self.transform is not None:
+            time_series = self.transform(time_series)
     
-        if self.time_transform is not None:
-            time_series = self.time_transform(time_series)
-    
-        # 如果啟用了資料增強且處於訓練模式（有目標值），有一定概率進行增強
-        if self.augmentation and self.targets is not None and torch.rand(1).item() < 0.3:  # 30%機率增強
-            target = self.targets[idx] if self.targets is not None else None
-            static, time_series, target = self._augment_sample(
-                static, time_series, target
-            )
+        # 檢查是否有目標值
+        if self.targets is not None:
+            target = self.targets[idx]
+        
+            # 確保目標值是一維張量
+            if isinstance(target, torch.Tensor):
+                if target.dim() == 0:
+                    # 如果是標量張量，轉為一維
+                    target = target.unsqueeze(0)
+                elif target.dim() > 1:
+                    # 如果是多維張量，展平為一維
+                    target = target.reshape(-1)
+        
+            return time_series, target
         else:
-            target = self.targets[idx] if self.targets is not None else None
-    
-        # 確保每個樣本返回的格式一致 - 修復可能有些樣本返回不同維度的問題
-        if target is not None:
-            # 確保目標值是標量
-            if isinstance(target, torch.Tensor) and target.dim() == 0:
-                target = target.unsqueeze(0)  # 將標量轉為一維張量
-            return static, time_series, target
-        else:
-            return static, time_series
+            return time_series
 
 def augment_training_data(X_train, time_series_train, y_train, synthetic_samples=20, 
                        noise_level=0.05, physics_guided=True, a_coefficient=55.83, 
@@ -392,7 +388,7 @@ class TimeSeriesDataset(Dataset):
     def __getitem__(self, idx):
         """
         獲取指定索引的樣本
-
+    
         參數:
             idx (int): 樣本索引
     
@@ -408,30 +404,35 @@ class TimeSeriesDataset(Dataset):
 
         if self.time_transform is not None:
             time_series = self.time_transform(time_series)
-
-        # 如果啟用了資料增強且處於訓練模式（有目標值），有一定概率進行增強
-        if self.augmentation and self.targets is not None and torch.rand(1).item() < 0.3:  # 30%機率增強
-            target = self.targets[idx] if self.targets is not None else None
-            static, time_series, target = self._augment_sample(
-                static, time_series, target
-            )
-        else:
-            target = self.targets[idx] if self.targets is not None else None
-
-        # 確保每個樣本返回的格式一致 - 修復可能有些樣本返回不同維度的問題
+    
+        # 檢查是否應用資料增強
+        target = None
+        if self.targets is not None:
+            target = self.targets[idx]
+        
+            # 機率性應用資料增強
+            if self.augmentation and torch.rand(1).item() < 0.3:  # 30%機率增強
+                static, time_series, target = self._augment_sample(
+                    static, time_series, target
+                )
+    
+        # 檢查是否有目標值
         if target is not None:
-            # 確保目標值是一維張量並且沒有多餘的維度
+            # 確保目標值是一維張量
             if isinstance(target, torch.Tensor):
                 if target.dim() == 0:
-                    target = target.unsqueeze(0)  # 將標量轉為一維張量
+                    # 將標量轉為一維張量
+                    target = target.unsqueeze(0)
                 elif target.dim() > 1:
-                    target = target.squeeze()  # 去除多餘的維度
-                    if target.dim() == 0:  # 如果只有一個元素，確保是一維
+                    # 減少多餘維度
+                    target = target.squeeze()
+                    # 如果squeeze後還是0維度，則轉為一維
+                    if target.dim() == 0:
                         target = target.unsqueeze(0)
             else:
                 # 如果不是張量，轉換為張量
                 target = torch.tensor([target], dtype=torch.float32)
-        
+            
             return static, time_series, target
         else:
             return static, time_series

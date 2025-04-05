@@ -167,25 +167,25 @@ class LSTMModel(nn.Module):
     def forward(self, x, return_attention=False):
         """
         前向傳播
-        
+    
         參數:
             x (torch.Tensor): 輸入時間序列，形狀為 (batch_size, seq_len, input_dim)
             return_attention (bool): 是否返回注意力權重
-            
+        
         返回:
             dict: 包含預測結果的字典:
                 - 'output': 預測的疲勞壽命
-                - 'last_hidden': 最後時間步的隱藏狀態
+                - 'features': 提取的時序特徵
                 - 'attention_weights': 注意力權重 (如果使用注意力機制且return_attention=True)
         """
         # LSTM前向傳播
         lstm_output, (hidden, cell) = self.lstm(x)
         # lstm_output形狀: (batch_size, seq_len, hidden_size*2 if bidirectional else hidden_size)
-        
+    
         # 獲取特徵向量
         if self.use_attention:
             # 使用注意力機制
-            context_vector, attention_weights = self.attention(lstm_output)
+            context_vector, attention_weights = self.attention(lstm_output)  # 修正：只傳遞lstm_output
         else:
             # 使用最後一個時間步的輸出
             if self.bidirectional:
@@ -196,19 +196,27 @@ class LSTMModel(nn.Module):
             else:
                 context_vector = hidden[-1, :, :]
             attention_weights = None
-        
+    
         # 全連接層處理
+        # 使用log空間預測，確保輸出為正值
         fc_output = self.fc_layers(context_vector)
-        output = torch.exp(self.output_layer(fc_output))  # 使用exp確保壽命為正
-        
+        output = torch.exp(self.output_layer(fc_output))
+    
+        # 應用L2正則化
+        l2_penalty = 0.0
+        if self.l2_reg > 0:
+            for param in self.parameters():
+                l2_penalty += torch.norm(param, 2)
+    
         result = {
             'output': output.squeeze(-1),
-            'last_hidden': context_vector
+            'features': context_vector,
+            'l2_penalty': l2_penalty * self.l2_reg
         }
-        
+    
         if return_attention and attention_weights is not None:
             result['attention_weights'] = attention_weights
-        
+    
         return result
     
     def get_time_features(self, x):

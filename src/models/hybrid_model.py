@@ -96,103 +96,37 @@ class AttentionLayer(nn.Module):
         # 注意力計算參數
         self.attention_weights = nn.Linear(hidden_size, 1, bias=False)
         
-    def forward(self, static_features, time_series, return_features=False):
+    def forward(self, lstm_output, mask=None):
         """
         前向傳播
-    
+        
         參數:
-            static_features (torch.Tensor): 靜態特徵，形狀為 (batch_size, static_input_dim)
-            time_series (torch.Tensor): 時間序列特徵，形狀為 (batch_size, time_steps, time_input_dim)
-            return_features (bool): 是否返回各分支特徵
-        
+            lstm_output (torch.Tensor): LSTM輸出，形狀為 (batch_size, seq_len, hidden_size)
+            mask (torch.Tensor, optional): 用於遮蔽填充值的掩碼
+            
         返回:
-            dict: 包含預測結果和中間特徵的字典
+            tuple: (加權後的特徵向量, 注意力權重)
         """
-        # 1. PINN分支前向傳播
-        pinn_output = self.pinn_branch(static_features)
-        pinn_nf_pred = pinn_output['nf_pred']
-        pinn_delta_w = pinn_output['delta_w']
-        pinn_features = pinn_output['features']
-        pinn_l2_penalty = pinn_output.get('l2_penalty', 0.0)
-    
-        # 2. LSTM分支前向傳播
-        lstm_output = self.lstm_branch(time_series, return_attention=return_features)
-        lstm_nf_pred = lstm_output['output']
-        lstm_features = lstm_output['features']
-        lstm_l2_penalty = lstm_output.get('l2_penalty', 0.0)
-    
-        # 3. 根據集成方法合併預測結果
-        if self.ensemble_method == 'weighted':
-            # 獲取分支權重
-            branch_weights = self.get_branch_weights()
+        # 計算注意力分數
+        attention_scores = self.attention_weights(lstm_output)  # (batch_size, seq_len, 1)
+        attention_scores = attention_scores.squeeze(-1)  # (batch_size, seq_len)
         
-            # 確保 pinn_nf_pred 與 lstm_nf_pred 維度一致
-            # 重塑為相同的形狀以避免廣播問題
-            if pinn_nf_pred.dim() != lstm_nf_pred.dim() or pinn_nf_pred.shape != lstm_nf_pred.shape:
-                if pinn_nf_pred.dim() < lstm_nf_pred.dim():
-                    pinn_nf_pred = pinn_nf_pred.view(lstm_nf_pred.shape)
-                elif lstm_nf_pred.dim() < pinn_nf_pred.dim():
-                    lstm_nf_pred = lstm_nf_pred.view(pinn_nf_pred.shape)
+        # 如果有掩碼，將填充位置的分數設為負無窮大
+        if mask is not None:
+            attention_scores = attention_scores.masked_fill(mask == 0, -1e9)
         
-            # 加權平均預測結果
-            nf_pred = branch_weights[0] * pinn_nf_pred + branch_weights[1] * lstm_nf_pred
+        # 應用softmax獲取注意力權重
+        attention_weights = F.softmax(attention_scores, dim=1)  # (batch_size, seq_len)
         
-            # 融合權重
-            fusion_weights = branch_weights.detach()
+        # 將注意力權重應用於LSTM輸出
+        context_vector = torch.bmm(
+            attention_weights.unsqueeze(1),  # (batch_size, 1, seq_len)
+            lstm_output  # (batch_size, seq_len, hidden_size)
+        )  # (batch_size, 1, hidden_size)
         
-        elif self.ensemble_method == 'gate':
-            # 使用特徵融合層進行融合，並使用門控機制
-            fused_features, gate_weights = self.fusion_layer(pinn_features, lstm_features)
+        context_vector = context_vector.squeeze(1)  # (batch_size, hidden_size)
         
-            # 確保 pinn_nf_pred 與 lstm_nf_pred 維度一致
-            if pinn_nf_pred.dim() != lstm_nf_pred.dim() or pinn_nf_pred.shape != lstm_nf_pred.shape:
-                if pinn_nf_pred.dim() < lstm_nf_pred.dim():
-                    pinn_nf_pred = pinn_nf_pred.view(lstm_nf_pred.shape)
-                elif lstm_nf_pred.dim() < pinn_nf_pred.dim():
-                    lstm_nf_pred = lstm_nf_pred.view(pinn_nf_pred.shape)
-        
-            # 加權平均兩個分支的預測
-            nf_pred = gate_weights[:, 0].unsqueeze(-1) * pinn_nf_pred + gate_weights[:, 1].unsqueeze(-1) * lstm_nf_pred
-        
-            # 融合權重
-            fusion_weights = gate_weights
-        
-        else:  # deep_fusion
-            # 使用特徵融合層進行深度融合
-            fused_features, gate_weights = self.fusion_layer(pinn_features, lstm_features)
-        
-            # 使用輸出層進行預測
-            if self.use_log_transform:
-                # 使用對數空間進行預測，確保預測值為正
-                nf_pred = torch.exp(self.output_layer(fused_features)).squeeze(-1)
-            else:
-                # 直接預測
-                nf_pred = F.softplus(self.output_layer(fused_features)).squeeze(-1)
-        
-            # 融合權重
-            fusion_weights = gate_weights
-    
-        # 組織返回結果
-        result = {
-            'nf_pred': nf_pred,
-            'pinn_nf_pred': pinn_nf_pred,
-            'lstm_nf_pred': lstm_nf_pred,
-            'fusion_weights': fusion_weights,
-            'l2_penalty': pinn_l2_penalty + lstm_l2_penalty
-        }
-    
-        if self.use_physics_layer:
-            result['delta_w'] = pinn_delta_w
-    
-        if return_features:
-            result['pinn_features'] = pinn_features
-            result['lstm_features'] = lstm_features
-            if self.ensemble_method in ['gate', 'deep_fusion']:
-                result['fused_features'] = fused_features
-            if 'attention_weights' in lstm_output:
-                result['attention_weights'] = lstm_output['attention_weights']
-    
-        return result
+        return context_vector, attention_weights
 
 
 class PINNModel(nn.Module):
@@ -449,7 +383,7 @@ class LSTMModel(nn.Module):
         
         # 獲取特徵向量
         if self.use_attention:
-            # 使用注意力機制
+            # 使用注意力機制 - 修正：只傳遞lstm_output
             context_vector, attention_weights = self.attention(lstm_output)
         else:
             # 使用最後一個時間步的輸出
@@ -810,6 +744,13 @@ class HybridPINNLSTMModel(nn.Module):
             # 獲取分支權重
             branch_weights = self.get_branch_weights()
             
+            # 確保預測值的維度一致以進行加權
+            if pinn_nf_pred.dim() != lstm_nf_pred.dim() or pinn_nf_pred.shape != lstm_nf_pred.shape:
+                if pinn_nf_pred.dim() < lstm_nf_pred.dim():
+                    pinn_nf_pred = pinn_nf_pred.view(lstm_nf_pred.shape)
+                elif lstm_nf_pred.dim() < pinn_nf_pred.dim():
+                    lstm_nf_pred = lstm_nf_pred.view(pinn_nf_pred.shape)
+            
             # 加權平均預測結果
             nf_pred = branch_weights[0] * pinn_nf_pred + branch_weights[1] * lstm_nf_pred
             
@@ -820,13 +761,15 @@ class HybridPINNLSTMModel(nn.Module):
             # 使用特徵融合層進行融合，並使用門控機制
             fused_features, gate_weights = self.fusion_layer(pinn_features, lstm_features)
             
-            # 使用PINN分支的delta_w和物理層進行預測
-            if self.use_physics_layer:
-                # 使用物理層計算最終預測
-                nf_pred = gate_weights[:, 0] * pinn_nf_pred + gate_weights[:, 1] * lstm_nf_pred
-            else:
-                # 加權平均兩個分支的預測
-                nf_pred = gate_weights[:, 0] * pinn_nf_pred + gate_weights[:, 1] * lstm_nf_pred
+            # 確保預測值的維度一致以進行加權
+            if pinn_nf_pred.dim() != lstm_nf_pred.dim() or pinn_nf_pred.shape != lstm_nf_pred.shape:
+                if pinn_nf_pred.dim() < lstm_nf_pred.dim():
+                    pinn_nf_pred = pinn_nf_pred.view(lstm_nf_pred.shape)
+                elif lstm_nf_pred.dim() < pinn_nf_pred.dim():
+                    lstm_nf_pred = lstm_nf_pred.view(pinn_nf_pred.shape)
+            
+            # 加權平均兩個分支的預測
+            nf_pred = gate_weights[:, 0].unsqueeze(-1) * pinn_nf_pred + gate_weights[:, 1].unsqueeze(-1) * lstm_nf_pred
             
             # 融合權重
             fusion_weights = gate_weights
@@ -867,7 +810,6 @@ class HybridPINNLSTMModel(nn.Module):
                 result['attention_weights'] = lstm_output['attention_weights']
         
         return result
-    
 class PINNLSTMTrainer:
     """
     PINN-LSTM混合模型訓練器

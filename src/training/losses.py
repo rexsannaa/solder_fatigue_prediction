@@ -12,11 +12,6 @@ losses.py - 損失函數模組
 4. 混合損失函數，整合上述所有損失，並支援權重調整
 5. 自適應損失函數，根據訓練進度自動調整損失權重
 """
-# 在檔案頂部，添加以下別名
-# 這樣可以保持原有功能，同時兼容__init__.py中的引用
-EnhancedPhysicsConstraintLoss = PhysicsConstraintLoss
-EnhancedConsistencyLoss = ConsistencyLoss  
-EnhancedHybridLoss = HybridLoss
 
 import torch
 import torch.nn as nn
@@ -567,3 +562,9 @@ if __name__ == "__main__":
         print(f"輪次 {epoch}: 總損失={adaptive_result['total_loss'].item():.4f}, "
              f"物理權重={adaptive_loss.lambda_physics:.4f}, "
              f"一致性權重={adaptive_loss.lambda_consistency:.4f}")
+
+# 在檔案底部或者 PhysicsConstraintLoss 類別定義後添加
+# 這樣可以保持原有功能，同時兼容__init__.py中的引用
+EnhancedPhysicsConstraintLoss = PhysicsConstraintLoss
+EnhancedConsistencyLoss = ConsistencyLoss  
+EnhancedHybridLoss = HybridLoss

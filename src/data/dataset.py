@@ -405,6 +405,7 @@ def create_dataloaders(X_train, X_val, X_test,
 def create_stratified_split(X, time_series, y, test_size=0.15, val_size=0.15, random_state=42):
     """
     使用分層抽樣創建訓練、驗證和測試資料分割
+    處理小樣本數據集的特殊情況
     
     參數:
         X (numpy.ndarray): 靜態特徵
@@ -417,27 +418,73 @@ def create_stratified_split(X, time_series, y, test_size=0.15, val_size=0.15, ra
     返回:
         dict: 包含分割後資料的字典
     """
-    # 為分層抽樣創建類別標籤
-    # 對於回歸問題，可以將目標值分組
-    y_log = np.log(y + 1e-8)
+    # 檢查樣本數
+    n_samples = len(X)
+    if n_samples <= 10:  # 小樣本數據集特殊處理
+        logger.warning(f"樣本數少於10，使用簡單隨機抽樣而非分層抽樣")
+        
+        # 計算測試集和驗證集樣本數
+        n_test = max(1, int(test_size * n_samples))
+        n_val = max(1, int(val_size * n_samples))
+        n_train = n_samples - n_test - n_val
+        
+        # 確保至少有1個樣本分配給每個集合
+        if n_train < 1 or n_val < 1 or n_test < 1:
+            logger.warning("樣本數過少，無法按比例分割，使用最小分配: 訓練=60%, 驗證=20%, 測試=20%")
+            n_test = max(1, int(0.2 * n_samples))
+            n_val = max(1, int(0.2 * n_samples))
+            n_train = n_samples - n_test - n_val
+        
+        # 創建索引
+        indices = np.random.RandomState(random_state).permutation(n_samples)
+        test_idx = indices[:n_test]
+        val_idx = indices[n_test:n_test+n_val]
+        train_idx = indices[n_test+n_val:]
+        
+        # 分割數據
+        X_train, X_val, X_test = X[train_idx], X[val_idx], X[test_idx]
+        time_series_train = time_series[train_idx]
+        time_series_val = time_series[val_idx]
+        time_series_test = time_series[test_idx]
+        y_train, y_val, y_test = y[train_idx], y[val_idx], y[test_idx]
+    else:
+        # 原有的分層抽樣處理
+        try:
+            # 為分層抽樣創建類別標籤
+            # 對於回歸問題，可以將目標值分組
+            y_log = np.log(y + 1e-8)
+            
+            # 將目標值分成n_bins組
+            n_bins = min(10, len(y) // 8)  # 確保每組至少有8個樣本
+            bins = np.linspace(y_log.min(), y_log.max(), n_bins + 1)
+            y_binned = np.digitize(y_log, bins)
+            
+            # 首先分割出測試集
+            X_temp, X_test, time_series_temp, time_series_test, y_temp, y_test, y_binned_temp = train_test_split(
+                X, time_series, y, y_binned, test_size=test_size, random_state=random_state, stratify=y_binned
+            )
+            
+            # 從剩餘資料中分割出驗證集
+            val_ratio = val_size / (1 - test_size)
+            X_train, X_val, time_series_train, time_series_val, y_train, y_val = train_test_split(
+                X_temp, time_series_temp, y_temp, test_size=val_ratio, random_state=random_state, stratify=y_binned_temp
+            )
+        except ValueError as e:
+            # 如果分層抽樣失敗（例如，每個類別樣本數不足）
+            logger.warning(f"分層抽樣失敗: {str(e)}，使用簡單隨機抽樣")
+            
+            # 首先分割出測試集
+            X_temp, X_test, time_series_temp, time_series_test, y_temp, y_test = train_test_split(
+                X, time_series, y, test_size=test_size, random_state=random_state
+            )
+            
+            # 從剩餘資料中分割出驗證集
+            val_ratio = val_size / (1 - test_size)
+            X_train, X_val, time_series_train, time_series_val, y_train, y_val = train_test_split(
+                X_temp, time_series_temp, y_temp, test_size=val_ratio, random_state=random_state
+            )
     
-    # 將目標值分成n_bins組
-    n_bins = min(10, len(y) // 8)  # 確保每組至少有8個樣本
-    bins = np.linspace(y_log.min(), y_log.max(), n_bins + 1)
-    y_binned = np.digitize(y_log, bins)
-    
-    # 首先分割出測試集
-    X_temp, X_test, time_series_temp, time_series_test, y_temp, y_test, y_binned_temp = train_test_split(
-        X, time_series, y, y_binned, test_size=test_size, random_state=random_state, stratify=y_binned
-    )
-    
-    # 從剩餘資料中分割出驗證集
-    val_ratio = val_size / (1 - test_size)
-    X_train, X_val, time_series_train, time_series_val, y_train, y_val = train_test_split(
-        X_temp, time_series_temp, y_temp, test_size=val_ratio, random_state=random_state, stratify=y_binned_temp
-    )
-    
-    logger.info(f"分層資料分割 - 訓練: {len(X_train)} 樣本, "
+    logger.info(f"資料分割 - 訓練: {len(X_train)} 樣本, "
                 f"驗證: {len(X_val)} 樣本, 測試: {len(X_test)} 樣本")
     
     return {

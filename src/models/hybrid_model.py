@@ -215,7 +215,10 @@ class PINNModel(nn.Module):
         """初始化網絡權重"""
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                if m.weight.dim() >= 2:  # 檢查維度
+                    nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                else:
+                    nn.init.uniform_(m.weight, -0.1, 0.1)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm1d):
@@ -333,16 +336,30 @@ class LSTMModel(nn.Module):
         for name, param in self.named_parameters():
             if 'lstm' in name:
                 if 'weight_ih' in name:
-                    nn.init.xavier_uniform_(param.data)
+                    if param.dim() >= 2:  # 檢查維度
+                        nn.init.xavier_uniform_(param.data)
+                    else:
+                        nn.init.uniform_(param.data, -0.1, 0.1)
                 elif 'weight_hh' in name:
-                    nn.init.orthogonal_(param.data)
+                    if param.dim() >= 2:  # 檢查維度
+                        nn.init.orthogonal_(param.data)
+                    else:
+                        nn.init.uniform_(param.data, -0.1, 0.1)
                 elif 'bias' in name:
                     nn.init.zeros_(param.data)
             elif 'attention_weights' in name:
-                nn.init.xavier_uniform_(param.data)
-            elif 'fc' in name and 'weight' in name:
-                nn.init.xavier_uniform_(param.data)
-            elif 'fc' in name and 'bias' in name:
+                if param.dim() >= 2:  # 檢查維度
+                    nn.init.xavier_uniform_(param.data)
+                else:
+                    # 處理一維參數
+                    nn.init.uniform_(param.data, -0.1, 0.1)
+            elif 'linear' in name and 'weight' in name:
+                if param.dim() >= 2:  # 檢查維度
+                    nn.init.xavier_uniform_(param.data)
+                else:
+                    # 處理一維參數
+                    nn.init.uniform_(param.data, -0.1, 0.1)
+            elif 'linear' in name and 'bias' in name:
                 nn.init.zeros_(param.data)
     
     def forward(self, x, return_attention=False):
@@ -608,7 +625,10 @@ class HybridPINNLSTMModel(nn.Module):
         """初始化網絡權重"""
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                if m.weight.dim() >= 2:  # 檢查維度
+                    nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                else:
+                    nn.init.uniform_(m.weight, -0.1, 0.1)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm1d):

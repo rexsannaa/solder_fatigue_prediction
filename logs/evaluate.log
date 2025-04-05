@@ -38,3 +38,43 @@ ValueError: Fan in and fan out can not be computed for tensor with fewer than 2 
     raise ValueError(
 ValueError: Fan in and fan out can not be computed for tensor with fewer than 2 dimensions
 
+2025-04-05 08:09:01,366 - __main__ - INFO - === 開始模型評估 ===
+2025-04-05 08:09:01,370 - __main__ - INFO - 命令行參數: Namespace(model_path='outputs/models/final_model.pt', config='configs/model_config.yaml', data='data/raw/Training_data_warpage_final_20250321_v1.2.csv', output_dir='outputs/evaluation', model_type='hybrid', device=None, batch_size=16, visualize=False, debug=True)
+2025-04-05 08:09:01,370 - __main__ - DEBUG - 除錯模式已啟用
+2025-04-05 08:09:01,382 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-05 08:09:01,384 - __main__ - INFO - 使用計算設備: cpu
+2025-04-05 08:09:01,390 - __main__ - INFO - 創建混合PINN-LSTM模型
+2025-04-05 08:09:01,398 - __main__ - ERROR - 載入模型失敗: Fan in and fan out can not be computed for tensor with fewer than 2 dimensions
+2025-04-05 08:09:01,400 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\evaluate.py", line 92, in load_model
+    model = HybridPINNLSTMModel(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\models\hybrid_model.py", line 560, in __init__
+    self.lstm_branch = LSTMModel(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\models\hybrid_model.py", line 329, in __init__
+    self._initialize_weights()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\models\hybrid_model.py", line 344, in _initialize_weights
+    nn.init.xavier_uniform_(param.data)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\init.py", line 400, in xavier_uniform_
+    fan_in, fan_out = _calculate_fan_in_and_fan_out(tensor)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\init.py", line 348, in _calculate_fan_in_and_fan_out
+    raise ValueError(
+ValueError: Fan in and fan out can not be computed for tensor with fewer than 2 dimensions
+
+2025-04-05 08:09:01,402 - __main__ - ERROR - 評估過程中發生錯誤: Fan in and fan out can not be computed for tensor with fewer than 2 dimensions
+2025-04-05 08:09:01,402 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\evaluate.py", line 471, in main
+    model = load_model(args.model_path, config, model_type=args.model_type, device=device)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\evaluate.py", line 92, in load_model
+    model = HybridPINNLSTMModel(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\models\hybrid_model.py", line 560, in __init__
+    self.lstm_branch = LSTMModel(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\models\hybrid_model.py", line 329, in __init__
+    self._initialize_weights()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\models\hybrid_model.py", line 344, in _initialize_weights
+    nn.init.xavier_uniform_(param.data)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\init.py", line 400, in xavier_uniform_
+    fan_in, fan_out = _calculate_fan_in_and_fan_out(tensor)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\init.py", line 348, in _calculate_fan_in_and_fan_out
+    raise ValueError(
+ValueError: Fan in and fan out can not be computed for tensor with fewer than 2 dimensions
+

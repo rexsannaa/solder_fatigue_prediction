@@ -1,0 +1,124 @@
+2025-04-06 00:43:05,861 - __main__ - DEBUG - 除錯模式已啟用
+2025-04-06 00:43:05,877 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-06 00:43:05,901 - __main__ - INFO - 成功載入配置文件: configs/train_config.yaml
+2025-04-06 00:43:05,905 - __main__ - INFO - 已設定隨機種子: 42
+2025-04-06 00:43:05,906 - __main__ - INFO - 使用計算設備: cpu
+2025-04-06 00:43:05,908 - __main__ - INFO - 輸出目錄: outputs\hybrid_20250406_004305
+2025-04-06 00:43:05,911 - __main__ - INFO - 載入資料: data/raw/Training_data_warpage_final_20250321_v1.2.csv
+2025-04-06 00:43:05,917 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-06 00:43:05,923 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-06 00:43:05,925 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-06 00:43:05,928 - src.data.preprocess - INFO - 資料分割完成 - 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-06 00:43:05,929 - src.data.preprocess - INFO - 完整資料處理流程完成
+2025-04-06 00:43:05,929 - __main__ - INFO - 資料分割完成, 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-06 00:43:05,929 - __main__ - INFO - 應用資料增強...
+2025-04-06 00:43:05,930 - src.data.dataset - INFO - 進行資料增強，原始訓練集大小: 56 樣本
+2025-04-06 00:43:06,126 - src.data.dataset - INFO - 資料增強完成，增強後的訓練集大小: 626 樣本
+2025-04-06 00:43:06,126 - __main__ - INFO - 資料增強完成，增強後的訓練集大小: 626 樣本
+2025-04-06 00:43:06,144 - __main__ - INFO - 創建混合PINN-LSTM模型，使用物理約束: True，融合方法: weighted
+2025-04-06 00:43:06,146 - src.data.dataset - INFO - 已創建資料載入器 - 訓練: 626 樣本, 驗證: 12 樣本, 測試: 13 樣本, 批次大小: 8
+2025-04-06 00:43:08,559 - src.training.trainer - INFO - 創建adam優化器，學習率: 0.001，權重衰減: 0.0001
+2025-04-06 00:43:08,560 - src.training.losses - INFO - 初始化HybridLoss: lambda_physics=0.01, lambda_consistency=0.01, a=55.83, b=-2.259, log_space=True, l1_reg=0.0, l2_reg=0.001
+2025-04-06 00:43:08,560 - src.training.losses - INFO - 初始化AdaptiveHybridLoss: physics權重從0.01增加到0.5, consistency權重從0.01增加到0.3, 在50個輪次內達到最大值, 預熱輪次: 5, 調整方案: linear
+2025-04-06 00:43:08,560 - src.training.trainer - INFO - 創建餘弦退火學習率調度器，週期=100，最小學習率=1e-05
+2025-04-06 00:43:08,561 - src.training.trainer - INFO - 創建餘弦退火學習率調度器，週期: 100，最小學習率: 1e-05
+2025-04-06 00:43:08,563 - src.training.callbacks - INFO - 初始化ModelCheckpoint: 保存目錄=outputs\hybrid_20250406_004305\HybridPINNLSTMModel_20250406_004308\checkpoints, 保存頻率=5, 只保存最佳=False, 監控指標=val_loss, 模式=min
+2025-04-06 00:43:08,564 - src.training.callbacks - INFO - 初始化LossHistory: 保存路徑=outputs\hybrid_20250406_004305\HybridPINNLSTMModel_20250406_004308\history.json, 保存頻率=1
+2025-04-06 00:43:08,567 - src.training.trainer - INFO - 初始化訓練器完成，模型: HybridPINNLSTMModel, 優化器: Adam, 設備: cpu
+2025-04-06 00:43:08,567 - __main__ - INFO - 開始訓練，總輪數: 200
+2025-04-06 00:43:08,567 - src.training.trainer - INFO - 開始訓練，總輪數: 200
+2025-04-06 00:43:10,401 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:10,401 - src.training.trainer - INFO - 輪次 1/200 - 訓練損失: 3608.797258 - 驗證損失: 8.860166 - rmse: 1358.862760 - r2: -2.344233 - mae: 1122.270142 - 學習率: 0.001000 - 時間: 1.83秒
+2025-04-06 00:43:10,416 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_004305\HybridPINNLSTMModel_20250406_004308\checkpoints\HybridPINNLSTMModel_epoch_001.pt
+2025-04-06 00:43:10,418 - src.training.trainer - INFO - min模式下監控指標改善
+2025-04-06 00:43:10,428 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_004305\models\best_model.pt
+2025-04-06 00:43:12,329 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:12,331 - src.training.trainer - INFO - min模式下監控指標改善, 從 8.860166 改善到 7.086839
+2025-04-06 00:43:12,339 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_004305\models\best_model.pt
+2025-04-06 00:43:14,398 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:14,400 - src.training.trainer - INFO - min模式下監控指標改善, 從 7.086839 改善到 6.200031
+2025-04-06 00:43:14,409 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_004305\models\best_model.pt
+2025-04-06 00:43:16,165 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:16,167 - src.training.trainer - INFO - min模式下監控指標改善, 從 6.200031 改善到 5.671257
+2025-04-06 00:43:16,172 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_004305\models\best_model.pt
+2025-04-06 00:43:17,797 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:17,800 - src.training.trainer - INFO - min模式下監控指標改善, 從 5.671257 改善到 4.287951
+2025-04-06 00:43:17,807 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_004305\models\best_model.pt
+2025-04-06 00:43:19,452 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:19,468 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_004305\HybridPINNLSTMModel_20250406_004308\checkpoints\HybridPINNLSTMModel_epoch_006.pt
+2025-04-06 00:43:19,471 - src.training.trainer - INFO - 監控指標未改善，已連續 1 輪。最佳值: 4.287951, 當前值: 5.792145
+2025-04-06 00:43:21,169 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:21,171 - src.training.trainer - INFO - 監控指標未改善，已連續 2 輪。最佳值: 4.287951, 當前值: 6.256269
+2025-04-06 00:43:22,846 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:22,848 - src.training.trainer - INFO - 監控指標未改善，已連續 3 輪。最佳值: 4.287951, 當前值: 6.432950
+2025-04-06 00:43:24,553 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:24,555 - src.training.trainer - INFO - min模式下監控指標改善, 從 4.287951 改善到 2.302502
+2025-04-06 00:43:24,560 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_004305\models\best_model.pt
+2025-04-06 00:43:26,273 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:26,276 - src.training.trainer - INFO - 監控指標未改善，已連續 1 輪。最佳值: 2.302502, 當前值: 6.449836
+2025-04-06 00:43:28,078 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:28,079 - src.training.trainer - INFO - 輪次 11/200 - 訓練損失: 1.756912 - 驗證損失: 6.214407 - rmse: 1338.475018 - r2: -2.244635 - mae: 1105.158325 - 學習率: 0.000976 - 時間: 1.80秒
+2025-04-06 00:43:28,093 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_004305\HybridPINNLSTMModel_20250406_004308\checkpoints\HybridPINNLSTMModel_epoch_011.pt
+2025-04-06 00:43:28,096 - src.training.trainer - INFO - 監控指標未改善，已連續 2 輪。最佳值: 2.302502, 當前值: 6.214407
+2025-04-06 00:43:29,770 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:29,771 - src.training.trainer - INFO - 監控指標未改善，已連續 3 輪。最佳值: 2.302502, 當前值: 5.251308
+2025-04-06 00:43:31,671 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:31,673 - src.training.trainer - INFO - 監控指標未改善，已連續 4 輪。最佳值: 2.302502, 當前值: 5.591009
+2025-04-06 00:43:33,299 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:33,301 - src.training.trainer - INFO - 監控指標未改善，已連續 5 輪。最佳值: 2.302502, 當前值: 5.116147
+2025-04-06 00:43:35,060 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:35,061 - src.training.trainer - INFO - 監控指標未改善，已連續 6 輪。最佳值: 2.302502, 當前值: 5.505729
+2025-04-06 00:43:36,873 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:36,969 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_004305\HybridPINNLSTMModel_20250406_004308\checkpoints\HybridPINNLSTMModel_epoch_016.pt
+2025-04-06 00:43:36,972 - src.training.trainer - INFO - 監控指標未改善，已連續 7 輪。最佳值: 2.302502, 當前值: 5.336070
+2025-04-06 00:43:38,683 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:38,686 - src.training.trainer - INFO - 監控指標未改善，已連續 8 輪。最佳值: 2.302502, 當前值: 5.710840
+2025-04-06 00:43:40,474 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:40,477 - src.training.trainer - INFO - 監控指標未改善，已連續 9 輪。最佳值: 2.302502, 當前值: 5.386427
+2025-04-06 00:43:42,277 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:42,279 - src.training.trainer - INFO - 監控指標未改善，已連續 10 輪。最佳值: 2.302502, 當前值: 5.344726
+2025-04-06 00:43:44,094 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:44,096 - src.training.trainer - INFO - 監控指標未改善，已連續 11 輪。最佳值: 2.302502, 當前值: 5.117503
+2025-04-06 00:43:45,846 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:45,847 - src.training.trainer - INFO - 輪次 21/200 - 訓練損失: 1.081380 - 驗證損失: 4.740398 - rmse: 1308.451184 - r2: -2.100705 - mae: 1060.572876 - 學習率: 0.000905 - 時間: 1.75秒
+2025-04-06 00:43:45,868 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_004305\HybridPINNLSTMModel_20250406_004308\checkpoints\HybridPINNLSTMModel_epoch_021.pt
+2025-04-06 00:43:45,869 - src.training.trainer - INFO - 監控指標未改善，已連續 12 輪。最佳值: 2.302502, 當前值: 4.740398
+2025-04-06 00:43:47,673 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:47,676 - src.training.trainer - INFO - 監控指標未改善，已連續 13 輪。最佳值: 2.302502, 當前值: 5.134725
+2025-04-06 00:43:49,414 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:49,417 - src.training.trainer - INFO - 監控指標未改善，已連續 14 輪。最佳值: 2.302502, 當前值: 4.877858
+2025-04-06 00:43:51,072 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:51,074 - src.training.trainer - INFO - 監控指標未改善，已連續 15 輪。最佳值: 2.302502, 當前值: 4.791119
+2025-04-06 00:43:52,793 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:52,795 - src.training.trainer - INFO - 監控指標未改善，已連續 16 輪。最佳值: 2.302502, 當前值: 4.377991
+2025-04-06 00:43:54,571 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:54,592 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_004305\HybridPINNLSTMModel_20250406_004308\checkpoints\HybridPINNLSTMModel_epoch_026.pt
+2025-04-06 00:43:54,595 - src.training.trainer - INFO - 監控指標未改善，已連續 17 輪。最佳值: 2.302502, 當前值: 4.747904
+2025-04-06 00:43:56,281 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:56,284 - src.training.trainer - INFO - 監控指標未改善，已連續 18 輪。最佳值: 2.302502, 當前值: 3.901376
+2025-04-06 00:43:58,036 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:58,039 - src.training.trainer - INFO - 監控指標未改善，已連續 19 輪。最佳值: 2.302502, 當前值: 4.951325
+2025-04-06 00:43:59,728 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:59,730 - src.training.trainer - INFO - 監控指標未改善，已連續 20 輪。最佳值: 2.302502, 當前值: 5.158611
+2025-04-06 00:43:59,730 - src.training.trainer - INFO - 早停觸發！20 輪未改善
+2025-04-06 00:43:59,730 - src.training.trainer - INFO - 早停觸發，在輪次 29 停止訓練
+2025-04-06 00:43:59,731 - src.training.trainer - INFO - 訓練完成，總時間: 51.16秒
+2025-04-06 00:43:59,741 - __main__ - INFO - 訓練完成，最終模型已保存至: outputs\hybrid_20250406_004305\models\final_model.pt
+2025-04-06 00:43:59,753 - __main__ - ERROR - 執行過程中發生錯誤: zero-dimensional arrays cannot be concatenated
+Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 651, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 644, in main
+    evaluate_trained_model(model, data_dict, device, output_dir)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 515, in evaluate_trained_model
+    all_outputs[key] = np.concatenate(all_outputs[key])
+ValueError: zero-dimensional arrays cannot be concatenated
+2025-04-06 00:43:59,754 - __main__ - ERROR - 詳細錯誤追蹤: Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 651, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 644, in main
+    evaluate_trained_model(model, data_dict, device, output_dir)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 515, in evaluate_trained_model
+    all_outputs[key] = np.concatenate(all_outputs[key])
+ValueError: zero-dimensional arrays cannot be concatenated
+

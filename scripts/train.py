@@ -297,9 +297,9 @@ def train_model(model, data_dict, config, train_config, args, device, output_dir
         X_train=data_dict["X_train"],
         X_val=data_dict["X_val"],
         X_test=data_dict["X_test"],
-        time_series_train=data_dict["time_series_train"],
-        time_series_val=data_dict["time_series_val"],
-        time_series_test=data_dict["time_series_test"],
+        time_series_train=data_dict[ts_train_key],
+        time_series_val=data_dict[ts_val_key],
+        time_series_test=data_dict[ts_test_key],
         y_train=data_dict["y_train"],
         y_val=data_dict["y_val"],
         y_test=data_dict["y_test"],
@@ -419,10 +419,14 @@ def evaluate_trained_model(model, data_dict, device, output_dir):
     返回:
         dict: 評估結果
     """
+
+    # 檢查鍵名
+    ts_test_key = "time_series_test" if "time_series_test" in data_dict else "ts_test"
+
     # 創建測試資料載入器
     test_dataset = torch.utils.data.TensorDataset(
         torch.FloatTensor(data_dict["X_test"]),
-        torch.FloatTensor(data_dict["time_series_test"]),
+        torch.FloatTensor(data_dict[ts_test_key]),
         torch.FloatTensor(data_dict["y_test"])
     )
     test_loader = torch.utils.data.DataLoader(

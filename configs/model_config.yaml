@@ -9,7 +9,7 @@ model:
   # 輸入特徵參數
   input:
     static_features: ["Die", "stud", "mold", "PCB", "Unit_warpage"]  # 靜態結構參數
-    time_series_features: ["NLPLWK_up", "NLPLWK_down"]               # 時間序列特徵
+    time_series_features: ["NLPLWK_up_", "NLPLWK_down_"]               # 時間序列特徵
     time_steps: 4                                                     # 時間步數 (3600, 7200, 10800, 14400)
   
   # PINN分支參數

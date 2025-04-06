@@ -1,0 +1,55 @@
+2025-04-06 21:27:38,762 - __main__ - DEBUG - 除錯模式已啟用
+2025-04-06 21:27:38,775 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-06 21:27:38,799 - __main__ - INFO - 成功載入配置文件: configs/train_config.yaml
+2025-04-06 21:27:38,805 - __main__ - INFO - 已設定隨機種子: 42
+2025-04-06 21:27:38,805 - __main__ - INFO - 使用計算設備: cpu
+2025-04-06 21:27:38,806 - __main__ - INFO - 輸出目錄: outputs\hybrid_20250406_212738
+2025-04-06 21:27:38,808 - __main__ - INFO - 載入資料: data/raw/Training_data_warpage_final_20250321_v1.2.csv
+2025-04-06 21:27:38,812 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-06 21:27:38,816 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-06 21:27:38,817 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-06 21:27:38,821 - src.data.preprocess - INFO - 資料分割完成 - 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-06 21:27:38,822 - src.data.preprocess - INFO - 完整資料處理流程完成
+2025-04-06 21:27:38,822 - __main__ - INFO - 資料分割完成, 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-06 21:27:38,823 - __main__ - INFO - 應用資料增強...
+2025-04-06 21:27:38,823 - src.data.dataset - INFO - 進行資料增強，原始訓練集大小: 56 樣本
+2025-04-06 21:27:38,979 - src.data.dataset - INFO - 資料增強完成，增強後的訓練集大小: 626 樣本
+2025-04-06 21:27:38,979 - __main__ - INFO - 資料增強完成，增強後的訓練集大小: 626 樣本
+2025-04-06 21:27:38,996 - __main__ - INFO - 創建混合PINN-LSTM模型，使用物理約束: True，融合方法: weighted
+2025-04-06 21:27:38,998 - src.data.dataset - INFO - 已創建資料載入器 - 訓練: 626 樣本, 驗證: 12 樣本, 測試: 13 樣本, 批次大小: 8
+2025-04-06 21:27:40,944 - src.training.trainer - INFO - 創建adam優化器，學習率: 0.001，權重衰減: 0.0001
+2025-04-06 21:27:40,944 - src.training.losses - INFO - 初始化HybridLoss: lambda_physics=0.01, lambda_consistency=0.01, a=55.83, b=-2.259, log_space=True, l1_reg=0.0, l2_reg=0.001
+2025-04-06 21:27:40,944 - src.training.losses - INFO - 初始化AdaptiveHybridLoss: physics權重從0.01增加到0.5, consistency權重從0.01增加到0.3, 在50個輪次內達到最大值, 預熱輪次: 5, 調整方案: linear
+2025-04-06 21:27:40,946 - src.training.trainer - INFO - 創建餘弦退火學習率調度器，週期: 100，最小學習率: 1e-05
+2025-04-06 21:27:40,949 - src.training.callbacks - INFO - 初始化ModelCheckpoint: 保存目錄=outputs\hybrid_20250406_212738\HybridPINNLSTMModel_20250406_212740\checkpoints, 保存頻率=5, 只保存最佳=False, 監控指標=val_loss, 模式=min
+2025-04-06 21:27:40,950 - src.training.callbacks - INFO - 初始化LossHistory: 保存路徑=outputs\hybrid_20250406_212738\HybridPINNLSTMModel_20250406_212740\history.json, 保存頻率=1
+2025-04-06 21:27:40,955 - src.training.trainer - INFO - 初始化訓練器完成，模型: HybridPINNLSTMModel, 優化器: Adam, 設備: cpu
+2025-04-06 21:27:40,956 - __main__ - INFO - 開始訓練，總輪數: 200
+2025-04-06 21:27:40,957 - src.training.trainer - INFO - 開始訓練，總輪數: 200
+2025-04-06 21:27:42,870 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 21:27:42,888 - __main__ - ERROR - 執行過程中發生錯誤: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 657, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 647, in main
+    train_model(model, data_dict, config, train_config, args, device, output_dir)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 402, in train_model
+    history = trainer.train(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 800, in train
+    val_results = self.validate(val_loader)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 757, in validate
+    'predictions': all_predictions if all_predictions else None,
+ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+2025-04-06 21:27:42,890 - __main__ - ERROR - 詳細錯誤追蹤: Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 657, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 647, in main
+    train_model(model, data_dict, config, train_config, args, device, output_dir)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 402, in train_model
+    history = trainer.train(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 800, in train
+    val_results = self.validate(val_loader)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 757, in validate
+    'predictions': all_predictions if all_predictions else None,
+ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+

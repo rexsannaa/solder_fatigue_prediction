@@ -394,14 +394,42 @@ def visualize_model_results(results, output_dir="./visualizations", prefix=""):
         
         fig, ax = plt.subplots(figsize=(8, 6))
         labels = ['PINN', 'LSTM']
-        avg_weights = np.mean(fusion_weights, axis=0)
-        ax.bar(labels, avg_weights, color=['blue', 'orange'])
+        
+        # 檢查 fusion_weights 的型態和維度並適當處理
+        if isinstance(fusion_weights, np.ndarray):
+            if fusion_weights.ndim > 1:
+                # 如果是多維數組，取平均值
+                avg_weights = np.mean(fusion_weights, axis=0)
+            elif fusion_weights.ndim == 1 and fusion_weights.size >= 2:
+                # 如果是一維且長度>=2，直接使用前兩個元素
+                avg_weights = fusion_weights[:2]
+            elif fusion_weights.ndim == 0 or fusion_weights.size == 1:
+                # 如果是0維數組或只有1個元素，創建 [fusion_weights, 1-fusion_weights]
+                scalar_value = float(fusion_weights.item() if hasattr(fusion_weights, 'item') else fusion_weights)
+                avg_weights = np.array([scalar_value, 1.0 - scalar_value])
+            else:
+                # 其他情況使用預設值
+                avg_weights = np.array([0.5, 0.5])
+        else:
+            # 如果不是數組，嘗試轉換為浮點數
+            try:
+                scalar_value = float(fusion_weights)
+                avg_weights = np.array([scalar_value, 1.0 - scalar_value])
+            except (TypeError, ValueError):
+                avg_weights = np.array([0.5, 0.5])
+        
+        # 確保 avg_weights 長度至少為2
+        if not hasattr(avg_weights, '__len__') or len(avg_weights) < 2:
+            scalar_value = float(avg_weights) if np.isscalar(avg_weights) else 0.5
+            avg_weights = np.array([scalar_value, 1.0 - scalar_value])
+        
+        ax.bar(labels, avg_weights[:2], color=['blue', 'orange'])
         ax.set_ylabel('平均權重')
         ax.set_title('PINN與LSTM分支融合權重')
         ax.grid(True, linestyle='--', alpha=0.7)
         
         # 在條形上添加數值
-        for i, w in enumerate(avg_weights):
+        for i, w in enumerate(avg_weights[:2]):
             ax.text(i, w + 0.01, f'{w:.3f}', ha='center')
         
         plt.tight_layout()

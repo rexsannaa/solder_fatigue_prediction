@@ -472,8 +472,6 @@ class Trainer:
             'predictions': all_predictions if has_predictions else None,
             'targets': all_targets if has_targets else None
         }
-    
-    # 修改 src/training/trainer.py 中的 validate 函數，修復類似的布爾判斷問題
 
     def validate(self, val_loader):
         """
@@ -481,7 +479,7 @@ class Trainer:
     
         參數:
             val_loader (DataLoader): 驗證數據載入器
-        
+    
         返回:
             dict: 包含驗證損失和指標的字典
         """
@@ -535,7 +533,15 @@ class Trainer:
                                 all_outputs[key] = []
                         
                             if isinstance(value, torch.Tensor):
-                                all_outputs[key].append(value.cpu().numpy())
+                                # 將張量轉換為 numpy 數組
+                                value_np = value.cpu().numpy()
+                            
+                                # 處理零維張量
+                                if value_np.ndim == 0:
+                                    # 將零維張量轉換為標量值
+                                    all_outputs[key].append(value_np.item())
+                                else:
+                                    all_outputs[key].append(value_np)
                             else:
                                 all_outputs[key].append(value)
                     else:
@@ -591,14 +597,22 @@ class Trainer:
         # 合併所有輸出
         outputs_merged = {}
         for key, values in all_outputs.items():
-            if values and isinstance(values[0], np.ndarray):
-                try:
-                    outputs_merged[key] = np.concatenate(values)
-                except Exception as e:
-                    logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
-                    outputs_merged[key] = values
-            else:
-                outputs_merged[key] = values
+            if values:
+                if all(isinstance(val, np.ndarray) for val in values):
+                    try:
+                        outputs_merged[key] = np.concatenate(values)
+                    except Exception as e:
+                        logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
+                        # 如果不能合併，檢查是否為零維數組的問題
+                        if any(val.ndim == 0 for val in values if isinstance(val, np.ndarray)):
+                            # 將零維數組轉換為標量
+                            scalar_values = [val.item() if isinstance(val, np.ndarray) and val.ndim == 0 else val for val in values]
+                            outputs_merged[key] = np.array(scalar_values)
+                        else:
+                            outputs_merged[key] = values
+                else:
+                    # 如果包含非數組元素，轉換為數組
+                    outputs_merged[key] = np.array(values) if all(np.isscalar(val) for val in values) else values
     
         return {
             'loss': avg_loss,

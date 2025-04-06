@@ -17,3 +17,486 @@
 2025-04-06 17:10:39,983 - __main__ - INFO - 資料增強完成，增強後的訓練集大小: 626 樣本
 2025-04-06 17:10:39,994 - __main__ - INFO - 創建混合PINN-LSTM模型，使用物理約束: True，融合方法: weighted
 2025-04-06 17:10:39,996 - src.data.dataset - INFO - 已創建資料載入器 - 訓練: 626 樣本, 驗證: 12 樣本, 測試: 13 樣本, 批次大小: 8
+2025-04-06 17:10:41,774 - src.training.trainer - INFO - 創建adam優化器，學習率: 0.001，權重衰減: 0.0001
+2025-04-06 17:10:41,774 - src.training.losses - INFO - 初始化HybridLoss: lambda_physics=0.01, lambda_consistency=0.01, a=55.83, b=-2.259, log_space=True, l1_reg=0.0, l2_reg=0.001
+2025-04-06 17:10:41,774 - src.training.losses - INFO - 初始化AdaptiveHybridLoss: physics權重從0.01增加到0.5, consistency權重從0.01增加到0.3, 在50個輪次內達到最大值, 預熱輪次: 5, 調整方案: linear
+2025-04-06 17:10:41,775 - src.training.trainer - INFO - 創建餘弦退火學習率調度器，週期: 100，最小學習率: 1e-05
+2025-04-06 17:10:41,777 - src.training.callbacks - INFO - 初始化ModelCheckpoint: 保存目錄=outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints, 保存頻率=5, 只保存最佳=False, 監控指標=val_loss, 模式=min
+2025-04-06 17:10:41,778 - src.training.callbacks - INFO - 初始化LossHistory: 保存路徑=outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\history.json, 保存頻率=1
+2025-04-06 17:10:41,781 - src.training.trainer - INFO - 初始化訓練器完成，模型: HybridPINNLSTMModel, 優化器: Adam, 設備: cpu
+2025-04-06 17:10:41,781 - __main__ - INFO - 開始訓練，總輪數: 200
+2025-04-06 17:10:41,781 - src.training.trainer - INFO - 開始訓練，總輪數: 200
+2025-04-06 17:10:43,793 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:10:43,823 - src.training.trainer - INFO - 輪次 1/200 - 訓練損失: 13.983750 - 驗證損失: 16.592286 - rmse: 1378.508388 - r2: -2.441630 - mae: 1155.657104 - 學習率: 0.001000 - 時間: 2.04秒
+2025-04-06 17:10:43,847 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_001.pt
+2025-04-06 17:10:43,856 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:10:45,835 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:10:45,863 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:10:47,923 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:10:47,955 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:10:49,915 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:10:49,947 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:10:51,952 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:10:51,981 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:10:54,051 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:10:54,082 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_006.pt
+2025-04-06 17:10:54,093 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:10:56,247 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:10:56,271 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:10:58,231 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:10:58,257 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:00,453 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:00,484 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:02,756 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:02,780 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:04,814 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:04,835 - src.training.trainer - INFO - 輪次 11/200 - 訓練損失: 1.238135 - 驗證損失: 5.096258 - rmse: 1316.550797 - r2: -2.139212 - mae: 1075.102661 - 學習率: 0.000976 - 時間: 2.06秒
+2025-04-06 17:11:04,858 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_011.pt
+2025-04-06 17:11:04,870 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:07,163 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:07,196 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:09,464 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:09,498 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:11,737 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:11,774 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:13,962 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:13,996 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:16,242 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:16,276 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_016.pt
+2025-04-06 17:11:16,285 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:18,437 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:18,476 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:20,704 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:20,734 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:23,042 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:23,068 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:25,061 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:25,086 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:27,259 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:27,273 - src.training.trainer - INFO - 輪次 21/200 - 訓練損失: 1.050635 - 驗證損失: 5.274674 - rmse: 1324.436484 - r2: -2.176930 - mae: 1086.845337 - 學習率: 0.000905 - 時間: 2.19秒
+2025-04-06 17:11:27,289 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_021.pt
+2025-04-06 17:11:27,299 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:29,227 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:29,250 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:31,330 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:31,352 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:33,207 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:33,238 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:35,121 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:35,149 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:37,167 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:37,204 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_026.pt
+2025-04-06 17:11:37,212 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:39,137 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:39,160 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:41,150 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:41,182 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:43,175 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:43,201 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:45,141 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:45,162 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:47,153 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:47,173 - src.training.trainer - INFO - 輪次 31/200 - 訓練損失: 0.908627 - 驗證損失: 3.221558 - rmse: 1266.182994 - r2: -1.903610 - mae: 1015.521057 - 學習率: 0.000796 - 時間: 2.01秒
+2025-04-06 17:11:47,188 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_031.pt
+2025-04-06 17:11:47,195 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:49,158 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:49,182 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:51,087 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:51,119 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:53,007 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:53,034 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:55,003 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:55,036 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:56,846 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:56,882 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_036.pt
+2025-04-06 17:11:56,895 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:11:58,907 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:11:58,935 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:01,009 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:01,043 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:03,219 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:03,249 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:05,200 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:05,224 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:07,139 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:07,153 - src.training.trainer - INFO - 輪次 41/200 - 訓練損失: 0.800921 - 驗證損失: 4.730528 - rmse: 1312.748453 - r2: -2.121105 - mae: 1064.218750 - 學習率: 0.000658 - 時間: 1.93秒
+2025-04-06 17:12:07,169 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_041.pt
+2025-04-06 17:12:07,179 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:09,139 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:09,170 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:11,076 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:11,104 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:13,045 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:13,068 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:15,035 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:15,059 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:17,053 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:17,095 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_046.pt
+2025-04-06 17:12:17,105 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:19,596 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:19,631 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:21,825 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:21,853 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:23,939 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:23,966 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:26,441 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:26,477 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:28,515 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:28,529 - src.training.trainer - INFO - 輪次 51/200 - 訓練損失: 0.728372 - 驗證損失: 4.921775 - rmse: 1317.000759 - r2: -2.141358 - mae: 1072.415649 - 學習率: 0.000505 - 時間: 2.05秒
+2025-04-06 17:12:28,550 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_051.pt
+2025-04-06 17:12:28,558 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:30,512 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:30,542 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:32,488 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:32,511 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:34,667 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:34,720 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:36,884 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:36,904 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:38,980 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:39,023 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_056.pt
+2025-04-06 17:12:39,037 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:41,129 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:41,159 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:43,133 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:43,166 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:45,557 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:45,587 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:47,583 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:47,614 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:49,710 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:49,733 - src.training.trainer - INFO - 輪次 61/200 - 訓練損失: 0.711441 - 驗證損失: 4.487364 - rmse: 1309.724542 - r2: -2.106743 - mae: 1065.713623 - 學習率: 0.000352 - 時間: 2.12秒
+2025-04-06 17:12:49,749 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_061.pt
+2025-04-06 17:12:49,758 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:51,902 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:51,935 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:53,939 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:53,963 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:56,012 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:56,044 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:12:58,107 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:12:58,137 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:00,399 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:00,444 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_066.pt
+2025-04-06 17:13:00,457 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:02,569 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:02,598 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:04,741 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:04,762 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:07,121 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:07,157 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:09,218 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:09,243 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:11,382 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:11,404 - src.training.trainer - INFO - 輪次 71/200 - 訓練損失: 0.684244 - 驗證損失: 4.556910 - rmse: 1310.138208 - r2: -2.108706 - mae: 1065.094604 - 學習率: 0.000214 - 時間: 2.16秒
+2025-04-06 17:13:11,424 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_071.pt
+2025-04-06 17:13:11,438 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:14,909 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:14,940 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:16,998 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:17,025 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:19,239 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:19,278 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:21,313 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:21,348 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:23,479 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:23,514 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_076.pt
+2025-04-06 17:13:23,526 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:25,481 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:25,501 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:27,519 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:27,541 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:29,664 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:29,693 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:31,553 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:31,575 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:33,414 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:33,426 - src.training.trainer - INFO - 輪次 81/200 - 訓練損失: 0.665497 - 驗證損失: 4.677444 - rmse: 1311.016352 - r2: -2.112874 - mae: 1063.957397 - 學習率: 0.000105 - 時間: 1.85秒
+2025-04-06 17:13:33,439 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_081.pt
+2025-04-06 17:13:33,448 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:35,452 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:35,479 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:37,434 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:37,455 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:39,375 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:39,395 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:41,474 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:41,500 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:43,571 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:43,612 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_086.pt
+2025-04-06 17:13:43,623 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:45,729 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:45,760 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:47,854 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:47,879 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:49,895 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:49,923 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:51,889 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:51,931 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:54,001 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:54,024 - src.training.trainer - INFO - 輪次 91/200 - 訓練損失: 0.678574 - 驗證損失: 4.255849 - rmse: 1300.562234 - r2: -2.063428 - mae: 1048.897339 - 學習率: 0.000034 - 時間: 2.09秒
+2025-04-06 17:13:54,039 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_091.pt
+2025-04-06 17:13:54,047 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:56,024 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:56,057 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:58,133 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:13:58,157 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:13:59,975 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:00,007 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:02,475 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:02,496 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:04,471 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:04,499 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_096.pt
+2025-04-06 17:14:04,512 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:06,406 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:06,426 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:08,543 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:08,583 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:11,646 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:11,680 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:15,282 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:15,313 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:17,522 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:17,540 - src.training.trainer - INFO - 輪次 101/200 - 訓練損失: 0.669305 - 驗證損失: 4.367837 - rmse: 1305.126814 - r2: -2.084969 - mae: 1056.249023 - 學習率: 0.000010 - 時間: 2.23秒
+2025-04-06 17:14:17,562 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_101.pt
+2025-04-06 17:14:17,575 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:20,338 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:20,375 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:22,868 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:22,900 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:25,082 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:25,118 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:27,095 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:27,119 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:29,240 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:29,279 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_106.pt
+2025-04-06 17:14:29,291 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:31,568 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:31,615 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:34,053 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:34,092 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:36,216 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:36,240 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:38,267 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:38,291 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:40,448 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:40,468 - src.training.trainer - INFO - 輪次 111/200 - 訓練損失: 0.659218 - 驗證損失: 4.213430 - rmse: 1300.181334 - r2: -2.061634 - mae: 1049.695557 - 學習率: 0.000034 - 時間: 2.18秒
+2025-04-06 17:14:40,484 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_111.pt
+2025-04-06 17:14:40,498 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:42,598 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:42,628 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:44,673 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:44,697 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:46,893 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:46,920 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:49,227 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:49,262 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:51,816 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:51,862 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_116.pt
+2025-04-06 17:14:51,879 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:55,360 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:55,382 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:14:57,508 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:14:57,553 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:00,190 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:00,233 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:04,366 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:04,397 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:06,784 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:06,818 - src.training.trainer - INFO - 輪次 121/200 - 訓練損失: 0.684308 - 驗證損失: 4.698221 - rmse: 1314.758866 - r2: -2.130672 - mae: 1071.463745 - 學習率: 0.000105 - 時間: 2.42秒
+2025-04-06 17:15:06,848 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_121.pt
+2025-04-06 17:15:06,865 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:09,548 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:09,579 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:11,944 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:11,982 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:14,319 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:14,354 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:16,680 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:16,700 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:20,336 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:20,379 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_126.pt
+2025-04-06 17:15:20,392 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:22,884 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:22,916 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:24,973 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:24,999 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:26,945 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:26,980 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:28,841 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:28,869 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:30,804 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:30,825 - src.training.trainer - INFO - 輪次 131/200 - 訓練損失: 0.643783 - 驗證損失: 4.361384 - rmse: 1303.606967 - r2: -2.077788 - mae: 1053.451050 - 學習率: 0.000214 - 時間: 1.96秒
+2025-04-06 17:15:30,842 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_131.pt
+2025-04-06 17:15:30,855 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:32,833 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:32,854 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:34,769 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:34,794 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:36,682 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:36,707 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:38,858 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:38,894 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:41,327 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:41,375 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_136.pt
+2025-04-06 17:15:41,392 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:43,828 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:43,869 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:46,075 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:46,107 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:48,255 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:48,284 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:50,565 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:50,593 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:52,692 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:52,713 - src.training.trainer - INFO - 輪次 141/200 - 訓練損失: 0.646468 - 驗證損失: 4.594069 - rmse: 1313.362669 - r2: -2.124026 - mae: 1070.442505 - 學習率: 0.000352 - 時間: 2.12秒
+2025-04-06 17:15:52,736 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_141.pt
+2025-04-06 17:15:52,748 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:56,338 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:56,379 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:15:58,724 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:15:58,764 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:02,016 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:02,472 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:04,929 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:04,968 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:07,156 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:07,195 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_146.pt
+2025-04-06 17:16:07,207 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:09,436 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:09,470 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:11,583 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:11,614 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:15,268 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:15,290 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:17,503 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:17,536 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:19,785 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:19,807 - src.training.trainer - INFO - 輪次 151/200 - 訓練損失: 0.625407 - 驗證損失: 3.987478 - rmse: 1297.305525 - r2: -2.048105 - mae: 1049.506470 - 學習率: 0.000505 - 時間: 2.27秒
+2025-04-06 17:16:19,828 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_151.pt
+2025-04-06 17:16:19,838 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:22,251 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:22,285 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:24,554 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:24,578 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:26,846 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:26,894 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:29,250 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:29,277 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:31,811 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:31,856 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_156.pt
+2025-04-06 17:16:31,872 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:34,508 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:34,539 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:37,219 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:37,250 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:39,312 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:39,339 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:41,374 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:41,397 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:43,456 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:43,470 - src.training.trainer - INFO - 輪次 161/200 - 訓練損失: 0.614829 - 驗證損失: 3.497852 - rmse: 1270.202198 - r2: -1.922073 - mae: 993.915344 - 學習率: 0.000658 - 時間: 2.07秒
+2025-04-06 17:16:43,488 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_161.pt
+2025-04-06 17:16:43,501 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:45,678 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:45,705 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:47,693 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:47,715 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:49,707 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:49,734 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:51,773 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:51,800 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:53,828 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:53,861 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_166.pt
+2025-04-06 17:16:53,872 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:55,930 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:55,957 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:16:58,238 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:16:58,273 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:00,742 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:00,778 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:03,103 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:03,136 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:05,433 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:05,458 - src.training.trainer - INFO - 輪次 171/200 - 訓練損失: 0.601264 - 驗證損失: 3.945661 - rmse: 1296.460759 - r2: -2.044136 - mae: 1047.491211 - 學習率: 0.000796 - 時間: 2.32秒
+2025-04-06 17:17:05,495 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_171.pt
+2025-04-06 17:17:05,518 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:07,894 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:07,929 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:10,810 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:10,850 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:13,447 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:13,482 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:15,687 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:15,721 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:18,195 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:18,242 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_176.pt
+2025-04-06 17:17:18,258 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:20,877 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:20,921 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:23,427 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:23,463 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:25,911 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:25,956 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:28,259 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:28,292 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:30,493 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:30,515 - src.training.trainer - INFO - 輪次 181/200 - 訓練損失: 0.603741 - 驗證損失: 3.943105 - rmse: 1291.116958 - r2: -2.019093 - mae: 1034.023804 - 學習率: 0.000905 - 時間: 2.22秒
+2025-04-06 17:17:30,535 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_181.pt
+2025-04-06 17:17:30,544 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:32,750 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:32,777 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:34,713 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:34,742 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:36,903 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:36,942 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:39,292 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:39,331 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:41,312 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:41,348 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_186.pt
+2025-04-06 17:17:41,357 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:43,565 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:43,614 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:45,606 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:45,643 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:47,575 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:47,617 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:49,965 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:49,996 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:52,521 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:52,537 - src.training.trainer - INFO - 輪次 191/200 - 訓練損失: 0.589500 - 驗證損失: 4.190681 - rmse: 1306.529946 - r2: -2.091606 - mae: 1063.240479 - 學習率: 0.000976 - 時間: 2.54秒
+2025-04-06 17:17:52,557 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_191.pt
+2025-04-06 17:17:52,568 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:54,679 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:54,708 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:56,764 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:56,789 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:17:58,780 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:17:58,807 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:18:01,006 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:18:01,037 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:18:03,540 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:18:03,583 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_20250406_171039\HybridPINNLSTMModel_20250406_171041\checkpoints\HybridPINNLSTMModel_epoch_196.pt
+2025-04-06 17:18:03,605 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:18:05,959 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:18:05,990 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:18:08,272 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:18:08,307 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:18:10,800 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:18:10,831 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:18:12,864 - src.training.trainer - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:18:12,877 - src.training.trainer - INFO - 輪次 200/200 - 訓練損失: 0.590853 - 驗證損失: 4.028683 - rmse: 1295.788756 - r2: -2.040981 - mae: 1042.238892 - 學習率: 0.001000 - 時間: 2.05秒
+2025-04-06 17:18:12,886 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs\hybrid_20250406_171039\models\best_model.pt
+2025-04-06 17:18:12,887 - src.training.trainer - INFO - 訓練完成，總時間: 451.11秒
+2025-04-06 17:18:12,897 - __main__ - INFO - 訓練完成，最終模型已保存至: outputs\hybrid_20250406_171039\models\final_model.pt
+2025-04-06 17:18:12,908 - __main__ - WARNING - 合併輸出 l2_penalty 時出錯: zero-dimensional arrays cannot be concatenated
+2025-04-06 17:18:12,925 - __main__ - INFO - 評估指標已保存至: outputs\hybrid_20250406_171039\evaluation\metrics.csv
+2025-04-06 17:18:12,925 - __main__ - INFO - 生成視覺化結果...
+2025-04-06 17:18:13,633 - src.utils.visualization - INFO - 圖像已保存至: outputs\hybrid_20250406_171039\evaluation\visualizations\pred_vs_true.png
+2025-04-06 17:18:14,054 - src.utils.visualization - INFO - 圖像已保存至: outputs\hybrid_20250406_171039\evaluation\visualizations\pred_vs_true.png
+2025-04-06 17:18:15,525 - src.utils.visualization - INFO - 圖像已保存至: outputs\hybrid_20250406_171039\evaluation\visualizations\error_analysis.png
+2025-04-06 17:18:16,883 - src.utils.visualization - INFO - 圖像已保存至: outputs\hybrid_20250406_171039\evaluation\visualizations\physics_validation.png
+2025-04-06 17:18:18,250 - src.utils.visualization - INFO - 圖像已保存至: outputs\hybrid_20250406_171039\evaluation\visualizations\attention_weights.png
+2025-04-06 17:18:18,792 - src.utils.visualization - INFO - 已生成 6 個視覺化圖表於 outputs\hybrid_20250406_171039\evaluation\visualizations
+2025-04-06 17:18:18,792 - __main__ - INFO - 評估完成，結果已保存至: outputs\hybrid_20250406_171039\evaluation
+2025-04-06 17:18:18,792 - __main__ - INFO - 任務完成

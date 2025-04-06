@@ -867,6 +867,9 @@ class HybridPINNLSTMModel(nn.Module):
                 dynamic_pinn_weight.detach(), 
                 dynamic_lstm_weight.detach()
             ], dim=0)  # 形状为(2, batch_size)
+
+            # 添加到结果中
+            result['dynamic_weights'] = batch_dynamic_weights
         
         elif self.ensemble_method == 'gate':
             # 使用特徵融合層進行融合，並使用門控機制

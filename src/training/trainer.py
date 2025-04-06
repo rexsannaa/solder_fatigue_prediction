@@ -375,6 +375,7 @@ class Trainer:
         all_targets = []
         all_predictions = []
         all_outputs = {}  # 添加: 收集所有輸出，包括dynamic_weights
+        scalar_outputs = defaultdict(list)  # 添加: 收集標量值
 
         # 使用tqdm顯示進度條（如果可用）
         try:
@@ -580,12 +581,17 @@ class Trainer:
                     outputs_merged[key] = values
             else:
                 outputs_merged[key] = values
+        # 处理标量输出
+        for key, values in scalar_outputs.items():
+            if values:
+                # 对于标量值，计算平均值
+                outputs_merged[key] = np.mean(values)
 
         return {
             'loss': avg_loss,
             'metrics': metrics_values,
-            'predictions': all_predictions if has_predictions else None,
-            'targets': all_targets if has_targets else None,
+            'predictions': all_predictions if len(all_predictions) > 0 else None,
+            'targets': all_targets if len(all_targets) > 0 else None,
             'outputs': outputs_merged  # 添加: 返回合併後的所有輸出
         }
 
@@ -665,7 +671,7 @@ class Trainer:
                                             all_outputs[key] = []
                                         all_outputs[key].append(value_np.T)
                                     continue
-                                
+                    
                                 # 常規張量處理
                                 if key not in all_outputs:
                                     all_outputs[key] = []

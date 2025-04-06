@@ -357,7 +357,6 @@ class Trainer:
         logger.info(f"初始化訓練器完成，模型: {type(model).__name__}, "
                    f"優化器: {type(optimizer).__name__}, 設備: {device}")
     
-# 修改 src/training/trainer.py 中的 train_epoch 函數，將返回值中的條件判斷修改為正確的形式
 
     def train_epoch(self, train_loader):
         """
@@ -428,6 +427,13 @@ class Trainer:
                         
                             # 添加: 收集所有輸出，包括dynamic_weights
                             for key, value in outputs.items():
+                                if isinstance(value, torch.Tensor):
+                                    # 將張量轉換為numpy數組
+                                    value_np = value.detach().cpu().numpy()
+                                    # 特殊處理標量值
+                                    if key == 'l2_penalty' or value_np.ndim == 0:
+                                        scalar_outputs[key].append(float(value_np))
+                                        continue
                                 if key not in all_outputs:
                                     all_outputs[key] = []
                             
@@ -661,6 +667,8 @@ class Trainer:
                                 # 特殊處理標量值和特殊張量
                                 if key == 'l2_penalty' or value_np.ndim == 0:
                                     # 對於標量值，直接添加到標量列表
+                                    if key not in scalar_outputs:
+                                        scalar_outputs[key] = []
                                     scalar_outputs[key].append(float(value_np))
                                     continue
                                 

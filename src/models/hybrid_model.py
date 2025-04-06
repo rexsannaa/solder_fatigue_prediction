@@ -790,12 +790,12 @@ class HybridPINNLSTMModel(nn.Module):
     def forward(self, static_features, time_series, return_features=False):
         """
         前向傳播
-    
+
         參數:
             static_features (torch.Tensor): 靜態特徵，形狀為 (batch_size, static_input_dim)
             time_series (torch.Tensor): 時間序列特徵，形狀為 (batch_size, time_steps, time_input_dim)
             return_features (bool): 是否返回各分支特徵
-        
+    
         返回:
             dict: 包含預測結果和中間特徵的字典
         """
@@ -805,74 +805,83 @@ class HybridPINNLSTMModel(nn.Module):
         pinn_delta_w = pinn_output['delta_w']
         pinn_features = pinn_output['features']
         pinn_l2_penalty = pinn_output.get('l2_penalty', torch.tensor(0.0, device=static_features.device))
-    
+
         # 2. LSTM分支前向傳播
         lstm_output = self.lstm_branch(time_series, return_attention=return_features)
         lstm_nf_pred = lstm_output['output']
         lstm_features = lstm_output['features']
         lstm_l2_penalty = lstm_output.get('l2_penalty', torch.tensor(0.0, device=static_features.device))
-    
+
         # 3. 根據集成方法合併預測結果
         if self.ensemble_method == 'weighted':
             # 獲取基礎分支權重
             branch_weights = self.get_branch_weights()
-        
+    
             # 確保預測值的維度一致以進行加權
             if pinn_nf_pred.dim() != lstm_nf_pred.dim() or pinn_nf_pred.shape != lstm_nf_pred.shape:
                 if pinn_nf_pred.dim() < lstm_nf_pred.dim():
                     pinn_nf_pred = pinn_nf_pred.view(lstm_nf_pred.shape)
                 elif lstm_nf_pred.dim() < pinn_nf_pred.dim():
                     lstm_nf_pred = lstm_nf_pred.view(pinn_nf_pred.shape)
-        
+    
+            # 獲取批次大小
+            batch_size = static_features.size(0)
+    
             # 新增: 動態調整權重，根據預測值的大小調整PINN和LSTM的影響力
             # 對於小壽命值，增加PINN分支的影響，對於大壽命值，增加LSTM分支的影響
             log_pinn_pred = torch.log(pinn_nf_pred + 1e-6)
-        
+    
             # 使用sigmoid函數進行平滑過渡，閾值設為5.0（約exp(5)≈150循環）
             # 當預測值小於閾值時，weight_factor接近0，大於閾值時，接近1
             weight_factor = torch.sigmoid((log_pinn_pred - 5.0) / 2.0)
-        
+    
             # 計算動態權重: 對小值偏向PINN分支，對大值偏向LSTM分支
             dynamic_pinn_weight = branch_weights[0] * (1.0 - weight_factor) + 0.2 * weight_factor
             dynamic_lstm_weight = 1.0 - dynamic_pinn_weight
-        
+    
             # 使用動態權重加權平均預測結果
             nf_pred = dynamic_pinn_weight * pinn_nf_pred + dynamic_lstm_weight * lstm_nf_pred
-        
+    
             # 對預測結果應用校正
             if hasattr(self, 'output_correction'):
                 nf_pred = self.output_correction(nf_pred.unsqueeze(-1)).squeeze(-1)
-        
+    
             # 使用動態權重的平均值作為融合權重
             fusion_weights = torch.tensor([dynamic_pinn_weight.mean().item(), 
                                         dynamic_lstm_weight.mean().item()], 
                                         device=static_features.device)
-        
+    
+            # 修正: 確保dynamic_weights的形狀一致，用於後續的批次合併
+            # 使用detach來確保不會影響反向傳播
+            batch_dynamic_weights = torch.stack([
+                dynamic_pinn_weight.detach().reshape(-1), 
+                dynamic_lstm_weight.detach().reshape(-1)
+            ], dim=0)  # 形狀為(2, batch_size)
+
         elif self.ensemble_method == 'gate':
             # 使用特徵融合層進行融合，並使用門控機制
             fused_features, gate_weights = self.fusion_layer(pinn_features, lstm_features)
-        
+    
             # 確保預測值的維度一致以進行加權
             if pinn_nf_pred.dim() != lstm_nf_pred.dim() or pinn_nf_pred.shape != lstm_nf_pred.shape:
                 if pinn_nf_pred.dim() < lstm_nf_pred.dim():
                     pinn_nf_pred = pinn_nf_pred.view(lstm_nf_pred.shape)
                 elif lstm_nf_pred.dim() < pinn_nf_pred.dim():
                     lstm_nf_pred = lstm_nf_pred.view(pinn_nf_pred.shape)
-        
+    
             # 加權平均兩個分支的預測
             nf_pred = gate_weights[:, 0].unsqueeze(-1) * pinn_nf_pred + gate_weights[:, 1].unsqueeze(-1) * lstm_nf_pred
-        
+    
             # 融合權重
             fusion_weights = gate_weights.mean(dim=0)  # 取平均為整體權重
-        
-            # 定義動態權重變量以便在返回結果中使用
-            dynamic_pinn_weight = gate_weights[:, 0]
-            dynamic_lstm_weight = gate_weights[:, 1]
-        
+    
+            # 定義dynamic_weights為gate_weights.T，便於合併
+            batch_dynamic_weights = gate_weights.T  # 形狀為(2, batch_size)
+
         else:  # deep_fusion
             # 使用特徵融合層進行深度融合
             fused_features, gate_weights = self.fusion_layer(pinn_features, lstm_features)
-        
+    
             # 使用輸出層進行預測
             if self.use_log_transform:
                 # 使用對數空間進行預測，確保預測值為正
@@ -880,14 +889,13 @@ class HybridPINNLSTMModel(nn.Module):
             else:
                 # 直接預測，使用softplus確保正值
                 nf_pred = F.softplus(self.output_layer(fused_features)).squeeze(-1)
-        
+    
             # 融合權重
             fusion_weights = gate_weights.mean(dim=0)  # 取平均為整體權重
-        
-            # 定義動態權重變量以便在返回結果中使用
-            dynamic_pinn_weight = gate_weights[:, 0]
-            dynamic_lstm_weight = gate_weights[:, 1]
     
+            # 定義dynamic_weights為gate_weights.T，便於合併
+            batch_dynamic_weights = gate_weights.T  # 形狀為(2, batch_size)
+
         # 組織返回結果
         result = {
             'nf_pred': nf_pred,
@@ -896,17 +904,14 @@ class HybridPINNLSTMModel(nn.Module):
             'fusion_weights': fusion_weights,
             'l2_penalty': pinn_l2_penalty + lstm_l2_penalty
         }
-    
-        # 添加動態權重到結果中
-        if 'dynamic_pinn_weight' in locals() and 'dynamic_lstm_weight' in locals():
-            result['dynamic_weights'] = torch.stack([
-                dynamic_pinn_weight.detach(), 
-                dynamic_lstm_weight.detach()
-            ], dim=0)
-    
+
+        # 修正: 添加動態權重到結果中，使用一致的形狀
+        if 'batch_dynamic_weights' in locals():
+            result['dynamic_weights'] = batch_dynamic_weights
+
         if self.use_physics_layer:
             result['delta_w'] = pinn_delta_w
-    
+
         if return_features:
             result['pinn_features'] = pinn_features
             result['lstm_features'] = lstm_features
@@ -914,7 +919,7 @@ class HybridPINNLSTMModel(nn.Module):
                 result['fused_features'] = fused_features
             if 'attention_weights' in lstm_output:
                 result['attention_weights'] = lstm_output['attention_weights']
-    
+
         return result
 
 class PINNLSTMTrainer:

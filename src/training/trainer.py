@@ -362,10 +362,10 @@ class Trainer:
     def train_epoch(self, train_loader):
         """
         訓練一個輪次
-    
+
         參數:
             train_loader (DataLoader): 訓練數據載入器
-        
+    
         返回:
             dict: 包含訓練損失和指標的字典
         """
@@ -374,14 +374,15 @@ class Trainer:
         total_samples = 0
         all_targets = []
         all_predictions = []
-    
+        all_outputs = {}  # 添加: 收集所有輸出，包括dynamic_weights
+
         # 使用tqdm顯示進度條（如果可用）
         try:
             from tqdm import tqdm
             train_iter = tqdm(train_loader, desc="Training", leave=False)
         except ImportError:
             train_iter = train_loader
-    
+
         for batch_idx, data in enumerate(train_iter):
             # 處理不同形式的數據批次
             if isinstance(data, (list, tuple)) and len(data) >= 2:
@@ -406,10 +407,10 @@ class Trainer:
             else:
                 # 自定義批次格式
                 raise ValueError("不支援的批次數據格式")
-        
+    
             # 清零梯度
             self.optimizer.zero_grad()
-        
+    
             # 根據是否使用自動混合精度選擇不同的前向和反向傳播方式
             if self.use_amp:
                 with torch.cuda.amp.autocast():
@@ -417,36 +418,51 @@ class Trainer:
                     if isinstance(inputs, (list, tuple)) and len(inputs) == 2 and hasattr(self.model, 'forward') and 'static_features' in self.model.forward.__code__.co_varnames:
                         # 專門用於混合PINN-LSTM模型
                         outputs = self.model(inputs[0], inputs[1])
-                    
+                
                         # 檢查outputs是否為字典（用於混合模型）
                         if isinstance(outputs, dict) and 'nf_pred' in outputs:
                             predictions = outputs['nf_pred']
                             losses = self.criterion(outputs, targets, self.model)
                             loss = losses['total_loss']
+                        
+                            # 添加: 收集所有輸出，包括dynamic_weights
+                            for key, value in outputs.items():
+                                if key not in all_outputs:
+                                    all_outputs[key] = []
+                            
+                                if isinstance(value, torch.Tensor):
+                                    # 特殊處理dynamic_weights
+                                    if key == 'dynamic_weights':
+                                        # 假設dynamic_weights的形狀為(2, batch_size)
+                                        all_outputs[key].append(value.detach().cpu().numpy().T)  # 轉置後添加
+                                    else:
+                                        all_outputs[key].append(value.detach().cpu().numpy())
+                                else:
+                                    all_outputs[key].append(value)
                         else:
                             predictions = outputs
                             loss = self.criterion(predictions, targets)
                     else:
                         # 一般模型
                         outputs = self.model(inputs)
-                    
+                
                         # 檢查outputs是否為字典
                         if isinstance(outputs, dict) and 'output' in outputs:
                             predictions = outputs['output']
                         else:
                             predictions = outputs
-                    
+                
                         # 計算損失
                         loss = self.criterion(predictions, targets)
-            
+        
                 # 使用scaler處理反向傳播和優化器步驟
                 self.scaler.scale(loss).backward()
-            
+        
                 # 梯度裁剪
                 if self.clip_grad_norm > 0:
                     self.scaler.unscale_(self.optimizer)
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad_norm)
-            
+        
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
             else:
@@ -454,66 +470,86 @@ class Trainer:
                 if isinstance(inputs, (list, tuple)) and len(inputs) == 2 and hasattr(self.model, 'forward') and 'static_features' in self.model.forward.__code__.co_varnames:
                     # 專門用於混合PINN-LSTM模型
                     outputs = self.model(inputs[0], inputs[1])
-                
+            
                     # 檢查outputs是否為字典（用於混合模型）
                     if isinstance(outputs, dict) and 'nf_pred' in outputs:
                         predictions = outputs['nf_pred']
                         losses = self.criterion(outputs, targets, self.model)
                         loss = losses['total_loss']
+                    
+                        # 添加: 收集所有輸出，包括dynamic_weights
+                        for key, value in outputs.items():
+                            if key not in all_outputs:
+                                all_outputs[key] = []
+                        
+                            if isinstance(value, torch.Tensor):
+                                # 特殊處理dynamic_weights
+                                if key == 'dynamic_weights':
+                                    # 假設dynamic_weights的形狀為(2, batch_size)
+                                    value_np = value.detach().cpu().numpy()
+                                    if value_np.ndim == 2:
+                                        all_outputs[key].append(value_np.T)  # 轉置後添加
+                                    else:
+                                        # 如果形狀不是預期的，跳過以避免錯誤
+                                        continue
+                                else:
+                                    all_outputs[key].append(value.detach().cpu().numpy())
+                            else:
+                                all_outputs[key].append(value)
                     else:
                         predictions = outputs
                         loss = self.criterion(predictions, targets)
                 else:
                     # 一般模型
                     outputs = self.model(inputs)
-                
+            
                     # 檢查outputs是否為字典
                     if isinstance(outputs, dict) and 'output' in outputs:
                         predictions = outputs['output']
                     else:
                         predictions = outputs
-                
+            
                     # 計算損失
                     loss = self.criterion(predictions, targets)
-            
+        
                 # 反向傳播
                 loss.backward()
-            
+        
                 # 梯度裁剪
                 if self.clip_grad_norm > 0:
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad_norm)
-            
+        
                 # 參數更新
                 self.optimizer.step()
-        
+    
             # 收集損失和預測結果
             batch_size = targets.size(0)
             total_loss += loss.item() * batch_size
             total_samples += batch_size
-        
+    
             # 收集預測和目標，用於計算指標
             if isinstance(predictions, torch.Tensor):
                 all_predictions.append(predictions.detach().cpu().numpy())
                 all_targets.append(targets.detach().cpu().numpy())
-        
+    
             # 更新進度條
             if hasattr(train_iter, 'set_postfix'):
                 train_iter.set_postfix({'loss': loss.item()})
-    
+
         # 計算平均損失
         avg_loss = total_loss / total_samples
-    
+
         # 計算指標
         metrics_values = {}
-    
-        # 修正這裡的條件判斷 - 使用 len() 來判斷列表是否為空
+
+        # 使用 len() 來判斷列表是否為空
         has_predictions = len(all_predictions) > 0
         has_targets = len(all_targets) > 0
-    
+
         if has_predictions and has_targets:
             all_predictions = np.concatenate([p.reshape(-1) for p in all_predictions])
             all_targets = np.concatenate([t.reshape(-1) for t in all_targets])
-        
+    
             for name, metric_fn in self.metrics.items():
                 try:
                     metrics_values[name] = metric_fn(all_targets, all_predictions)
@@ -521,20 +557,45 @@ class Trainer:
                     logger.warning(f"計算指標 {name} 時出錯: {str(e)}")
                     metrics_values[name] = float('nan')
     
+        # 添加: 合併所有輸出，特別處理dynamic_weights
+        outputs_merged = {}
+        for key, values in all_outputs.items():
+            if not values:
+                continue
+            
+            # 特殊處理dynamic_weights
+            if key == 'dynamic_weights':
+                try:
+                    # 假設values是一個列表，每個元素形狀為(batch_size, 2)
+                    # 直接垂直拼接這些數組
+                    outputs_merged[key] = np.vstack(values)
+                except Exception as e:
+                    logger.warning(f"合併dynamic_weights時出錯: {str(e)}")
+                    outputs_merged[key] = values
+            elif all(isinstance(val, np.ndarray) for val in values):
+                try:
+                    outputs_merged[key] = np.concatenate(values)
+                except Exception as e:
+                    logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
+                    outputs_merged[key] = values
+            else:
+                outputs_merged[key] = values
+
         return {
             'loss': avg_loss,
             'metrics': metrics_values,
             'predictions': all_predictions if has_predictions else None,
-            'targets': all_targets if has_targets else None
+            'targets': all_targets if has_targets else None,
+            'outputs': outputs_merged  # 添加: 返回合併後的所有輸出
         }
 
     def validate(self, val_loader):
         """
         驗證模型
-    
+
         參數:
             val_loader (DataLoader): 驗證數據載入器
-    
+
         返回:
             dict: 包含驗證損失和指標的字典
         """
@@ -544,7 +605,7 @@ class Trainer:
         all_targets = []
         all_predictions = []
         all_outputs = {}
-    
+
         with torch.no_grad():
             for data in val_loader:
                 # 處理不同形式的數據批次
@@ -570,29 +631,39 @@ class Trainer:
                 else:
                     # 自定義批次格式
                     raise ValueError("不支援的批次數據格式")
-            
+        
                 # 前向傳播
                 if isinstance(inputs, (list, tuple)) and len(inputs) == 2 and hasattr(self.model, 'forward') and 'static_features' in self.model.forward.__code__.co_varnames:
                     # 專門用於混合PINN-LSTM模型
                     outputs = self.model(inputs[0], inputs[1], return_features=True)
-                
+            
                     # 檢查outputs是否為字典（用於混合模型）
                     if isinstance(outputs, dict) and 'nf_pred' in outputs:
                         predictions = outputs['nf_pred']
                         losses = self.criterion(outputs, targets, self.model)
                         loss = losses['total_loss']
-                    
-                        # 收集輸出
+                
+                        # 收集輸出 - 修正: 處理每個key的類型和維度，特別處理dynamic_weights
                         for key, value in outputs.items():
                             if key not in all_outputs:
                                 all_outputs[key] = []
-                        
+                    
+                            # 處理不同類型的輸出
                             if isinstance(value, torch.Tensor):
-                                # 將張量轉換為 numpy 數組
+                                # 將張量轉換為numpy數組
                                 value_np = value.cpu().numpy()
                             
-                                # 處理零維張量
-                                if value_np.ndim == 0:
+                                # 特殊處理dynamic_weights，確保收集整個批次的數據
+                                if key == 'dynamic_weights':
+                                    # 假設dynamic_weights的形狀為(2, batch_size)
+                                    # 將其轉置為(batch_size, 2)更方便後續處理
+                                    if value_np.ndim == 2:
+                                        all_outputs[key].append(value_np.T)  # 轉置後添加
+                                    else:
+                                        # 如果形狀不是預期的，跳過以避免錯誤
+                                        logger.warning(f"Unexpected shape for dynamic_weights: {value_np.shape}")
+                                        continue
+                                elif value_np.ndim == 0:
                                     # 將零維張量轉換為標量值
                                     all_outputs[key].append(value_np.item())
                                 else:
@@ -605,41 +676,41 @@ class Trainer:
                 else:
                     # 一般模型
                     outputs = self.model(inputs)
-                
+            
                     # 檢查outputs是否為字典
                     if isinstance(outputs, dict) and 'output' in outputs:
                         predictions = outputs['output']
                     else:
                         predictions = outputs
-                
+            
                     # 計算損失
                     loss = self.criterion(predictions, targets)
-            
+        
                 # 收集損失和預測結果
                 batch_size = targets.size(0)
                 total_loss += loss.item() * batch_size
                 total_samples += batch_size
-            
+        
                 # 收集預測和目標，用於計算指標
                 if isinstance(predictions, torch.Tensor):
                     all_predictions.append(predictions.detach().cpu().numpy())
                     all_targets.append(targets.detach().cpu().numpy())
-    
+
         # 計算平均損失
         avg_loss = total_loss / total_samples
-    
+
         # 計算指標
         metrics_values = {}
-    
+
         # 修正布爾條件判斷
         has_predictions = len(all_predictions) > 0
         has_targets = len(all_targets) > 0
-    
+
         if has_predictions and has_targets:
             try:
                 all_predictions = np.concatenate([p.reshape(-1) for p in all_predictions])
                 all_targets = np.concatenate([t.reshape(-1) for t in all_targets])
-            
+        
                 for name, metric_fn in self.metrics.items():
                     try:
                         metrics_values[name] = metric_fn(all_targets, all_predictions)
@@ -648,27 +719,39 @@ class Trainer:
                         metrics_values[name] = float('nan')
             except Exception as e:
                 logger.error(f"合併預測結果時出錯: {str(e)}")
-    
-        # 合併所有輸出
+
+        # 合併所有輸出 - 修正: 根據不同的key類型進行特殊處理
         outputs_merged = {}
         for key, values in all_outputs.items():
-            if values:
-                if all(isinstance(val, np.ndarray) for val in values):
-                    try:
-                        outputs_merged[key] = np.concatenate(values)
-                    except Exception as e:
-                        logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
-                        # 如果不能合併，檢查是否為零維數組的問題
-                        if any(val.ndim == 0 for val in values if isinstance(val, np.ndarray)):
-                            # 將零維數組轉換為標量
-                            scalar_values = [val.item() if isinstance(val, np.ndarray) and val.ndim == 0 else val for val in values]
-                            outputs_merged[key] = np.array(scalar_values)
-                        else:
-                            outputs_merged[key] = values
-                else:
-                    # 如果包含非數組元素，轉換為數組
-                    outputs_merged[key] = np.array(values) if all(np.isscalar(val) for val in values) else values
-    
+            if not values:
+                continue
+            
+            # 特殊處理dynamic_weights
+            if key == 'dynamic_weights':
+                try:
+                    # 假設values是一個列表，每個元素形狀為(batch_size, 2)
+                    # 直接垂直拼接這些數組
+                    outputs_merged[key] = np.vstack(values)
+                except Exception as e:
+                    logger.warning(f"合併dynamic_weights時出錯: {str(e)}")
+                    outputs_merged[key] = values
+            elif all(isinstance(val, np.ndarray) for val in values):
+                try:
+                    # 嘗試直接拼接numpy數組
+                    outputs_merged[key] = np.concatenate(values)
+                except Exception as e:
+                    logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
+                    # 如果不能合併，檢查是否為零維數組的問題
+                    if any(val.ndim == 0 for val in values if isinstance(val, np.ndarray)):
+                        # 將零維數組轉換為標量
+                        scalar_values = [val.item() if isinstance(val, np.ndarray) and val.ndim == 0 else val for val in values]
+                        outputs_merged[key] = np.array(scalar_values)
+                    else:
+                        outputs_merged[key] = values
+            else:
+                # 如果包含非數組元素，轉換為數組
+                outputs_merged[key] = np.array(values) if all(np.isscalar(val) for val in values) else values
+
         return {
             'loss': avg_loss,
             'metrics': metrics_values,

@@ -28,49 +28,56 @@ from src.utils.metrics import calculate_rmse, calculate_r2, calculate_mae
 logger = logging.getLogger(__name__)
 
 
+# EarlyStopping 類的修改
 class EarlyStopping:
-    """
-    早停機制
-    監控指標不再改善時提前結束訓練，避免過擬合
-    """
-    def __init__(self, patience=10, min_delta=0.0001, verbose=True, mode='min'):
+    def __init__(self, patience=30, min_delta=0.0005, verbose=True, mode='min', 
+                 restart_threshold=5, min_epoch=50):
         """
-        初始化早停機制
+        初始化早停機制，添加重啟機制和最小訓練輪數
         
         參數:
-            patience (int): 容忍的輪數，指標不再改善後等待多少輪停止
-            min_delta (float): 最小改善閾值，小於此值視為沒有改善
+            patience (int): 容忍的輪數，從20增加到30
+            min_delta (float): 最小改善閾值，從0.0001降到0.0005
             verbose (bool): 是否輸出詳細日誌
             mode (str): 監控模式，'min'表示指標越小越好，'max'表示指標越大越好
+            restart_threshold (int): 重啟閾值，連續多少輪不改善後重啟
+            min_epoch (int): 最小訓練輪數，即使早停也至少訓練這麼多輪
         """
         self.patience = patience
         self.min_delta = min_delta
         self.verbose = verbose
         self.mode = mode
+        self.restart_threshold = restart_threshold
+        self.min_epoch = min_epoch
         self.counter = 0
+        self.plateau_counter = 0  # 記錄停滯輪數
         self.best_score = None
         self.early_stop = False
         self.val_loss_min = float('inf') if mode == 'min' else float('-inf')
+        self.current_epoch = 0  # 記錄當前輪次
+        self.restart_history = []  # 記錄重啟歷史
     
-    def __call__(self, score, model=None, save_path=None):
+    def __call__(self, score, model=None, save_path=None, epoch=None):
         """
-        執行早停檢查
+        執行早停檢查，添加重啟邏輯和最小訓練輪數檢查
+        """
+        if epoch is not None:
+            self.current_epoch = epoch
         
-        參數:
-            score (float): 當前監控指標值
-            model (torch.nn.Module, optional): 如果提供模型，則在指標改善時保存模型
-            save_path (str, optional): 模型保存路徑
+        # 如果尚未達到最小訓練輪數，不觸發早停
+        if self.current_epoch < self.min_epoch:
+            if self.verbose and self.counter > 0:
+                logger.info(f"尚未達到最小訓練輪數({self.min_epoch})，不觸發早停")
             
-        返回:
-            bool: 是否達到早停條件
-        """
-        # 檢查模式
-        if self.mode == 'min':
-            # 對於需要最小化的指標（如損失）
-            score_improved = self.best_score is None or score < self.best_score - self.min_delta
-        else:
-            # 對於需要最大化的指標（如準確率）
-            score_improved = self.best_score is None or score > self.best_score + self.min_delta
+            # 仍然進行最佳模型的保存
+            score_improved = self._check_improvement(score)
+            if score_improved and model is not None and save_path is not None:
+                self._save_checkpoint(model, score, save_path)
+            
+            return False
+        
+        # 檢查指標是否改善
+        score_improved = self._check_improvement(score)
         
         if score_improved:
             # 指標改善，重置計數器
@@ -80,23 +87,47 @@ class EarlyStopping:
             
             self.best_score = score
             self.counter = 0
+            self.plateau_counter = 0  # 重置停滯計數器
             
-            # 如果提供了模型和保存路徑，保存模型
+            # 保存模型
             if model is not None and save_path is not None:
                 self._save_checkpoint(model, score, save_path)
         else:
             # 指標未改善，增加計數器
             self.counter += 1
+            self.plateau_counter += 1
             if self.verbose:
                 logger.info(f"監控指標未改善，已連續 {self.counter} 輪。最佳值: {self.best_score:.6f}, 當前值: {score:.6f}")
             
+            # 檢查是否需要重啟
+            if self.plateau_counter >= self.restart_threshold and self.restart_threshold > 0:
+                if self.verbose:
+                    logger.info(f"檢測到訓練停滯，嘗試重啟訓練...")
+                
+                self.plateau_counter = 0  # 重置停滯計數器
+                self.counter = max(0, self.counter - self.restart_threshold // 2)  # 減少計數器
+                self.restart_history.append(self.current_epoch)
+                
+                return False  # 不觸發早停，但建議調整學習率
+            
+            # 檢查是否達到早停條件
             if self.counter >= self.patience:
-                # 達到早停條件
                 self.early_stop = True
                 if self.verbose:
                     logger.info(f"早停觸發！{self.counter} 輪未改善")
         
         return self.early_stop
+    
+    def _check_improvement(self, score):
+        """檢查指標是否改善"""
+        if self.mode == 'min':
+            # 對於需要最小化的指標（如損失）
+            score_improved = self.best_score is None or score < self.best_score - self.min_delta
+        else:
+            # 對於需要最大化的指標（如準確率）
+            score_improved = self.best_score is None or score > self.best_score + self.min_delta
+        
+        return score_improved
     
     def _save_checkpoint(self, model, score, save_path):
         """
@@ -124,29 +155,21 @@ class EarlyStopping:
         self.val_loss_min = float('inf') if self.mode == 'min' else float('-inf')
 
 
+# LearningRateScheduler 類的修改
 class LearningRateScheduler:
-    """
-    學習率調度器
-    動態調整學習率，加速收斂過程
-    """
-    def __init__(self, optimizer, mode='step', step_size=10, gamma=0.1, 
+    def __init__(self, optimizer, mode='cosine', step_size=10, gamma=0.1, 
                  min_lr=0.00001, factor=0.5, patience=5, T_max=100, 
-                 monitor='val_loss', monitor_mode='min', verbose=True):
+                 monitor='val_loss', monitor_mode='min', verbose=True,
+                 warmup_epochs=10, warmup_factor=0.1, cycle_momentum=True):
         """
-        初始化學習率調度器
+        初始化學習率調度器，添加預熱和循環學習率支援
         
         參數:
             optimizer (torch.optim.Optimizer): 優化器
-            mode (str): 調度模式，'step', 'exp', 'plateau', 'cosine'
-            step_size (int): step模式下的步長
-            gamma (float): 學習率衰減因子
-            min_lr (float): 最小學習率
-            factor (float): plateau模式下的衰減因子
-            patience (int): plateau模式下的耐心值
-            T_max (int): cosine模式下的週期長度
-            monitor (str): plateau模式下監控的指標
-            monitor_mode (str): 監控模式，'min'或'max'
-            verbose (bool): 是否輸出詳細日誌
+            mode (str): 調度模式，'step', 'exp', 'plateau', 'cosine', 'cyclic', 'one_cycle'
+            warmup_epochs (int): 預熱輪數
+            warmup_factor (float): 預熱起始學習率因子
+            cycle_momentum (bool): 是否循環調整動量
         """
         self.optimizer = optimizer
         self.mode = mode
@@ -154,52 +177,84 @@ class LearningRateScheduler:
         self.monitor_mode = monitor_mode
         self.verbose = verbose
         self.min_lr = min_lr
+        self.warmup_epochs = warmup_epochs
+        self.warmup_factor = warmup_factor
+        self.cycle_momentum = cycle_momentum
+        self.base_lrs = [param_group['lr'] for param_group in optimizer.param_groups]
         
-        # 根據模式創建調度器
+        # 創建調度器
         if mode == 'step':
             self.scheduler = optim.lr_scheduler.StepLR(
-                optimizer, 
-                step_size=step_size, 
-                gamma=gamma
+                optimizer, step_size=step_size, gamma=gamma
             )
-            logger.info(f"創建步進式學習率調度器，步長={step_size}，衰減因子={gamma}")
         elif mode == 'exp':
             self.scheduler = optim.lr_scheduler.ExponentialLR(
-                optimizer, 
-                gamma=gamma
+                optimizer, gamma=gamma
             )
-            logger.info(f"創建指數式學習率調度器，衰減因子={gamma}")
         elif mode == 'plateau':
             self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, 
-                mode=monitor_mode, 
-                factor=factor, 
-                patience=patience, 
-                min_lr=min_lr,
-                verbose=verbose
+                optimizer, mode=monitor_mode, factor=factor, 
+                patience=patience, min_lr=min_lr, verbose=verbose
             )
-            logger.info(f"創建平原式學習率調度器，模式={monitor_mode}，"
-                       f"衰減因子={factor}，耐心值={patience}，最小學習率={min_lr}")
         elif mode == 'cosine':
             self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
-                optimizer, 
-                T_max=T_max, 
-                eta_min=min_lr
+                optimizer, T_max=T_max, eta_min=min_lr
             )
-            logger.info(f"創建餘弦退火學習率調度器，週期={T_max}，最小學習率={min_lr}")
+        elif mode == 'cyclic':
+            # 使用循環學習率
+            max_lr = [lr * 10 for lr in self.base_lrs]
+            self.scheduler = optim.lr_scheduler.CyclicLR(
+                optimizer, base_lr=self.base_lrs, max_lr=max_lr,
+                step_size_up=step_size, mode='triangular2',
+                cycle_momentum=cycle_momentum
+            )
+        elif mode == 'one_cycle':
+            # 使用one cycle策略
+            max_lr = [lr * 10 for lr in self.base_lrs]
+            self.scheduler = optim.lr_scheduler.OneCycleLR(
+                optimizer, max_lr=max_lr, total_steps=T_max,
+                pct_start=0.3, anneal_strategy='cos',
+                cycle_momentum=cycle_momentum
+            )
         else:
             raise ValueError(f"不支援的調度模式: {mode}")
+        
+        # 初始化預熱狀態
+        self.in_warmup = warmup_epochs > 0
+        self.warmup_step = 0
         
         # 當前學習率
         self.current_lr = [param_group['lr'] for param_group in optimizer.param_groups]
     
-    def step(self, val=None):
+    def step(self, val=None, epoch=None):
         """
         執行學習率調度
         
         參數:
             val (float, optional): 監控指標的值，用於plateau模式
+            epoch (int, optional): 當前輪次，用於預熱階段
         """
+        # 處理預熱階段
+        if self.in_warmup and epoch is not None and epoch < self.warmup_epochs:
+            progress = (epoch + 1) / self.warmup_epochs
+            factor = self.warmup_factor + (1 - self.warmup_factor) * progress
+            
+            for param_group, base_lr in zip(self.optimizer.param_groups, self.base_lrs):
+                param_group['lr'] = base_lr * factor
+            
+            if self.verbose:
+                logger.info(f"預熱階段 ({epoch+1}/{self.warmup_epochs}), "
+                          f"學習率設置為 {[param_group['lr'] for param_group in self.optimizer.param_groups]}")
+            
+            self.warmup_step += 1
+            if self.warmup_step >= self.warmup_epochs:
+                self.in_warmup = False
+            
+            # 更新當前學習率
+            self.current_lr = [param_group['lr'] for param_group in self.optimizer.param_groups]
+            return
+        
+        # 預熱階段結束後的正常調度
         if self.mode == 'plateau' and val is not None:
             # 平原式調度需要監控指標值
             self.scheduler.step(val)
@@ -1189,10 +1244,11 @@ def get_pinn_lstm_trainer(model, optimizer, config, device,
     return trainer
 
 
+# train_hybrid_model_with_stages 函數的修改
 def train_hybrid_model_with_stages(model, dataloaders, config, train_config, device, output_dir, 
                                   use_physics=True, stages=None):
     """
-    使用分階段策略訓練混合模型
+    使用分階段策略訓練混合模型，改進階段設計和訓練流程
     
     參數:
         model (HybridPINNLSTMModel): 混合模型
@@ -1203,9 +1259,6 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
         output_dir (str): 輸出目錄
         use_physics (bool): 是否使用物理約束
         stages (list): 要執行的訓練階段列表
-        
-    返回:
-        dict: 訓練歷史記錄
     """
     # 設定預設階段，如果沒有提供
     if stages is None:
@@ -1218,6 +1271,8 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
     from src.training.callbacks import AdaptiveCallbacks
     
     all_history = {}
+    best_val_loss_overall = float('inf')
+    best_model_state = None
     
     # 定義階段訓練記錄檔案
     stage_log_file = os.path.join(output_dir, "stage_training_log.txt")
@@ -1228,44 +1283,147 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
     
     current_epoch = 0
     
+    # 修改點: 調整預設階段配置
+    stage_configs = {
+        "warmup": {
+            "epochs": 40,               # 增加預熱輪次
+            "learning_rate_factor": 0.1,
+            "lambda_physics": 0.05 if use_physics else 0.0,
+            "lambda_consistency": 0.01,
+            "description": "低學習率預熱，輕微物理約束"
+        },
+        "main": {
+            "epochs": 200,              # 增加主訓練輪次
+            "learning_rate_factor": 1.0,
+            "lambda_physics": 0.3 if use_physics else 0.0,  # 增加物理約束權重
+            "lambda_physics_max": 0.8 if use_physics else 0.0,  # 最大物理約束權重
+            "lambda_consistency": 0.1,
+            "lambda_consistency_max": 0.3,
+            "description": "主要訓練階段，逐步增加物理約束"
+        },
+        "finetune": {
+            "epochs": 60,               # 增加微調輪次
+            "learning_rate_factor": 0.01,
+            "lambda_physics": 0.8 if use_physics else 0.0,  # 顯著增加物理約束
+            "lambda_consistency": 0.3,
+            "description": "低學習率微調，強化物理約束"
+        }
+    }
+    
     # 遍歷每個訓練階段
-    for stage in stages:
+    for stage_idx, stage in enumerate(stages):
         logger.info("="*50)
-        logger.info(f"開始 {stage} 階段訓練")
+        logger.info(f"開始 {stage} 階段訓練 ({stage_idx+1}/{len(stages)})")
         
         # 獲取階段配置
-        stage_config = prepare_training_config(config, train_config, stage=stage, start_epoch=current_epoch)
+        stage_config = stage_configs.get(stage, {})
+        if not stage_config:
+            logger.warning(f"找不到階段 {stage} 的配置，使用預設配置")
+            stage_config = prepare_training_config(config, train_config, stage=stage, start_epoch=current_epoch)
+        
         logger.info(f"階段描述: {stage_config['description']}")
         logger.info(f"訓練輪數: {stage_config['epochs']}")
-        logger.info(f"學習率: {stage_config['learning_rate']}")
-        logger.info(f"物理約束權重: {stage_config['lambda_physics']}")
-        logger.info(f"一致性約束權重: {stage_config['lambda_consistency']}")
+        logger.info(f"學習率因子: {stage_config['learning_rate_factor']}")
+        logger.info(f"物理約束權重: {stage_config.get('lambda_physics', 0.0)}")
+        logger.info(f"一致性約束權重: {stage_config.get('lambda_consistency', 0.0)}")
         
         # 創建階段特定的輸出目錄
         stage_dir = os.path.join(output_dir, f"stage_{stage}")
         os.makedirs(stage_dir, exist_ok=True)
         
+        # 修改點: 調整基礎學習率
+        if stage == "warmup":
+            base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
+        elif stage == "main":
+            # 從預熱階段學習率平滑過渡
+            if "warmup" in stages and stages.index("warmup") < stages.index("main"):
+                warmup_lr = config["training"]["optimizer"]["learning_rate"] * stage_configs["warmup"]["learning_rate_factor"]
+                base_lr = warmup_lr * 5  # 預熱結束後放大學習率
+            else:
+                base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
+        else:  # finetune
+            # 從主訓練階段學習率平滑過渡
+            if "main" in stages and stages.index("main") < stages.index("finetune"):
+                main_lr = config["training"]["optimizer"]["learning_rate"] * stage_configs["main"]["learning_rate_factor"]
+                base_lr = main_lr * stage_config["learning_rate_factor"]  # 顯著降低學習率
+            else:
+                base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
+        
         # 創建階段優化器
-        optimizer = create_optimizer(model, config, stage_config)
+        optimizer = torch.optim.Adam(
+            model.parameters(), 
+            lr=base_lr,
+            weight_decay=config["training"]["optimizer"]["weight_decay"]
+        )
         
-        # 創建階段學習率調度器
-        scheduler = create_lr_scheduler(optimizer, config, stage_config)
+        # 修改點: 調整學習率調度器
+        if stage == "warmup":
+            # 預熱階段使用較溫和的學習率調度
+            scheduler = LearningRateScheduler(
+                optimizer, 
+                mode='cosine',
+                T_max=stage_config["epochs"],
+                min_lr=base_lr * 0.1,
+                warmup_epochs=10,  # 預熱階段內部也有預熱
+                warmup_factor=0.1
+            )
+        elif stage == "main":
+            # 主訓練階段使用循環學習率
+            scheduler = LearningRateScheduler(
+                optimizer, 
+                mode='one_cycle',
+                T_max=stage_config["epochs"],
+                min_lr=base_lr * 0.01
+            )
+        else:  # finetune
+            # 微調階段使用平原式調度
+            scheduler = LearningRateScheduler(
+                optimizer, 
+                mode='plateau',
+                factor=0.5,
+                patience=10,
+                min_lr=base_lr * 0.1
+            )
         
-        # 創建專用訓練器
+        # 修改點: 調整早停機制
+        if stage == "warmup":
+            early_stopping_patience = 40  # 預熱階段不要過早停止
+            min_delta = 0.001  # 較大的閾值
+            min_epoch = 30  # 至少訓練30輪
+        elif stage == "main":
+            early_stopping_patience = 30  # 主訓練階段標準耐心值
+            min_delta = 0.0005  # 標準閾值
+            min_epoch = 50  # 至少訓練50輪
+        else:  # finetune
+            early_stopping_patience = 20  # 微調階段可以較早停止
+            min_delta = 0.0001  # 較小的閾值
+            min_epoch = 20  # 至少訓練20輪
+        
+        early_stopping = EarlyStopping(
+            patience=early_stopping_patience,
+            min_delta=min_delta,
+            verbose=True,
+            mode='min',
+            restart_threshold=early_stopping_patience // 4,  # 允許重啟
+            min_epoch=min_epoch
+        )
+        
+        # 創建專用訓練器，使用更新後的配置
         trainer = PINNLSTMTrainer(
             model=model,
             optimizer=optimizer,
             device=device,
-            lambda_physics_init=stage_config["lambda_physics"] if use_physics else 0.0,
-            lambda_physics_max=stage_config.get("lambda_physics_max", stage_config["lambda_physics"] * 2),
-            lambda_consistency_init=stage_config["lambda_consistency"],
-            lambda_consistency_max=stage_config.get("lambda_consistency_max", stage_config["lambda_consistency"] * 2),
-            lambda_ramp_epochs=stage_config.get("lambda_ramp_epochs", stage_config["epochs"] // 2),
-            clip_grad_norm=stage_config["clip_grad_norm"],
-            scheduler=scheduler
+            lambda_physics_init=stage_config.get("lambda_physics", 0.0),
+            lambda_physics_max=stage_config.get("lambda_physics_max", stage_config.get("lambda_physics", 0.0) * 2),
+            lambda_consistency_init=stage_config.get("lambda_consistency", 0.0),
+            lambda_consistency_max=stage_config.get("lambda_consistency_max", stage_config.get("lambda_consistency", 0.0) * 2),
+            lambda_ramp_epochs=stage_config.get("epochs") // 2,
+            clip_grad_norm=config["training"].get("clip_grad_norm", 1.0),
+            scheduler=scheduler,
+            log_interval=10  # 增加日誌頻率
         )
         
-        # 創建階段回調函數
+        # 修改點: 調整回調函數
         callbacks = AdaptiveCallbacks.create_callbacks(
             model=model,
             dataset_size=len(dataloaders["train_loader"].dataset),
@@ -1273,8 +1431,8 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
             output_dir=stage_dir,
             use_tensorboard=True,
             use_progress_bar=True,
-            use_early_stopping=True,
-            patience=config["training"]["early_stopping"]["patience"],
+            use_early_stopping=False,  # 我們在trainer中使用自定義早停
+            patience=early_stopping_patience,
             monitor="val_loss",
             mode="min",
             save_freq=5
@@ -1287,7 +1445,7 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
             train_loader=dataloaders["train_loader"],
             val_loader=dataloaders["val_loader"],
             epochs=stage_config["epochs"],
-            early_stopping_patience=config["training"]["early_stopping"]["patience"],
+            early_stopping=early_stopping,  # 使用剛剛創建的早停
             save_path=os.path.join(stage_dir, "models", "best_model.pt"),
             callbacks=callbacks
         )
@@ -1295,17 +1453,40 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
         train_time = time.time() - start_time
         
         # 記錄階段訓練結果
+        stage_val_loss = stage_history.get('best_val_loss', float('inf'))
         with open(stage_log_file, "a") as f:
             f.write(f"\n階段: {stage}\n")
             f.write(f"描述: {stage_config['description']}\n")
             f.write(f"訓練輪數: {stage_config['epochs']}\n")
+            f.write(f"實際訓練輪數: {stage_history.get('epochs_trained', 0)}\n")
             f.write(f"訓練時間: {train_time:.2f}秒\n")
-            f.write(f"最佳驗證損失: {stage_history['best_val_loss']:.6f}\n")
-            if 'val_metrics' in stage_history and 'rmse' in stage_history['val_metrics']:
-                f.write(f"RMSE: {stage_history['val_metrics']['rmse'][-1]:.4f}\n")
-            if 'val_metrics' in stage_history and 'r2' in stage_history['val_metrics']:
-                f.write(f"R²: {stage_history['val_metrics']['r2'][-1]:.4f}\n")
+            f.write(f"最佳驗證損失: {stage_val_loss:.6f}\n")
+            
+            # 記錄關鍵指標
+            if 'val_metrics' in stage_history:
+                metrics = stage_history['val_metrics']
+                if 'rmse' in metrics and metrics['rmse']:
+                    f.write(f"RMSE: {metrics['rmse'][-1]:.4f}\n")
+                if 'r2' in metrics and metrics['r2']:
+                    f.write(f"R²: {metrics['r2'][-1]:.4f}\n")
+                if 'mean_rel_error' in metrics and metrics['mean_rel_error']:
+                    f.write(f"平均相對誤差: {metrics['mean_rel_error'][-1]:.2f}%\n")
+            
             f.write("-"*40 + "\n")
+        
+        # 修改點: 保存全局最佳模型
+        if stage_val_loss < best_val_loss_overall:
+            best_val_loss_overall = stage_val_loss
+            best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            # 保存全局最佳模型
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'stage': stage,
+                'val_loss': stage_val_loss,
+                'val_metrics': stage_history.get('val_metrics', {}),
+                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+            }, os.path.join(output_dir, "models", "best_model_overall.pt"))
+            logger.info(f"更新全局最佳模型，階段: {stage}, 驗證損失: {stage_val_loss:.6f}")
         
         # 將階段歷史添加到總歷史
         all_history[stage] = stage_history
@@ -1313,15 +1494,23 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
         # 更新當前輪次
         current_epoch += stage_config["epochs"]
         
-        logger.info(f"{stage} 階段訓練完成 - 耗時: {train_time:.2f}秒, 最佳驗證損失: {stage_history['best_val_loss']:.6f}")
+        logger.info(f"{stage} 階段訓練完成 - 耗時: {train_time:.2f}秒, 最佳驗證損失: {stage_val_loss:.6f}")
     
     # 最終模型保存
     os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
     final_model_path = os.path.join(output_dir, "models", "final_model.pt")
+    
+    # 恢復全局最佳模型
+    if best_model_state is not None:
+        model.load_state_dict(best_model_state)
+        logger.info(f"已恢復全局最佳模型，驗證損失: {best_val_loss_overall:.6f}")
+    
+    # 保存最終模型（即全局最佳模型）
     torch.save({
         'model_state_dict': model.state_dict(),
         'training_history': all_history,
-        'final_epoch': current_epoch
+        'final_epoch': current_epoch,
+        'best_val_loss': best_val_loss_overall
     }, final_model_path)
     
     logger.info(f"分階段訓練完成，最終模型已保存至: {final_model_path}")

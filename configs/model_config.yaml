@@ -14,30 +14,38 @@ model:
   
   # PINN分支參數
   pinn:
-    hidden_layers: [64, 32, 16]                                       # 隱藏層維度
-    activation: "relu"                                                # 激活函數
-    dropout_rate: 0.2                                                 # Dropout比率
+    hidden_layers: [128, 64, 32]                                      # 修改: 增加隱藏層維度
+    activation: "leaky_relu"                                          # 修改: 使用LeakyReLU激活函數
+    dropout_rate: 0.1                                                 # 修改: 降低Dropout率
     use_batch_norm: true                                              # 是否使用批次正規化
     use_physics_layer: true                                           # 是否使用物理約束層
+    physics_layer_trainable: true                                     # 修改: 啟用物理層可訓練
   
   # LSTM分支參數
   lstm:
-    hidden_size: 64                                                   # LSTM隱藏層大小
-    num_layers: 2                                                     # LSTM層數
+    hidden_size: 96                                                   # 修改: 增加LSTM隱藏層大小
+    num_layers: 3                                                     # 修改: 增加LSTM層數
     bidirectional: true                                               # 是否使用雙向LSTM
-    dropout_rate: 0.2                                                 # Dropout比率
+    dropout_rate: 0.1                                                 # 修改: 降低Dropout率
     use_attention: true                                               # 是否使用注意力機制
   
   # 特徵融合參數
   fusion:
-    fusion_dim: 32                                                    # 融合特徵維度
+    fusion_dim: 64                                                    # 修改: 增加融合特徵維度
     use_attention_gate: true                                          # 是否使用注意力門控機制
+    ensemble_method: "weighted"                                       # 融合方法: weighted, gate, deep_fusion
+    pinn_weight_init: 0.7                                             # PINN初始權重
+    lstm_weight_init: 0.3                                             # LSTM初始權重
   
   # 物理約束參數
   physics:
     a_coefficient: 55.83                                              # 物理模型係數a
     b_coefficient: -2.259                                             # 物理模型係數b
     enforce_constraints: true                                         # 是否強制執行物理約束
+  
+  # 輸出參數
+  use_log_transform: true                                             # 是否使用對數變換
+  output_scale_init: 2.5                                              # 修改: 設置初始輸出尺度因子
 
 # 訓練參數
 training:
@@ -52,35 +60,37 @@ training:
   
   # 優化器
   optimizer:
-    name: "adam"                                                      # 優化器類型
-    learning_rate: 0.001                                              # 學習率
-    weight_decay: 0.0001                                              # 權重衰減
+    name: "adamw"                                                     # 修改: 使用AdamW優化器
+    learning_rate: 0.002                                              # 修改: 增加初始學習率
+    weight_decay: 0.0005                                              # 修改: 降低權重衰減
   
   # 學習率調度
   lr_scheduler:
-    name: "cosine"                                                    # 調度類型: step, exp, cosine, plateau
+    name: "one_cycle"                                                 # 修改: 使用one_cycle學習率調度
     T_max: 100                                                        # 週期
-    min_lr: 0.00001                                                   # 最小學習率
+    min_lr: 0.00002                                                   # 修改: 增加最小學習率
   
   # 損失函數
   loss:
     type: "adaptive"                                                  # 損失函數類型: hybrid, adaptive
-    initial_lambda_physics: 0.01                                      # 初始物理約束損失權重
-    max_lambda_physics: 0.5                                           # 最大物理約束損失權重
-    initial_lambda_consistency: 0.01                                  # 初始一致性損失權重
-    max_lambda_consistency: 0.3                                       # 最大一致性損失權重
-    epochs_to_max: 50                                                 # 達到最大權重的訓練輪數
+    initial_lambda_physics: 0.1                                       # 修改: 增加初始物理約束損失權重
+    max_lambda_physics: 1.0                                           # 修改: 大幅增加最大物理約束損失權重
+    initial_lambda_consistency: 0.1                                   # 修改: 增加初始一致性損失權重
+    max_lambda_consistency: 0.5                                       # 修改: 增加最大一致性損失權重
+    epochs_to_max: 40                                                 # 修改: 減少達到最大權重的訓練輪數
+    log_space_weight: 0.98                                            # 修改: 增加對數空間損失權重
   
   # 訓練控制
-  epochs: 200                                                         # 最大訓練輪數
+  epochs: 250                                                         # 修改: 增加最大訓練輪數
   early_stopping:
-    patience: 20                                                      # 早停耐心值
-    min_delta: 0.0001                                                 # 最小改善閾值
+    patience: 40                                                      # 修改: 增加早停耐心值
+    min_delta: 0.0005                                                 # 最小改善閾值
     monitor: "val_loss"                                               # 監控指標
     mode: "min"                                                       # 監控模式
+    restart_threshold: 10                                             # 修改: 添加重啟閾值
   
   # 梯度裁剪
-  clip_grad_norm: 1.0                                                 # 梯度裁剪最大範數
+  clip_grad_norm: 2.0                                                 # 修改: 增加梯度裁剪範數
 
 # 資料預處理
 preprocessing:
@@ -91,10 +101,15 @@ preprocessing:
   time_series:
     normalize_each_feature: true                                      # 是否對每個特徵單獨標準化
     normalize_each_sample: false                                      # 是否對每個樣本單獨標準化
+    
+  # 目標值處理
+  target:
+    log_transform: true                                               # 修改: 啟用目標值對數轉換
+    normalize: false                                                  # 是否標準化目標值
 
 # 評估指標
 evaluation:
-  metrics: ["rmse", "r2", "mae", "mape", "rel_error_mean", "rel_error_median"]
+  metrics: ["rmse", "r2", "mae", "mape", "rel_error_mean", "rel_error_median", "log_rmse"]
   # 對數尺度評估
   use_log_metrics: true                                               # 是否使用對數尺度評估
 
@@ -112,3 +127,11 @@ random_seed: 42                                                       # 全局�
 device: "cuda"                                                        # 計算設備: cuda, cpu
 num_workers: 0                                                        # 資料載入工作執行緒數量
 pin_memory: true                                                      # 是否使用固定內存
+
+# 調試選項
+debug:
+  verbose: 2                                                          # 詳細程度: 0=安靜，1=進度條，2=每輪信息
+  print_model_summary: true                                           # 是否打印模型摘要
+  log_device_placement: false                                         # 是否記錄設備放置
+  profile_execution: false                                            # 是否分析執行時間
+  seed_everything: true                                               # 是否固定所有隨機種子

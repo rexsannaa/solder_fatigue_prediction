@@ -719,7 +719,7 @@ class HybridPINNLSTMModel(nn.Module):
         pred_loss = 0.1 * mse_loss + 0.9 * log_mse_loss
 
         # 針對大值區域的特殊處理
-        large_value_mask = log_targets > 7.0  # 閾值對應約1100循環
+        large_value_mask = log_targets > 6.0  # 閾值對應約1100循環
         if torch.any(large_value_mask):
             large_value_loss = F.mse_loss(
                 log_predictions[large_value_mask], 
@@ -865,7 +865,7 @@ class HybridPINNLSTMModel(nn.Module):
             batch_size = static_features.size(0)
 
             # 新增: 动态调整权重，根据预测值的大小调整PINN和LSTM的影响力
-            log_pinn_pred = torch.log(pinn_nf_pred + 1e-8)
+            log_pinn_pred = torch.log(pinn_nf_pred + 1e-6)
 
             # 使用sigmoid函数进行平滑过渡
             weight_factor = torch.sigmoid((log_pinn_pred - 5.0) / 2.0)

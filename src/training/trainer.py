@@ -1381,11 +1381,11 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
     
     current_epoch = 0
     
-    # 修改點: 調整預設階段配置
+    # stage_configs字典的修改
     stage_configs = {
         "warmup": {
             "epochs": 40,               # 增加預熱輪次
-            "learning_rate_factor": 0.1,
+            "learning_rate_factor": 0.2, # 修改: 輕微增加預熱學習率
             "lambda_physics": 0.05 if use_physics else 0.0,
             "lambda_consistency": 0.01,
             "description": "低學習率預熱，輕微物理約束"
@@ -1393,17 +1393,17 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
         "main": {
             "epochs": 200,              # 增加主訓練輪次
             "learning_rate_factor": 1.0,
-            "lambda_physics": 0.3 if use_physics else 0.0,  # 增加物理約束權重
-            "lambda_physics_max": 0.8 if use_physics else 0.0,  # 最大物理約束權重
-            "lambda_consistency": 0.1,
-            "lambda_consistency_max": 0.3,
-            "description": "主要訓練階段，逐步增加物理約束"
+            "lambda_physics": 0.5 if use_physics else 0.0,  # 修改: 直接使用較高物理約束權重
+            "lambda_physics_max": 1.2 if use_physics else 0.0,  # 修改: 進一步增加最大物理約束權重
+            "lambda_consistency": 0.2,  # 修改: 增加一致性權重
+            "lambda_consistency_max": 0.4, # 修改: 增加最大一致性權重
+            "description": "主要訓練階段，強化物理約束"
         },
         "finetune": {
             "epochs": 60,               # 增加微調輪次
             "learning_rate_factor": 0.01,
-            "lambda_physics": 0.8 if use_physics else 0.0,  # 顯著增加物理約束
-            "lambda_consistency": 0.3,
+            "lambda_physics": 1.0 if use_physics else 0.0,  # 修改: 進一步增加物理約束
+            "lambda_consistency": 0.4,  # 修改: 增加一致性權重
             "description": "低學習率微調，強化物理約束"
         }
     }
@@ -1454,7 +1454,7 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
             weight_decay=config["training"]["optimizer"]["weight_decay"]
         )
         
-        # 修改點: 調整學習率調度器
+        # 修改學習率調度策略
         if stage == "warmup":
             # 預熱階段使用較溫和的學習率調度
             scheduler = LearningRateScheduler(
@@ -1462,47 +1462,48 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
                 mode='cosine',
                 T_max=stage_config["epochs"],
                 min_lr=base_lr * 0.1,
-                warmup_epochs=10,  # 預熱階段內部也有預熱
-                warmup_factor=0.1
+                warmup_epochs=5,  # 修改: 減少預熱內部的預熱輪次
+                warmup_factor=0.5 # 修改: 增加預熱起始學習率
             )
         elif stage == "main":
             # 主訓練階段使用循環學習率
             scheduler = LearningRateScheduler(
                 optimizer, 
-                mode='one_cycle',
+                mode='one_cycle', # 修改: 使用one_cycle模式，快速找到最佳學習率
                 T_max=stage_config["epochs"],
-                min_lr=base_lr * 0.01
+                min_lr=base_lr * 0.01,
+                cycle_momentum=True # 增加動量循環以增強優化
             )
         else:  # finetune
             # 微調階段使用平原式調度
             scheduler = LearningRateScheduler(
                 optimizer, 
                 mode='plateau',
-                factor=0.5,
-                patience=10,
-                min_lr=base_lr * 0.1
+                factor=0.3, # 修改: 減少學習率衰減因子，使衰減更顯著
+                patience=8,  # 修改: 減少耐心值，更快響應損失平台
+                min_lr=base_lr * 0.05 # 修改: 增加最小學習率
             )
         
         # 修改點: 調整早停機制
         if stage == "warmup":
-            early_stopping_patience = 40  # 預熱階段不要過早停止
+            early_stopping_patience = 30  # 修改: 適當減少預熱階段耐心值
             min_delta = 0.001  # 較大的閾值
-            min_epoch = 30  # 至少訓練30輪
+            min_epoch = 20  # 修改: 減少最小訓練輪次，可以更早結束無效訓練
         elif stage == "main":
-            early_stopping_patience = 30  # 主訓練階段標準耐心值
+            early_stopping_patience = 40  # 修改: 增加主訓練階段耐心值，給予更多探索機會
             min_delta = 0.0005  # 標準閾值
-            min_epoch = 50  # 至少訓練50輪
+            min_epoch = 60  # 修改: 增加最小訓練輪次，確保充分訓練
         else:  # finetune
-            early_stopping_patience = 20  # 微調階段可以較早停止
+            early_stopping_patience = 25  # 修改: 增加微調階段耐心值
             min_delta = 0.0001  # 較小的閾值
-            min_epoch = 20  # 至少訓練20輪
-        
+            min_epoch = 30  # 修改: 增加最小訓練輪次
+
         early_stopping = EarlyStopping(
             patience=early_stopping_patience,
             min_delta=min_delta,
             verbose=True,
             mode='min',
-            restart_threshold=early_stopping_patience // 4,  # 允許重啟
+            restart_threshold=early_stopping_patience // 3,  # 修改: 增加重啟頻率
             min_epoch=min_epoch
         )
         
@@ -1515,11 +1516,11 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
             lambda_physics_max=stage_config.get("lambda_physics_max", stage_config.get("lambda_physics", 0.0) * 2),
             lambda_consistency_init=stage_config.get("lambda_consistency", 0.0),
             lambda_consistency_max=stage_config.get("lambda_consistency_max", stage_config.get("lambda_consistency", 0.0) * 2),
-            lambda_ramp_epochs=stage_config.get("epochs") // 2,
+            lambda_ramp_epochs=stage_config.get("epochs") // 3,  # 修改: 更快達到最大權重
             clip_grad_norm=config["training"].get("clip_grad_norm", 1.0),
             scheduler=scheduler,
-            log_interval=10  # 增加日誌頻率
-        )
+            log_interval=5  # 修改: 進一步增加日誌頻率
+)
         
         # 修改點: 調整回調函數
         callbacks = AdaptiveCallbacks.create_callbacks(

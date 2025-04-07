@@ -232,11 +232,11 @@ class PINNModel(nn.Module):
             elif isinstance(m, nn.BatchNorm1d):
                 nn.init.ones_(m.weight)
                 nn.init.zeros_(m.bias)
-    
+
     def forward(self, x):
         """
         前向傳播
-    
+
         參數:
             x (torch.Tensor): 輸入特徵，形狀為 (batch_size, input_dim)
         
@@ -248,36 +248,39 @@ class PINNModel(nn.Module):
         """
         # 提取特徵
         features = self.feature_extractor(x)
-    
+
         # 計算非線性塑性應變能密度變化量(ΔW)
         delta_w = torch.exp(self.delta_w_predictor(features))  # 使用exp確保為正值
-    
+
         if self.use_physics_layer:
             # 使用物理層計算疲勞壽命
             nf_pred = self.physics_layer(delta_w)
         else:
             # 直接預測疲勞壽命
             nf_pred = torch.exp(self.direct_predictor(features))  # 使用exp確保為正值
-    
-        # 應用L2正則化
+
+        # 應用L2正則化 - 修改以確保l2_penalty是標量
         l2_penalty = 0.0
         if self.l2_reg > 0:
             for param in self.parameters():
                 l2_penalty += torch.norm(param, 2)
-    
-        # 確保scalar值
-        if isinstance(l2_penalty, torch.Tensor) and l2_penalty.dim() > 0:
-            l2_penalty = l2_penalty.mean()
-    
+            
+            # 確保l2_penalty是標量
+            if isinstance(l2_penalty, torch.Tensor) and l2_penalty.dim() > 0:
+                l2_penalty = l2_penalty.mean()
+            
+            # 乘以正則化系數
+            l2_penalty = l2_penalty * self.l2_reg
+
         # 確保預測值都是正數
         delta_w = torch.clamp(delta_w, min=1e-8)
         nf_pred = torch.clamp(nf_pred, min=1e-8)
-    
+
         return {
             'nf_pred': nf_pred.squeeze(-1),
             'delta_w': delta_w.squeeze(-1),
             'features': features,
-            'l2_penalty': l2_penalty * self.l2_reg
+            'l2_penalty': l2_penalty
         }
 
     
@@ -381,7 +384,7 @@ class LSTMModel(nn.Module):
     def forward(self, x, return_attention=False):
         """
         前向傳播
-    
+
         參數:
             x (torch.Tensor): 輸入時間序列，形狀為 (batch_size, seq_len, input_dim)
             return_attention (bool): 是否返回注意力權重
@@ -395,10 +398,10 @@ class LSTMModel(nn.Module):
         # LSTM前向傳播
         lstm_output, (hidden, cell) = self.lstm(x)
         # lstm_output形狀: (batch_size, seq_len, hidden_size*2 if bidirectional else hidden_size)
-    
+
         # 獲取特徵向量
         if self.use_attention:
-            # 使用注意力機制 - 修正：只傳遞lstm_output
+            # 使用注意力機制
             context_vector, attention_weights = self.attention(lstm_output)
         else:
             # 使用最後一個時間步的輸出
@@ -410,36 +413,38 @@ class LSTMModel(nn.Module):
             else:
                 context_vector = hidden[-1, :, :]
             attention_weights = None
-    
+
         # 全連接層處理
         # 使用log空間預測，確保輸出為正值
         fc_output = self.fc_layers(context_vector)
         output = torch.exp(self.output_layer(fc_output))
-    
+
         # 確保預測值是正數
         output = torch.clamp(output, min=1e-8)
-    
-        # 應用L2正則化
+
+        # 應用L2正則化 - 修改以確保l2_penalty是標量
         l2_penalty = 0.0
         if self.l2_reg > 0:
             for param in self.parameters():
                 l2_penalty += torch.norm(param, 2)
-    
-        # 確保scalar值
-        if isinstance(l2_penalty, torch.Tensor) and l2_penalty.dim() > 0:
-            l2_penalty = l2_penalty.mean()
-    
+            
+            # 確保l2_penalty是標量
+            if isinstance(l2_penalty, torch.Tensor) and l2_penalty.dim() > 0:
+                l2_penalty = l2_penalty.mean()
+            
+            # 乘以正則化系數
+            l2_penalty = l2_penalty * self.l2_reg
+
         result = {
             'output': output.squeeze(-1),
             'features': context_vector,
-            'l2_penalty': l2_penalty * self.l2_reg
+            'l2_penalty': l2_penalty
         }
-    
+
         if return_attention and attention_weights is not None:
             result['attention_weights'] = attention_weights
-    
-        return result
 
+        return result
 
 class FeatureFusionLayer(nn.Module):
     """
@@ -691,14 +696,14 @@ class HybridPINNLSTMModel(nn.Module):
             targets (torch.Tensor): 目標疲勞壽命
             lambda_physics (float): 物理約束損失權重
             lambda_consistency (float): 分支間一致性損失權重
-    
+
         返回:
             dict: 包含各部分損失的字典
         """
         # 確保targets和predictions都是正值
         targets = torch.clamp(targets, min=1e-8)
         predictions = torch.clamp(outputs['nf_pred'], min=1e-8)
-    
+
         # 獲取對數空間的目標值和預測值，用於計算相對誤差
         log_targets = torch.log(targets)
         log_predictions = torch.log(predictions)
@@ -709,10 +714,10 @@ class HybridPINNLSTMModel(nn.Module):
 
         # 對數空間的均方誤差 (相對誤差)
         log_mse_loss = F.mse_loss(log_predictions, log_targets)
-    
+
         # 結合損失，更加強調對數空間損失
         pred_loss = 0.1 * mse_loss + 0.9 * log_mse_loss
-    
+
         # 針對大值區域的特殊處理
         large_value_mask = log_targets > 7.0  # 閾值對應約1100循環
         if torch.any(large_value_mask):
@@ -756,6 +761,8 @@ class HybridPINNLSTMModel(nn.Module):
                 physics_loss = physics_loss + large_delta_w_loss * 1.2
         else:
             physics_loss = torch.tensor(0.0, device=targets.device)
+            delta_w_loss = torch.tensor(0.0, device=targets.device)
+            physics_consistency_loss = torch.tensor(0.0, device=targets.device)
 
         # 3. 分支間一致性損失
         if 'pinn_nf_pred' in outputs and 'lstm_nf_pred' in outputs:
@@ -771,6 +778,10 @@ class HybridPINNLSTMModel(nn.Module):
 
         # 4. L2正則化損失
         l2_loss = outputs.get('l2_penalty', torch.tensor(0.0, device=targets.device))
+        
+        # 確保l2_loss是標量
+        if isinstance(l2_loss, torch.Tensor) and l2_loss.dim() > 0:
+            l2_loss = l2_loss.mean()
 
         # 5. 自適應物理約束權重
         # 當預測值較大時，加強物理約束
@@ -786,16 +797,32 @@ class HybridPINNLSTMModel(nn.Module):
             l2_loss
         )
 
-        return {
-            'total_loss': total_loss,
-            'pred_loss': pred_loss,
-            'physics_loss': physics_loss,
-            'consistency_loss': consistency_loss,
-            'mse_loss': mse_loss,
-            'log_mse_loss': log_mse_loss,
-            'l2_loss': l2_loss,
-            'rel_error': mean_rel_error
+        # 確保所有返回的損失都是標量
+        def ensure_scalar(tensor):
+            if isinstance(tensor, torch.Tensor) and tensor.dim() > 0:
+                return tensor.mean()
+            return tensor
+
+        # 建立損失字典，確保所有值都是標量
+        loss_dict = {
+            'total_loss': ensure_scalar(total_loss),
+            'pred_loss': ensure_scalar(pred_loss),
+            'physics_loss': ensure_scalar(physics_loss),
+            'consistency_loss': ensure_scalar(consistency_loss),
+            'mse_loss': ensure_scalar(mse_loss),
+            'log_mse_loss': ensure_scalar(log_mse_loss),
+            'l2_loss': ensure_scalar(l2_loss),
+            'rel_error': ensure_scalar(mean_rel_error)
         }
+        
+        # 添加物理損失組件（如果可用）
+        if self.use_physics_layer and 'delta_w' in outputs:
+            loss_dict.update({
+                'delta_w_loss': ensure_scalar(delta_w_loss),
+                'physics_consistency_loss': ensure_scalar(physics_consistency_loss)
+            })
+
+        return loss_dict
     
     def forward(self, static_features, time_series, return_features=False):
         """
@@ -805,7 +832,7 @@ class HybridPINNLSTMModel(nn.Module):
             static_features (torch.Tensor): 靜態特徵，形狀為 (batch_size, static_input_dim)
             time_series (torch.Tensor): 時間序列特徵，形狀為 (batch_size, time_steps, time_input_dim)
             return_features (bool): 是否返回各分支特徵
-    
+        
         返回:
             dict: 包含預測結果和中間特徵的字典
         """
@@ -833,32 +860,32 @@ class HybridPINNLSTMModel(nn.Module):
                     pinn_nf_pred = pinn_nf_pred.view(lstm_nf_pred.shape)
                 elif lstm_nf_pred.dim() < pinn_nf_pred.dim():
                     lstm_nf_pred = lstm_nf_pred.view(pinn_nf_pred.shape)
-    
+
             # 获取批次大小
             batch_size = static_features.size(0)
-    
+
             # 新增: 动态调整权重，根据预测值的大小调整PINN和LSTM的影响力
             log_pinn_pred = torch.log(pinn_nf_pred + 1e-8)
-    
+
             # 使用sigmoid函数进行平滑过渡
             weight_factor = torch.sigmoid((log_pinn_pred - 5.0) / 2.0)
-    
+
             # 计算动态权重: 对小值偏向PINN分支，对大值偏向LSTM分支
             dynamic_pinn_weight = branch_weights[0] * (1.0 - weight_factor) + 0.2 * weight_factor
             dynamic_lstm_weight = 1.0 - dynamic_pinn_weight
-    
+
             # 使用动态权重加权平均预测结果
             nf_pred = dynamic_pinn_weight * pinn_nf_pred + dynamic_lstm_weight * lstm_nf_pred
-    
+
             # 对预测结果应用校正
             if hasattr(self, 'output_correction'):
                 nf_pred = self.output_correction(nf_pred.unsqueeze(-1)).squeeze(-1)
-    
+
             # 使用动态权重的平均值作为融合权重
             fusion_weights = torch.tensor([dynamic_pinn_weight.mean().item(), 
                                         dynamic_lstm_weight.mean().item()], 
                                         device=static_features.device)
-    
+
             # 确保dynamic_weights的形状一致，用于后续的批次合并
             batch_dynamic_weights = torch.stack([
                 dynamic_pinn_weight.detach(), 
@@ -871,27 +898,26 @@ class HybridPINNLSTMModel(nn.Module):
                 'pinn_nf_pred': pinn_nf_pred,
                 'lstm_nf_pred': lstm_nf_pred,
                 'fusion_weights': fusion_weights,
-                'l2_penalty': pinn_l2_penalty + lstm_l2_penalty,
-                'dynamic_weights': batch_dynamic_weights  # 直接在这里添加
+                'dynamic_weights': batch_dynamic_weights
             }
         
         elif self.ensemble_method == 'gate':
             # 使用特徵融合層進行融合，並使用門控機制
             fused_features, gate_weights = self.fusion_layer(pinn_features, lstm_features)
-    
+
             # 確保預測值的維度一致以進行加權
             if pinn_nf_pred.dim() != lstm_nf_pred.dim() or pinn_nf_pred.shape != lstm_nf_pred.shape:
                 if pinn_nf_pred.dim() < lstm_nf_pred.dim():
                     pinn_nf_pred = pinn_nf_pred.view(lstm_nf_pred.shape)
                 elif lstm_nf_pred.dim() < pinn_nf_pred.dim():
                     lstm_nf_pred = lstm_nf_pred.view(pinn_nf_pred.shape)
-    
+
             # 加權平均兩個分支的預測
             nf_pred = gate_weights[:, 0].unsqueeze(-1) * pinn_nf_pred + gate_weights[:, 1].unsqueeze(-1) * lstm_nf_pred
-    
+
             # 融合權重
             fusion_weights = gate_weights.mean(dim=0)  # 取平均為整體權重
-    
+
             # 定義dynamic_weights為gate_weights.T，便於合併
             batch_dynamic_weights = gate_weights.t()  # 形狀為(2, batch_size)
         
@@ -901,14 +927,13 @@ class HybridPINNLSTMModel(nn.Module):
                 'pinn_nf_pred': pinn_nf_pred,
                 'lstm_nf_pred': lstm_nf_pred,
                 'fusion_weights': fusion_weights,
-                'l2_penalty': pinn_l2_penalty + lstm_l2_penalty,
                 'dynamic_weights': batch_dynamic_weights
             }
-    
+
         else:  # deep_fusion
             # 使用特徵融合層進行深度融合
             fused_features, gate_weights = self.fusion_layer(pinn_features, lstm_features)
-    
+
             # 使用輸出層進行預測
             if self.use_log_transform:
                 # 使用對數空間進行預測，確保預測值為正
@@ -916,10 +941,10 @@ class HybridPINNLSTMModel(nn.Module):
             else:
                 # 直接預測，使用softplus確保正值
                 nf_pred = F.softplus(self.output_layer(fused_features)).squeeze(-1)
-    
+
             # 融合權重
             fusion_weights = gate_weights.mean(dim=0)  # 取平均為整體權重
-    
+
             # 定義dynamic_weights為gate_weights.T，便於合併
             batch_dynamic_weights = gate_weights.t()  # 形狀為(2, batch_size)
         
@@ -929,15 +954,15 @@ class HybridPINNLSTMModel(nn.Module):
                 'pinn_nf_pred': pinn_nf_pred,
                 'lstm_nf_pred': lstm_nf_pred,
                 'fusion_weights': fusion_weights,
-                'l2_penalty': pinn_l2_penalty + lstm_l2_penalty,
                 'dynamic_weights': batch_dynamic_weights
             }
 
-        # 确保l2_penalty是标量
+        # 确保l2_penalty是标量值（修改此处）
         total_l2_penalty = pinn_l2_penalty + lstm_l2_penalty
-        if isinstance(total_l2_penalty, torch.Tensor) and total_l2_penalty.dim() > 0:
-            total_l2_penalty = total_l2_penalty.mean()
-    
+        if isinstance(total_l2_penalty, torch.Tensor):
+            if total_l2_penalty.dim() > 0:
+                total_l2_penalty = total_l2_penalty.mean()
+        
         # 更新l2_penalty
         result['l2_penalty'] = total_l2_penalty
 
@@ -945,7 +970,7 @@ class HybridPINNLSTMModel(nn.Module):
         result['nf_pred'] = torch.clamp(result['nf_pred'], min=1e-8)
         result['pinn_nf_pred'] = torch.clamp(result['pinn_nf_pred'], min=1e-8)
         result['lstm_nf_pred'] = torch.clamp(result['lstm_nf_pred'], min=1e-8)
-    
+
         # 添加delta_w到结果中
         if self.use_physics_layer:
             result['delta_w'] = torch.clamp(pinn_delta_w, min=1e-8)
@@ -1127,6 +1152,7 @@ class PINNLSTMTrainer:
         val_losses = {'total': 0.0, 'pred': 0.0, 'physics': 0.0, 'consistency': 0.0}
         all_outputs = []
         all_targets = []
+        scalar_values = defaultdict(list)  # 用於收集標量值
         
         with torch.no_grad():
             for static_features, time_series, targets in val_loader:
@@ -1155,8 +1181,23 @@ class PINNLSTMTrainer:
                             val_losses[name] = v.item()
                 
                 # 收集預測和目標
-                all_outputs.append(outputs)
                 all_targets.append(targets.cpu().numpy())
+                
+                # 分離標量值和張量值
+                batch_outputs = {}
+                for key, value in outputs.items():
+                    if isinstance(value, torch.Tensor):
+                        if value.ndim == 0 or key == 'l2_penalty':
+                            # 為標量值，記錄其值
+                            scalar_values[key].append(float(value.cpu().item()))
+                        else:
+                            # 為張量，保存至batch_outputs
+                            batch_outputs[key] = value.cpu().numpy()
+                    else:
+                        # 非張量值
+                        batch_outputs[key] = value
+                
+                all_outputs.append(batch_outputs)
         
         # 計算平均損失
         num_batches = len(val_loader)
@@ -1164,18 +1205,49 @@ class PINNLSTMTrainer:
             val_losses[k] /= num_batches
         
         # 合併預測和目標
-        all_predictions = torch.cat([o['nf_pred'].cpu() for o in all_outputs]).numpy()
+        all_predictions = np.concatenate([o['nf_pred'] for o in all_outputs])
         all_targets = np.concatenate(all_targets)
         
         # 計算指標
         metrics = self._calculate_metrics(all_predictions, all_targets)
         
-        # 合併所有輸出的特徵
+        # 合併所有輸出
         merged_outputs = {}
-        for key in all_outputs[0].keys():
-            if isinstance(all_outputs[0][key], torch.Tensor):
-                merged_outputs[key] = torch.cat([o[key].cpu() for o in all_outputs]).numpy()
         
+        # 處理批次輸出
+        # 找出所有鍵
+        all_keys = set()
+        for output in all_outputs:
+            all_keys.update(output.keys())
+        
+        # 合併每個鍵的數據
+        for key in all_keys:
+            values = [o[key] for o in all_outputs if key in o]
+            if not values:
+                continue
+                
+            if key == 'dynamic_weights':
+                # 特殊處理 dynamic_weights
+                try:
+                    merged_outputs[key] = np.vstack(values)
+                except Exception as e:
+                    logger.warning(f"合併 dynamic_weights 時出錯: {str(e)}")
+                    merged_outputs[key] = values
+            elif all(isinstance(val, np.ndarray) for val in values):
+                try:
+                    merged_outputs[key] = np.concatenate(values)
+                except Exception as e:
+                    logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
+                    merged_outputs[key] = values
+            else:
+                merged_outputs[key] = values
+        
+        # 處理標量值，計算平均值
+        for key, values in scalar_values.items():
+            if values:
+                merged_outputs[key] = np.mean(values)
+        
+        # 添加預測和目標
         merged_outputs['predictions'] = all_predictions
         merged_outputs['targets'] = all_targets
         

@@ -1,0 +1,467 @@
+2025-04-10 21:50:24,479 - __main__ - DEBUG - 埃岿家Α币ノ
+2025-04-10 21:50:24,512 - __main__ - INFO - Θ更皌竚ゅン: configs/model_config.yaml
+2025-04-10 21:50:24,550 - __main__ - INFO - Θ更皌竚ゅン: configs/train_config.yaml
+2025-04-10 21:50:24,554 - __main__ - INFO - 砞﹚繦诀贺: 42
+2025-04-10 21:50:24,555 - __main__ - INFO - ㄏノ璸衡砞称: cpu
+2025-04-10 21:50:24,556 - __main__ - INFO - 块ヘ魁: outputs\hybrid_20250410_215024
+2025-04-10 21:50:24,557 - __main__ - INFO - 更戈: data/raw/Training_data_warpage_final_20250321_v1.2.csv
+2025-04-10 21:50:24,586 - src.data.preprocess - INFO - Θ更戈郎: data/raw/Training_data_warpage_final_20250321_v1.2.csv 81 掸戈18 逆
+2025-04-10 21:50:24,591 - src.data.preprocess - INFO - 夹非てЧΘ疭紉计秖: 5
+2025-04-10 21:50:24,593 - src.data.preprocess - INFO - 丁戈非称ЧΘ: (81, 4, 2)
+2025-04-10 21:50:24,596 - src.data.preprocess - INFO - 戈だ澄ЧΘ - 癡絤栋: 56 妓セ, 喷靡栋: 12 妓セ, 代刚栋: 13 妓セ
+2025-04-10 21:50:24,596 - src.data.preprocess - INFO - Ч俱戈矪瞶瑈祘ЧΘ
+2025-04-10 21:50:24,597 - __main__ - INFO - 戈だ澄ЧΘ, 癡絤栋: 56 妓セ, 喷靡栋: 12 妓セ, 代刚栋: 13 妓セ
+2025-04-10 21:50:24,597 - __main__ - INFO - 莱ノ戈糤眏...
+2025-04-10 21:50:24,597 - src.data.dataset - INFO - 秈︽戈糤眏﹍癡絤栋: 56 妓セ
+2025-04-10 21:50:24,848 - src.data.dataset - INFO - 戈糤眏ЧΘ糤眏癡絤栋: 626 妓セ
+2025-04-10 21:50:24,848 - __main__ - INFO - 戈糤眏ЧΘ糤眏癡絤栋: 626 妓セ
+2025-04-10 21:50:24,880 - __main__ - INFO - 承睼PINN-LSTM家ㄏノ瞶: True磕よ猭: weighted
+2025-04-10 21:50:24,883 - src.data.dataset - INFO - 承戈更竟 - 癡絤: 626 妓セ, 喷靡: 12 妓セ, 代刚: 13 妓セ, уΩ: 8
+2025-04-10 21:50:27,120 - src.training.trainer - INFO - 承adamw纔て竟厩策瞯: 0.002舦癐搭: 0.0005
+2025-04-10 21:50:27,121 - src.training.losses - INFO - ﹍てHybridLoss: lambda_physics=0.1, lambda_consistency=0.1, a=55.83, b=-2.259, log_space=True, l1_reg=0.0, l2_reg=0.001
+2025-04-10 21:50:27,121 - src.training.losses - INFO - ﹍てAdaptiveHybridLoss: physics舦眖0.1糤1.0, consistency舦眖0.1糤0.5, 40近Ωず笷程, 箇荐近Ω: 5, 秸俱よ: linear
+2025-04-10 21:50:27,121 - src.training.trainer - WARNING - ぃや穿厩策瞯秸竟摸: one_cycleぃㄏノ厩策瞯秸
+2025-04-10 21:50:27,124 - src.training.callbacks - INFO - ﹍てModelCheckpoint: 玂ヘ魁=outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints, 玂繵瞯=5, 玂程ㄎ=False, 菏北夹=val_loss, 家Α=min
+2025-04-10 21:50:27,125 - src.training.callbacks - INFO - ﹍てLossHistory: 玂隔畖=outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\history.json, 玂繵瞯=1
+2025-04-10 21:50:27,128 - src.training.trainer - INFO - ﹍て癡絤竟ЧΘ家: HybridPINNLSTMModel, 纔て竟: AdamW, 砞称: cpu
+2025-04-10 21:50:27,128 - __main__ - INFO - 秨﹍癡絤羆近计: 250
+2025-04-10 21:50:27,128 - src.training.trainer - INFO - 秨﹍癡絤羆近计: 250
+2025-04-10 21:50:31,983 - src.training.trainer - INFO - 近Ω 1/250 - 癡絤穕ア: 7.380468 - 喷靡穕ア: 370.514641 - rmse: 32564.300453 - r2: -1919.564331 - mae: 22520.275391 - 厩策瞯: 0.002000 - 丁: 4.86
+2025-04-10 21:50:32,012 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_001.pt
+2025-04-10 21:50:32,026 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:50:35,333 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:50:38,984 - src.training.trainer - INFO - 近Ω 3/250 - 癡絤穕ア: 3.171137 - 喷靡穕ア: 5.805845 - rmse: 1312.364326 - r2: -2.119279 - mae: 1069.075562 - 厩策瞯: 0.002000 - 丁: 3.65
+2025-04-10 21:50:38,997 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:50:42,324 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:50:45,392 - src.training.trainer - INFO - 近Ω 5/250 - 癡絤穕ア: 2.060170 - 喷靡穕ア: 2.877526 - rmse: 1112.364599 - r2: -1.240989 - mae: 1024.360107 - 厩策瞯: 0.002000 - 丁: 3.07
+2025-04-10 21:50:45,403 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:50:48,724 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_006.pt
+2025-04-10 21:50:48,735 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:50:51,706 - src.training.trainer - INFO - 近Ω 7/250 - 癡絤穕ア: 2.893275 - 喷靡穕ア: 5.345247 - rmse: 1314.151247 - r2: -2.127779 - mae: 1073.951660 - 厩策瞯: 0.002000 - 丁: 2.97
+2025-04-10 21:50:51,721 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:50:54,615 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:50:57,480 - src.training.trainer - INFO - 近Ω 9/250 - 癡絤穕ア: 1.566986 - 喷靡穕ア: 4.238910 - rmse: 1276.511457 - r2: -1.951174 - mae: 999.953857 - 厩策瞯: 0.002000 - 丁: 2.87
+2025-04-10 21:50:57,488 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:00,109 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:03,511 - src.training.trainer - INFO - 近Ω 11/250 - 癡絤穕ア: 1.347600 - 喷靡穕ア: 6.026148 - rmse: 1330.346008 - r2: -2.205343 - mae: 1094.417236 - 厩策瞯: 0.002000 - 丁: 3.40
+2025-04-10 21:51:03,533 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_011.pt
+2025-04-10 21:51:03,545 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:06,570 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:09,733 - src.training.trainer - INFO - 近Ω 13/250 - 癡絤穕ア: 1.200039 - 喷靡穕ア: 4.487354 - rmse: 1296.498313 - r2: -2.044313 - mae: 1037.040894 - 厩策瞯: 0.002000 - 丁: 3.16
+2025-04-10 21:51:09,744 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:12,634 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:15,200 - src.training.trainer - INFO - 近Ω 15/250 - 癡絤穕ア: 1.096604 - 喷靡穕ア: 5.744882 - rmse: 1329.736863 - r2: -2.202409 - mae: 1098.087891 - 厩策瞯: 0.002000 - 丁: 2.57
+2025-04-10 21:51:15,211 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:18,554 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_016.pt
+2025-04-10 21:51:18,566 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:21,268 - src.training.trainer - INFO - 近Ω 17/250 - 癡絤穕ア: 0.985867 - 喷靡穕ア: 4.866366 - rmse: 1314.800222 - r2: -2.130869 - mae: 1075.008423 - 厩策瞯: 0.002000 - 丁: 2.70
+2025-04-10 21:51:21,279 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:24,280 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:27,428 - src.training.trainer - INFO - 近Ω 19/250 - 癡絤穕ア: 0.920238 - 喷靡穕ア: 4.930546 - rmse: 1317.201911 - r2: -2.142317 - mae: 1076.452026 - 厩策瞯: 0.002000 - 丁: 3.15
+2025-04-10 21:51:27,440 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:30,932 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:33,771 - src.training.trainer - INFO - 近Ω 21/250 - 癡絤穕ア: 0.865411 - 喷靡穕ア: 4.749630 - rmse: 1311.671310 - r2: -2.115985 - mae: 1072.094849 - 厩策瞯: 0.002000 - 丁: 2.84
+2025-04-10 21:51:33,795 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_021.pt
+2025-04-10 21:51:33,807 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:36,645 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:40,250 - src.training.trainer - INFO - 近Ω 23/250 - 癡絤穕ア: 0.834303 - 喷靡穕ア: 4.005755 - rmse: 1297.753299 - r2: -2.050209 - mae: 1053.986816 - 厩策瞯: 0.002000 - 丁: 3.60
+2025-04-10 21:51:40,266 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:44,147 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:47,233 - src.training.trainer - INFO - 近Ω 25/250 - 癡絤穕ア: 0.829061 - 喷靡穕ア: 4.543528 - rmse: 1306.695259 - r2: -2.092388 - mae: 1053.249512 - 厩策瞯: 0.002000 - 丁: 3.09
+2025-04-10 21:51:47,249 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:50,492 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_026.pt
+2025-04-10 21:51:50,502 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:53,314 - src.training.trainer - INFO - 近Ω 27/250 - 癡絤穕ア: 0.787771 - 喷靡穕ア: 3.755187 - rmse: 1267.823085 - r2: -1.911137 - mae: 994.973816 - 厩策瞯: 0.002000 - 丁: 2.81
+2025-04-10 21:51:53,325 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:56,249 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:51:59,513 - src.training.trainer - INFO - 近Ω 29/250 - 癡絤穕ア: 0.802491 - 喷靡穕ア: 4.198252 - rmse: 1297.801555 - r2: -2.050436 - mae: 1048.461304 - 厩策瞯: 0.002000 - 丁: 3.26
+2025-04-10 21:51:59,526 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:02,531 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:05,278 - src.training.trainer - INFO - 近Ω 31/250 - 癡絤穕ア: 0.743945 - 喷靡穕ア: 5.545462 - rmse: 1328.935994 - r2: -2.198552 - mae: 1095.896362 - 厩策瞯: 0.002000 - 丁: 2.75
+2025-04-10 21:52:05,312 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_031.pt
+2025-04-10 21:52:05,325 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:08,605 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:11,649 - src.training.trainer - INFO - 近Ω 33/250 - 癡絤穕ア: 0.714054 - 喷靡穕ア: 3.951761 - rmse: 1300.059662 - r2: -2.061061 - mae: 1059.422485 - 厩策瞯: 0.002000 - 丁: 3.04
+2025-04-10 21:52:11,658 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:14,920 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:17,903 - src.training.trainer - INFO - 近Ω 35/250 - 癡絤穕ア: 0.761522 - 喷靡穕ア: 3.910331 - rmse: 1289.610212 - r2: -2.012051 - mae: 1032.936157 - 厩策瞯: 0.002000 - 丁: 2.98
+2025-04-10 21:52:17,944 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:21,171 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_036.pt
+2025-04-10 21:52:21,189 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:24,611 - src.training.trainer - INFO - 近Ω 37/250 - 癡絤穕ア: 0.714050 - 喷靡穕ア: 3.690476 - rmse: 1280.400377 - r2: -1.969183 - mae: 1023.276917 - 厩策瞯: 0.002000 - 丁: 3.42
+2025-04-10 21:52:24,626 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:28,504 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:31,734 - src.training.trainer - INFO - 近Ω 39/250 - 癡絤穕ア: 0.713121 - 喷靡穕ア: 3.987677 - rmse: 1297.160601 - r2: -2.047424 - mae: 1051.777710 - 厩策瞯: 0.002000 - 丁: 3.23
+2025-04-10 21:52:31,746 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:35,332 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:38,348 - src.training.trainer - INFO - 近Ω 41/250 - 癡絤穕ア: 0.700557 - 喷靡穕ア: 4.970863 - rmse: 1311.717386 - r2: -2.116204 - mae: 1061.937378 - 厩策瞯: 0.002000 - 丁: 3.01
+2025-04-10 21:52:38,377 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_041.pt
+2025-04-10 21:52:38,390 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:41,150 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:44,354 - src.training.trainer - INFO - 近Ω 43/250 - 癡絤穕ア: 0.678634 - 喷靡穕ア: 3.665521 - rmse: 1271.504817 - r2: -1.928069 - mae: 1009.497070 - 厩策瞯: 0.002000 - 丁: 3.20
+2025-04-10 21:52:44,366 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:47,789 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:51,391 - src.training.trainer - INFO - 近Ω 45/250 - 癡絤穕ア: 0.668456 - 喷靡穕ア: 5.495749 - rmse: 1325.529187 - r2: -2.182174 - mae: 1080.700195 - 厩策瞯: 0.002000 - 丁: 3.60
+2025-04-10 21:52:51,404 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:52:55,768 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_046.pt
+2025-04-10 21:52:55,785 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:00,019 - src.training.trainer - INFO - 近Ω 47/250 - 癡絤穕ア: 0.688886 - 喷靡穕ア: 3.309760 - rmse: 1252.736604 - r2: -1.842267 - mae: 969.087402 - 厩策瞯: 0.002000 - 丁: 4.23
+2025-04-10 21:53:00,038 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:03,213 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:06,524 - src.training.trainer - INFO - 近Ω 49/250 - 癡絤穕ア: 0.686172 - 喷靡穕ア: 5.917928 - rmse: 1336.222427 - r2: -2.233723 - mae: 1101.541626 - 厩策瞯: 0.002000 - 丁: 3.31
+2025-04-10 21:53:06,538 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:10,721 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:14,077 - src.training.trainer - INFO - 近Ω 51/250 - 癡絤穕ア: 0.652107 - 喷靡穕ア: 4.347074 - rmse: 1307.347936 - r2: -2.095478 - mae: 1068.083008 - 厩策瞯: 0.002000 - 丁: 3.36
+2025-04-10 21:53:14,099 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_051.pt
+2025-04-10 21:53:14,111 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:17,045 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:20,470 - src.training.trainer - INFO - 近Ω 53/250 - 癡絤穕ア: 0.668710 - 喷靡穕ア: 5.463554 - rmse: 1327.489124 - r2: -2.191591 - mae: 1090.092041 - 厩策瞯: 0.002000 - 丁: 3.43
+2025-04-10 21:53:20,486 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:23,522 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:26,437 - src.training.trainer - INFO - 近Ω 55/250 - 癡絤穕ア: 0.673644 - 喷靡穕ア: 3.976876 - rmse: 1289.217738 - r2: -2.010217 - mae: 1033.639771 - 厩策瞯: 0.002000 - 丁: 2.91
+2025-04-10 21:53:26,448 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:30,005 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_056.pt
+2025-04-10 21:53:30,022 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:34,532 - src.training.trainer - INFO - 近Ω 57/250 - 癡絤穕ア: 0.676509 - 喷靡穕ア: 5.078426 - rmse: 1321.109950 - r2: -2.160991 - mae: 1078.171387 - 厩策瞯: 0.002000 - 丁: 4.51
+2025-04-10 21:53:34,548 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:37,529 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:40,694 - src.training.trainer - INFO - 近Ω 59/250 - 癡絤穕ア: 0.646684 - 喷靡穕ア: 4.259813 - rmse: 1301.945707 - r2: -2.069949 - mae: 1052.415161 - 厩策瞯: 0.002000 - 丁: 3.17
+2025-04-10 21:53:40,710 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:43,746 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:46,595 - src.training.trainer - INFO - 近Ω 61/250 - 癡絤穕ア: 0.666748 - 喷靡穕ア: 3.932520 - rmse: 1294.739549 - r2: -2.036059 - mae: 1044.495972 - 厩策瞯: 0.002000 - 丁: 2.85
+2025-04-10 21:53:46,617 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_061.pt
+2025-04-10 21:53:46,630 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:49,675 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:52,874 - src.training.trainer - INFO - 近Ω 63/250 - 癡絤穕ア: 0.644059 - 喷靡穕ア: 3.008752 - rmse: 1254.314205 - r2: -1.849430 - mae: 991.081482 - 厩策瞯: 0.002000 - 丁: 3.20
+2025-04-10 21:53:52,885 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:53:56,723 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:00,163 - src.training.trainer - INFO - 近Ω 65/250 - 癡絤穕ア: 0.638436 - 喷靡穕ア: 4.327833 - rmse: 1302.541506 - r2: -2.072759 - mae: 1054.565918 - 厩策瞯: 0.002000 - 丁: 3.44
+2025-04-10 21:54:00,181 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:04,050 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_066.pt
+2025-04-10 21:54:04,070 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:07,377 - src.training.trainer - INFO - 近Ω 67/250 - 癡絤穕ア: 0.656426 - 喷靡穕ア: 4.729144 - rmse: 1316.566035 - r2: -2.139284 - mae: 1074.896118 - 厩策瞯: 0.002000 - 丁: 3.31
+2025-04-10 21:54:07,393 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:10,474 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:13,750 - src.training.trainer - INFO - 近Ω 69/250 - 癡絤穕ア: 0.632162 - 喷靡穕ア: 4.229202 - rmse: 1302.498944 - r2: -2.072558 - mae: 1054.146606 - 厩策瞯: 0.002000 - 丁: 3.27
+2025-04-10 21:54:13,768 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:16,664 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:20,031 - src.training.trainer - INFO - 近Ω 71/250 - 癡絤穕ア: 0.628716 - 喷靡穕ア: 4.728066 - rmse: 1310.126902 - r2: -2.108652 - mae: 1058.036499 - 厩策瞯: 0.002000 - 丁: 3.37
+2025-04-10 21:54:20,067 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_071.pt
+2025-04-10 21:54:20,088 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:24,207 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:27,626 - src.training.trainer - INFO - 近Ω 73/250 - 癡絤穕ア: 0.632333 - 喷靡穕ア: 4.203926 - rmse: 1306.121884 - r2: -2.089675 - mae: 1063.747192 - 厩策瞯: 0.002000 - 丁: 3.42
+2025-04-10 21:54:27,645 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:31,096 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:34,315 - src.training.trainer - INFO - 近Ω 75/250 - 癡絤穕ア: 0.639940 - 喷靡穕ア: 3.499646 - rmse: 1279.885493 - r2: -1.966795 - mae: 1025.018433 - 厩策瞯: 0.002000 - 丁: 3.22
+2025-04-10 21:54:34,330 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:37,218 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_076.pt
+2025-04-10 21:54:37,244 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:40,327 - src.training.trainer - INFO - 近Ω 77/250 - 癡絤穕ア: 0.651813 - 喷靡穕ア: 4.542742 - rmse: 1303.636596 - r2: -2.077928 - mae: 1046.775635 - 厩策瞯: 0.002000 - 丁: 3.08
+2025-04-10 21:54:40,340 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:43,587 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:47,274 - src.training.trainer - INFO - 近Ω 79/250 - 癡絤穕ア: 0.676272 - 喷靡穕ア: 3.610435 - rmse: 1278.618444 - r2: -1.960924 - mae: 1020.035339 - 厩策瞯: 0.002000 - 丁: 3.69
+2025-04-10 21:54:47,290 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:50,906 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:54,112 - src.training.trainer - INFO - 近Ω 81/250 - 癡絤穕ア: 0.661099 - 喷靡穕ア: 4.217232 - rmse: 1298.468136 - r2: -2.053571 - mae: 1046.016235 - 厩策瞯: 0.002000 - 丁: 3.20
+2025-04-10 21:54:54,146 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_081.pt
+2025-04-10 21:54:54,164 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:54:57,140 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:00,540 - src.training.trainer - INFO - 近Ω 83/250 - 癡絤穕ア: 0.639676 - 喷靡穕ア: 4.789877 - rmse: 1317.665549 - r2: -2.144530 - mae: 1076.472290 - 厩策瞯: 0.002000 - 丁: 3.40
+2025-04-10 21:55:00,559 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:03,537 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:06,450 - src.training.trainer - INFO - 近Ω 85/250 - 癡絤穕ア: 0.681463 - 喷靡穕ア: 4.844602 - rmse: 1314.382507 - r2: -2.128880 - mae: 1063.118286 - 厩策瞯: 0.002000 - 丁: 2.91
+2025-04-10 21:55:06,465 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:09,192 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_086.pt
+2025-04-10 21:55:09,209 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:12,225 - src.training.trainer - INFO - 近Ω 87/250 - 癡絤穕ア: 0.666031 - 喷靡穕ア: 4.215442 - rmse: 1291.643575 - r2: -2.021557 - mae: 1024.488037 - 厩策瞯: 0.002000 - 丁: 3.02
+2025-04-10 21:55:12,237 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:15,065 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:17,938 - src.training.trainer - INFO - 近Ω 89/250 - 癡絤穕ア: 0.621587 - 喷靡穕ア: 4.116220 - rmse: 1297.946840 - r2: -2.051119 - mae: 1046.387085 - 厩策瞯: 0.002000 - 丁: 2.87
+2025-04-10 21:55:17,949 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:20,812 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:23,640 - src.training.trainer - INFO - 近Ω 91/250 - 癡絤穕ア: 0.642456 - 喷靡穕ア: 4.415432 - rmse: 1308.797922 - r2: -2.102348 - mae: 1064.641968 - 厩策瞯: 0.002000 - 丁: 2.83
+2025-04-10 21:55:23,672 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_091.pt
+2025-04-10 21:55:23,687 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:26,566 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:29,346 - src.training.trainer - INFO - 近Ω 93/250 - 癡絤穕ア: 0.613035 - 喷靡穕ア: 4.391820 - rmse: 1301.665039 - r2: -2.068625 - mae: 1049.604858 - 厩策瞯: 0.002000 - 丁: 2.78
+2025-04-10 21:55:29,366 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:32,312 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:35,187 - src.training.trainer - INFO - 近Ω 95/250 - 癡絤穕ア: 0.635045 - 喷靡穕ア: 3.676760 - rmse: 1277.117849 - r2: -1.953978 - mae: 1008.790833 - 厩策瞯: 0.002000 - 丁: 2.87
+2025-04-10 21:55:35,199 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:38,098 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_096.pt
+2025-04-10 21:55:38,111 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:41,109 - src.training.trainer - INFO - 近Ω 97/250 - 癡絤穕ア: 0.620489 - 喷靡穕ア: 3.765470 - rmse: 1278.784433 - r2: -1.961693 - mae: 1011.586853 - 厩策瞯: 0.002000 - 丁: 3.00
+2025-04-10 21:55:41,125 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:44,087 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:46,880 - src.training.trainer - INFO - 近Ω 99/250 - 癡絤穕ア: 0.618096 - 喷靡穕ア: 3.686325 - rmse: 1282.563254 - r2: -1.979223 - mae: 1024.429810 - 厩策瞯: 0.002000 - 丁: 2.79
+2025-04-10 21:55:46,894 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:49,793 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:52,751 - src.training.trainer - INFO - 近Ω 101/250 - 癡絤穕ア: 0.633415 - 喷靡穕ア: 4.448331 - rmse: 1303.534666 - r2: -2.077447 - mae: 1055.560303 - 厩策瞯: 0.002000 - 丁: 2.96
+2025-04-10 21:55:52,786 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_101.pt
+2025-04-10 21:55:52,803 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:55,639 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:55:58,493 - src.training.trainer - INFO - 近Ω 103/250 - 癡絤穕ア: 0.668916 - 喷靡穕ア: 2.223769 - rmse: 1206.871627 - r2: -1.637956 - mae: 932.876404 - 厩策瞯: 0.002000 - 丁: 2.85
+2025-04-10 21:55:58,504 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:01,429 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:04,300 - src.training.trainer - INFO - 近Ω 105/250 - 癡絤穕ア: 0.628985 - 喷靡穕ア: 3.479146 - rmse: 1278.944682 - r2: -1.962435 - mae: 1026.234497 - 厩策瞯: 0.002000 - 丁: 2.87
+2025-04-10 21:56:04,317 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:07,116 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_106.pt
+2025-04-10 21:56:07,132 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:10,113 - src.training.trainer - INFO - 近Ω 107/250 - 癡絤穕ア: 0.663619 - 喷靡穕ア: 4.640840 - rmse: 1312.980721 - r2: -2.122210 - mae: 1069.895264 - 厩策瞯: 0.002000 - 丁: 2.98
+2025-04-10 21:56:10,123 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:12,963 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:15,915 - src.training.trainer - INFO - 近Ω 109/250 - 癡絤穕ア: 0.626866 - 喷靡穕ア: 4.649511 - rmse: 1309.145141 - r2: -2.103995 - mae: 1063.782837 - 厩策瞯: 0.002000 - 丁: 2.95
+2025-04-10 21:56:15,928 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:18,762 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:21,630 - src.training.trainer - INFO - 近Ω 111/250 - 癡絤穕ア: 0.645460 - 喷靡穕ア: 3.919256 - rmse: 1292.885774 - r2: -2.027371 - mae: 1041.767456 - 厩策瞯: 0.002000 - 丁: 2.87
+2025-04-10 21:56:21,652 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_111.pt
+2025-04-10 21:56:21,670 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:24,615 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:27,551 - src.training.trainer - INFO - 近Ω 113/250 - 癡絤穕ア: 0.640830 - 喷靡穕ア: 3.902002 - rmse: 1290.156773 - r2: -2.014604 - mae: 1038.224854 - 厩策瞯: 0.002000 - 丁: 2.94
+2025-04-10 21:56:27,567 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:30,552 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:33,396 - src.training.trainer - INFO - 近Ω 115/250 - 癡絤穕ア: 0.607364 - 喷靡穕ア: 3.510260 - rmse: 1272.323514 - r2: -1.931841 - mae: 1002.075134 - 厩策瞯: 0.002000 - 丁: 2.84
+2025-04-10 21:56:33,408 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:36,323 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_116.pt
+2025-04-10 21:56:36,341 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:39,212 - src.training.trainer - INFO - 近Ω 117/250 - 癡絤穕ア: 0.675818 - 喷靡穕ア: 4.478327 - rmse: 1311.101207 - r2: -2.113277 - mae: 1068.130859 - 厩策瞯: 0.002000 - 丁: 2.87
+2025-04-10 21:56:39,234 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:42,166 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:45,084 - src.training.trainer - INFO - 近Ω 119/250 - 癡絤穕ア: 0.617449 - 喷靡穕ア: 2.210872 - rmse: 1212.558091 - r2: -1.662873 - mae: 939.273376 - 厩策瞯: 0.002000 - 丁: 2.92
+2025-04-10 21:56:45,095 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:48,060 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:50,869 - src.training.trainer - INFO - 近Ω 121/250 - 癡絤穕ア: 0.674747 - 喷靡穕ア: 5.373904 - rmse: 1327.596842 - r2: -2.192109 - mae: 1085.717651 - 厩策瞯: 0.002000 - 丁: 2.81
+2025-04-10 21:56:50,897 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_121.pt
+2025-04-10 21:56:50,914 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:53,846 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:56,696 - src.training.trainer - INFO - 近Ω 123/250 - 癡絤穕ア: 0.647735 - 喷靡穕ア: 4.337688 - rmse: 1305.959370 - r2: -2.088906 - mae: 1058.495483 - 厩策瞯: 0.002000 - 丁: 2.85
+2025-04-10 21:56:56,706 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:56:59,600 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:02,546 - src.training.trainer - INFO - 近Ω 125/250 - 癡絤穕ア: 0.641054 - 喷靡穕ア: 2.680064 - rmse: 1234.314840 - r2: -1.759290 - mae: 956.788391 - 厩策瞯: 0.002000 - 丁: 2.95
+2025-04-10 21:57:02,564 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:05,485 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_126.pt
+2025-04-10 21:57:05,505 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:08,437 - src.training.trainer - INFO - 近Ω 127/250 - 癡絤穕ア: 0.641540 - 喷靡穕ア: 3.747695 - rmse: 1283.827481 - r2: -1.985099 - mae: 1024.893433 - 厩策瞯: 0.002000 - 丁: 2.93
+2025-04-10 21:57:08,452 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:11,367 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:14,793 - src.training.trainer - INFO - 近Ω 129/250 - 癡絤穕ア: 0.621289 - 喷靡穕ア: 4.137896 - rmse: 1295.118576 - r2: -2.037837 - mae: 1040.015991 - 厩策瞯: 0.002000 - 丁: 3.43
+2025-04-10 21:57:14,813 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:18,727 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:23,022 - src.training.trainer - INFO - 近Ω 131/250 - 癡絤穕ア: 0.612232 - 喷靡穕ア: 4.201175 - rmse: 1295.932917 - r2: -2.041658 - mae: 1042.325317 - 厩策瞯: 0.002000 - 丁: 4.30
+2025-04-10 21:57:23,049 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_131.pt
+2025-04-10 21:57:23,062 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:26,369 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:29,610 - src.training.trainer - INFO - 近Ω 133/250 - 癡絤穕ア: 0.655878 - 喷靡穕ア: 3.947312 - rmse: 1299.350078 - r2: -2.057720 - mae: 1055.569214 - 厩策瞯: 0.002000 - 丁: 3.24
+2025-04-10 21:57:29,629 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:33,089 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:36,222 - src.training.trainer - INFO - 近Ω 135/250 - 癡絤穕ア: 0.641517 - 喷靡穕ア: 4.285374 - rmse: 1298.398822 - r2: -2.053244 - mae: 1043.111816 - 厩策瞯: 0.002000 - 丁: 3.13
+2025-04-10 21:57:36,233 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:39,527 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_136.pt
+2025-04-10 21:57:39,541 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:42,784 - src.training.trainer - INFO - 近Ω 137/250 - 癡絤穕ア: 0.623612 - 喷靡穕ア: 3.768413 - rmse: 1285.800334 - r2: -1.994280 - mae: 1037.560913 - 厩策瞯: 0.002000 - 丁: 3.24
+2025-04-10 21:57:42,805 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:46,169 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:50,016 - src.training.trainer - INFO - 近Ω 139/250 - 癡絤穕ア: 0.628507 - 喷靡穕ア: 3.814163 - rmse: 1288.293105 - r2: -2.005901 - mae: 1033.774658 - 厩策瞯: 0.002000 - 丁: 3.85
+2025-04-10 21:57:50,027 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:54,376 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:57,206 - src.training.trainer - INFO - 近Ω 141/250 - 癡絤穕ア: 0.624276 - 喷靡穕ア: 3.471064 - rmse: 1278.059222 - r2: -1.958335 - mae: 1024.220581 - 厩策瞯: 0.002000 - 丁: 2.83
+2025-04-10 21:57:57,238 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_141.pt
+2025-04-10 21:57:57,256 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:57:59,829 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:02,579 - src.training.trainer - INFO - 近Ω 143/250 - 癡絤穕ア: 0.606881 - 喷靡穕ア: 4.738050 - rmse: 1315.828874 - r2: -2.135770 - mae: 1076.433594 - 厩策瞯: 0.002000 - 丁: 2.75
+2025-04-10 21:58:02,589 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:05,238 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:07,834 - src.training.trainer - INFO - 近Ω 145/250 - 癡絤穕ア: 0.612980 - 喷靡穕ア: 3.919025 - rmse: 1294.817748 - r2: -2.036426 - mae: 1044.529541 - 厩策瞯: 0.002000 - 丁: 2.60
+2025-04-10 21:58:07,846 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:10,475 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_146.pt
+2025-04-10 21:58:10,489 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:13,113 - src.training.trainer - INFO - 近Ω 147/250 - 癡絤穕ア: 0.656649 - 喷靡穕ア: 4.402997 - rmse: 1309.195173 - r2: -2.104232 - mae: 1062.790771 - 厩策瞯: 0.002000 - 丁: 2.62
+2025-04-10 21:58:13,125 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:15,718 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:18,542 - src.training.trainer - INFO - 近Ω 149/250 - 癡絤穕ア: 0.619450 - 喷靡穕ア: 3.005448 - rmse: 1254.032446 - r2: -1.848150 - mae: 988.428406 - 厩策瞯: 0.002000 - 丁: 2.82
+2025-04-10 21:58:18,552 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:21,120 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:23,797 - src.training.trainer - INFO - 近Ω 151/250 - 癡絤穕ア: 0.650652 - 喷靡穕ア: 5.829922 - rmse: 1335.783150 - r2: -2.231598 - mae: 1101.796997 - 厩策瞯: 0.002000 - 丁: 2.68
+2025-04-10 21:58:23,819 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_151.pt
+2025-04-10 21:58:23,835 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:26,426 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:29,149 - src.training.trainer - INFO - 近Ω 153/250 - 癡絤穕ア: 0.678204 - 喷靡穕ア: 3.736558 - rmse: 1286.265913 - r2: -1.996449 - mae: 1036.154907 - 厩策瞯: 0.002000 - 丁: 2.72
+2025-04-10 21:58:29,167 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:31,720 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:34,291 - src.training.trainer - INFO - 近Ω 155/250 - 癡絤穕ア: 0.638088 - 喷靡穕ア: 4.182784 - rmse: 1299.279752 - r2: -2.057389 - mae: 1050.903198 - 厩策瞯: 0.002000 - 丁: 2.57
+2025-04-10 21:58:34,303 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:36,789 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_156.pt
+2025-04-10 21:58:36,801 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:39,326 - src.training.trainer - INFO - 近Ω 157/250 - 癡絤穕ア: 0.652273 - 喷靡穕ア: 3.648098 - rmse: 1287.016560 - r2: -1.999947 - mae: 1033.727417 - 厩策瞯: 0.002000 - 丁: 2.52
+2025-04-10 21:58:39,342 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:41,968 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:44,582 - src.training.trainer - INFO - 近Ω 159/250 - 癡絤穕ア: 0.629666 - 喷靡穕ア: 3.720374 - rmse: 1272.616006 - r2: -1.933189 - mae: 1000.493896 - 厩策瞯: 0.002000 - 丁: 2.61
+2025-04-10 21:58:44,592 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:47,246 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:49,982 - src.training.trainer - INFO - 近Ω 161/250 - 癡絤穕ア: 0.622506 - 喷靡穕ア: 3.487895 - rmse: 1282.215466 - r2: -1.977607 - mae: 1031.482056 - 厩策瞯: 0.002000 - 丁: 2.74
+2025-04-10 21:58:50,004 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_161.pt
+2025-04-10 21:58:50,020 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:52,642 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:55,272 - src.training.trainer - INFO - 近Ω 163/250 - 癡絤穕ア: 0.642406 - 喷靡穕ア: 3.748810 - rmse: 1261.731796 - r2: -1.883231 - mae: 966.072266 - 厩策瞯: 0.002000 - 丁: 2.63
+2025-04-10 21:58:55,280 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:58:57,837 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:00,493 - src.training.trainer - INFO - 近Ω 165/250 - 癡絤穕ア: 0.611239 - 喷靡穕ア: 4.325782 - rmse: 1301.142383 - r2: -2.066161 - mae: 1052.459595 - 厩策瞯: 0.002000 - 丁: 2.65
+2025-04-10 21:59:00,505 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:03,192 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_166.pt
+2025-04-10 21:59:03,208 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:05,882 - src.training.trainer - INFO - 近Ω 167/250 - 癡絤穕ア: 0.652068 - 喷靡穕ア: 5.144965 - rmse: 1325.868159 - r2: -2.183802 - mae: 1088.516235 - 厩策瞯: 0.002000 - 丁: 2.67
+2025-04-10 21:59:05,892 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:08,364 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:10,798 - src.training.trainer - INFO - 近Ω 169/250 - 癡絤穕ア: 0.607485 - 喷靡穕ア: 3.006355 - rmse: 1250.409683 - r2: -1.831718 - mae: 976.755371 - 厩策瞯: 0.002000 - 丁: 2.43
+2025-04-10 21:59:10,816 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:13,480 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:16,077 - src.training.trainer - INFO - 近Ω 171/250 - 癡絤穕ア: 0.638576 - 喷靡穕ア: 4.867268 - rmse: 1317.978186 - r2: -2.146022 - mae: 1076.790527 - 厩策瞯: 0.002000 - 丁: 2.60
+2025-04-10 21:59:16,107 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_171.pt
+2025-04-10 21:59:16,127 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:18,810 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:21,452 - src.training.trainer - INFO - 近Ω 173/250 - 癡絤穕ア: 0.668732 - 喷靡穕ア: 4.257314 - rmse: 1295.705069 - r2: -2.040589 - mae: 1036.438354 - 厩策瞯: 0.002000 - 丁: 2.64
+2025-04-10 21:59:21,472 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:24,267 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:26,848 - src.training.trainer - INFO - 近Ω 175/250 - 癡絤穕ア: 0.651221 - 喷靡穕ア: 3.883214 - rmse: 1289.746051 - r2: -2.012685 - mae: 1037.365112 - 厩策瞯: 0.002000 - 丁: 2.58
+2025-04-10 21:59:26,862 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:29,554 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_176.pt
+2025-04-10 21:59:29,570 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:32,258 - src.training.trainer - INFO - 近Ω 177/250 - 癡絤穕ア: 0.636334 - 喷靡穕ア: 5.244903 - rmse: 1326.431915 - r2: -2.186510 - mae: 1086.842651 - 厩策瞯: 0.002000 - 丁: 2.69
+2025-04-10 21:59:32,276 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:34,938 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:37,501 - src.training.trainer - INFO - 近Ω 179/250 - 癡絤穕ア: 0.636451 - 喷靡穕ア: 5.080868 - rmse: 1321.542848 - r2: -2.163063 - mae: 1080.355469 - 厩策瞯: 0.002000 - 丁: 2.56
+2025-04-10 21:59:37,515 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:40,083 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:42,634 - src.training.trainer - INFO - 近Ω 181/250 - 癡絤穕ア: 0.618133 - 喷靡穕ア: 4.724099 - rmse: 1315.576680 - r2: -2.134568 - mae: 1074.648315 - 厩策瞯: 0.002000 - 丁: 2.55
+2025-04-10 21:59:42,664 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_181.pt
+2025-04-10 21:59:42,678 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:45,286 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:47,692 - src.training.trainer - INFO - 近Ω 183/250 - 癡絤穕ア: 0.627748 - 喷靡穕ア: 3.818172 - rmse: 1293.174196 - r2: -2.028722 - mae: 1046.005737 - 厩策瞯: 0.002000 - 丁: 2.41
+2025-04-10 21:59:47,706 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:50,374 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:52,886 - src.training.trainer - INFO - 近Ω 185/250 - 癡絤穕ア: 0.636539 - 喷靡穕ア: 3.375904 - rmse: 1274.520155 - r2: -1.941974 - mae: 1015.207275 - 厩策瞯: 0.002000 - 丁: 2.51
+2025-04-10 21:59:52,898 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:55,459 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_186.pt
+2025-04-10 21:59:55,473 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 21:59:58,004 - src.training.trainer - INFO - 近Ω 187/250 - 癡絤穕ア: 0.616113 - 喷靡穕ア: 4.697579 - rmse: 1312.088364 - r2: -2.117967 - mae: 1063.828003 - 厩策瞯: 0.002000 - 丁: 2.53
+2025-04-10 21:59:58,018 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:00,693 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:03,453 - src.training.trainer - INFO - 近Ω 189/250 - 癡絤穕ア: 0.643214 - 喷靡穕ア: 3.290994 - rmse: 1273.960115 - r2: -1.939389 - mae: 1017.516296 - 厩策瞯: 0.002000 - 丁: 2.76
+2025-04-10 22:00:03,471 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:06,065 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:08,714 - src.training.trainer - INFO - 近Ω 191/250 - 癡絤穕ア: 0.676153 - 喷靡穕ア: 4.052242 - rmse: 1293.473570 - r2: -2.030124 - mae: 1039.027710 - 厩策瞯: 0.002000 - 丁: 2.65
+2025-04-10 22:00:08,732 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_191.pt
+2025-04-10 22:00:08,746 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:11,354 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:13,912 - src.training.trainer - INFO - 近Ω 193/250 - 癡絤穕ア: 0.615298 - 喷靡穕ア: 4.195345 - rmse: 1303.569091 - r2: -2.077609 - mae: 1058.060059 - 厩策瞯: 0.002000 - 丁: 2.56
+2025-04-10 22:00:13,922 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:16,650 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:19,229 - src.training.trainer - INFO - 近Ω 195/250 - 癡絤穕ア: 0.600961 - 喷靡穕ア: 3.969950 - rmse: 1285.804223 - r2: -1.994298 - mae: 1021.466553 - 厩策瞯: 0.002000 - 丁: 2.58
+2025-04-10 22:00:19,241 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:21,833 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_196.pt
+2025-04-10 22:00:21,851 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:24,474 - src.training.trainer - INFO - 近Ω 197/250 - 癡絤穕ア: 0.640520 - 喷靡穕ア: 4.338095 - rmse: 1308.364198 - r2: -2.100292 - mae: 1068.362671 - 厩策瞯: 0.002000 - 丁: 2.62
+2025-04-10 22:00:24,488 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:27,129 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:29,705 - src.training.trainer - INFO - 近Ω 199/250 - 癡絤穕ア: 0.613060 - 喷靡穕ア: 3.564653 - rmse: 1279.268590 - r2: -1.963936 - mae: 1019.299316 - 厩策瞯: 0.002000 - 丁: 2.58
+2025-04-10 22:00:29,717 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:32,332 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:34,821 - src.training.trainer - INFO - 近Ω 201/250 - 癡絤穕ア: 0.620769 - 喷靡穕ア: 4.398084 - rmse: 1301.554695 - r2: -2.068105 - mae: 1047.331543 - 厩策瞯: 0.002000 - 丁: 2.49
+2025-04-10 22:00:34,841 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_201.pt
+2025-04-10 22:00:34,861 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:37,502 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:40,147 - src.training.trainer - INFO - 近Ω 203/250 - 癡絤穕ア: 0.634888 - 喷靡穕ア: 4.130561 - rmse: 1301.880755 - r2: -2.069642 - mae: 1057.172241 - 厩策瞯: 0.002000 - 丁: 2.64
+2025-04-10 22:00:40,162 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:42,829 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:45,368 - src.training.trainer - INFO - 近Ω 205/250 - 癡絤穕ア: 0.641452 - 喷靡穕ア: 4.650087 - rmse: 1313.745980 - r2: -2.125850 - mae: 1072.575073 - 厩策瞯: 0.002000 - 丁: 2.54
+2025-04-10 22:00:45,384 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:48,013 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_206.pt
+2025-04-10 22:00:48,029 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:50,477 - src.training.trainer - INFO - 近Ω 207/250 - 癡絤穕ア: 0.583626 - 喷靡穕ア: 3.735601 - rmse: 1282.819746 - r2: -1.980414 - mae: 1024.059937 - 厩策瞯: 0.002000 - 丁: 2.45
+2025-04-10 22:00:50,489 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:53,014 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:55,496 - src.training.trainer - INFO - 近Ω 209/250 - 癡絤穕ア: 0.605929 - 喷靡穕ア: 4.045169 - rmse: 1297.584727 - r2: -2.049417 - mae: 1049.501343 - 厩策瞯: 0.002000 - 丁: 2.48
+2025-04-10 22:00:55,508 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:00:58,230 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:00,688 - src.training.trainer - INFO - 近Ω 211/250 - 癡絤穕ア: 0.679305 - 喷靡穕ア: 4.160528 - rmse: 1293.803067 - r2: -2.031668 - mae: 1034.894897 - 厩策瞯: 0.002000 - 丁: 2.46
+2025-04-10 22:01:00,709 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_211.pt
+2025-04-10 22:01:00,727 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:03,330 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:05,956 - src.training.trainer - INFO - 近Ω 213/250 - 癡絤穕ア: 0.632681 - 喷靡穕ア: 4.382580 - rmse: 1309.454514 - r2: -2.105462 - mae: 1067.168823 - 厩策瞯: 0.002000 - 丁: 2.63
+2025-04-10 22:01:05,974 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:08,543 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:11,101 - src.training.trainer - INFO - 近Ω 215/250 - 癡絤穕ア: 0.616754 - 喷靡穕ア: 4.676195 - rmse: 1315.160874 - r2: -2.132587 - mae: 1074.923340 - 厩策瞯: 0.002000 - 丁: 2.56
+2025-04-10 22:01:11,117 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:13,774 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_216.pt
+2025-04-10 22:01:13,790 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:16,286 - src.training.trainer - INFO - 近Ω 217/250 - 癡絤穕ア: 0.636703 - 喷靡穕ア: 4.587637 - rmse: 1309.904577 - r2: -2.107597 - mae: 1061.908813 - 厩策瞯: 0.002000 - 丁: 2.50
+2025-04-10 22:01:16,298 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:18,992 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:21,524 - src.training.trainer - INFO - 近Ω 219/250 - 癡絤穕ア: 0.622324 - 喷靡穕ア: 3.748467 - rmse: 1285.459694 - r2: -1.992694 - mae: 1032.735229 - 厩策瞯: 0.002000 - 丁: 2.53
+2025-04-10 22:01:21,542 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:24,462 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:28,641 - src.training.trainer - INFO - 近Ω 221/250 - 癡絤穕ア: 0.628029 - 喷靡穕ア: 2.685162 - rmse: 1236.529822 - r2: -1.769201 - mae: 969.556213 - 厩策瞯: 0.002000 - 丁: 4.18
+2025-04-10 22:01:28,667 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_221.pt
+2025-04-10 22:01:28,691 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:31,778 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:34,650 - src.training.trainer - INFO - 近Ω 223/250 - 癡絤穕ア: 0.654812 - 喷靡穕ア: 5.341680 - rmse: 1327.623017 - r2: -2.192235 - mae: 1087.173096 - 厩策瞯: 0.002000 - 丁: 2.87
+2025-04-10 22:01:34,670 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:37,638 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:40,771 - src.training.trainer - INFO - 近Ω 225/250 - 癡絤穕ア: 0.635784 - 喷靡穕ア: 4.493893 - rmse: 1312.891846 - r2: -2.121787 - mae: 1072.514282 - 厩策瞯: 0.002000 - 丁: 3.13
+2025-04-10 22:01:40,785 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:43,538 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_226.pt
+2025-04-10 22:01:43,551 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:46,514 - src.training.trainer - INFO - 近Ω 227/250 - 癡絤穕ア: 0.612547 - 喷靡穕ア: 3.500500 - rmse: 1281.288999 - r2: -1.973305 - mae: 1028.263062 - 厩策瞯: 0.002000 - 丁: 2.96
+2025-04-10 22:01:46,530 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:49,558 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:52,299 - src.training.trainer - INFO - 近Ω 229/250 - 癡絤穕ア: 0.631565 - 喷靡穕ア: 4.124031 - rmse: 1298.517472 - r2: -2.053802 - mae: 1052.118408 - 厩策瞯: 0.002000 - 丁: 2.74
+2025-04-10 22:01:52,312 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:55,159 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:01:58,100 - src.training.trainer - INFO - 近Ω 231/250 - 癡絤穕ア: 0.635637 - 喷靡穕ア: 3.437827 - rmse: 1268.998473 - r2: -1.916538 - mae: 1007.970947 - 厩策瞯: 0.002000 - 丁: 2.94
+2025-04-10 22:01:58,133 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_231.pt
+2025-04-10 22:01:58,152 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:00,895 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:03,883 - src.training.trainer - INFO - 近Ω 233/250 - 癡絤穕ア: 0.623096 - 喷靡穕ア: 4.839655 - rmse: 1320.986232 - r2: -2.160399 - mae: 1082.711060 - 厩策瞯: 0.002000 - 丁: 2.99
+2025-04-10 22:02:03,895 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:06,590 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:09,415 - src.training.trainer - INFO - 近Ω 235/250 - 癡絤穕ア: 0.624656 - 喷靡穕ア: 3.320399 - rmse: 1276.875239 - r2: -1.952856 - mae: 1025.701904 - 厩策瞯: 0.002000 - 丁: 2.83
+2025-04-10 22:02:09,428 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:12,184 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_236.pt
+2025-04-10 22:02:12,209 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:15,088 - src.training.trainer - INFO - 近Ω 237/250 - 癡絤穕ア: 0.605388 - 喷靡穕ア: 3.638333 - rmse: 1273.847567 - r2: -1.938869 - mae: 1001.605225 - 厩策瞯: 0.002000 - 丁: 2.88
+2025-04-10 22:02:15,107 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:18,134 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:21,024 - src.training.trainer - INFO - 近Ω 239/250 - 癡絤穕ア: 0.624142 - 喷靡穕ア: 5.025017 - rmse: 1319.293371 - r2: -2.152304 - mae: 1078.247192 - 厩策瞯: 0.002000 - 丁: 2.89
+2025-04-10 22:02:21,044 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:24,643 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:28,226 - src.training.trainer - INFO - 近Ω 241/250 - 癡絤穕ア: 0.607399 - 喷靡穕ア: 4.943501 - rmse: 1316.870011 - r2: -2.140734 - mae: 1071.877808 - 厩策瞯: 0.002000 - 丁: 3.58
+2025-04-10 22:02:28,254 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_241.pt
+2025-04-10 22:02:28,272 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:32,235 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:35,333 - src.training.trainer - INFO - 近Ω 243/250 - 癡絤穕ア: 0.622956 - 喷靡穕ア: 3.635848 - rmse: 1282.497563 - r2: -1.978917 - mae: 1027.962280 - 厩策瞯: 0.002000 - 丁: 3.10
+2025-04-10 22:02:35,357 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:39,056 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:42,850 - src.training.trainer - INFO - 近Ω 245/250 - 癡絤穕ア: 0.605822 - 喷靡穕ア: 4.541444 - rmse: 1302.782023 - r2: -2.073894 - mae: 1048.587891 - 厩策瞯: 0.002000 - 丁: 3.79
+2025-04-10 22:02:42,867 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:46,409 - src.training.callbacks - INFO - 家浪琩翴玂 outputs\hybrid_20250410_215024\HybridPINNLSTMModel_20250410_215027\checkpoints\HybridPINNLSTMModel_epoch_246.pt
+2025-04-10 22:02:46,430 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:49,799 - src.training.trainer - INFO - 近Ω 247/250 - 癡絤穕ア: 0.622382 - 喷靡穕ア: 3.941947 - rmse: 1292.639886 - r2: -2.026220 - mae: 1040.633911 - 厩策瞯: 0.002000 - 丁: 3.37
+2025-04-10 22:02:49,817 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:53,310 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:56,736 - src.training.trainer - INFO - 近Ω 249/250 - 癡絤穕ア: 0.605584 - 喷靡穕ア: 3.966367 - rmse: 1296.073059 - r2: -2.042316 - mae: 1044.703247 - 厩策瞯: 0.002000 - 丁: 3.43
+2025-04-10 22:02:56,753 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:59,948 - src.training.trainer - INFO - 近Ω 250/250 - 癡絤穕ア: 0.619570 - 喷靡穕ア: 4.938991 - rmse: 1320.899835 - r2: -2.159986 - mae: 1082.704224 - 厩策瞯: 0.002000 - 丁: 3.20
+2025-04-10 22:02:59,968 - src.training.trainer - INFO - 菏北夹э到家玂 outputs\hybrid_20250410_215024\models\best_model.pt
+2025-04-10 22:02:59,968 - src.training.trainer - INFO - 癡絤ЧΘ羆丁: 752.84
+2025-04-10 22:02:59,987 - __main__ - INFO - 癡絤ЧΘ程沧家玂: outputs\hybrid_20250410_215024\models\final_model.pt
+2025-04-10 22:03:00,001 - __main__ - WARNING - ㄖ块 l2_penalty 岿: zero-dimensional arrays cannot be concatenated
+2025-04-10 22:03:00,017 - __main__ - INFO - 蝶︳夹玂: outputs\hybrid_20250410_215024\evaluation\metrics.csv
+2025-04-10 22:03:00,017 - __main__ - INFO - ネΘ跌谋て挡狦...
+2025-04-10 22:03:00,898 - src.utils.visualization - INFO - 瓜钩玂: outputs\hybrid_20250410_215024\evaluation\visualizations\pred_vs_true.png
+2025-04-10 22:03:01,568 - src.utils.visualization - INFO - 瓜钩玂: outputs\hybrid_20250410_215024\evaluation\visualizations\pred_vs_true.png
+2025-04-10 22:03:03,084 - src.utils.visualization - INFO - 瓜钩玂: outputs\hybrid_20250410_215024\evaluation\visualizations\error_analysis.png
+2025-04-10 22:03:04,440 - src.utils.visualization - INFO - 瓜钩玂: outputs\hybrid_20250410_215024\evaluation\visualizations\physics_validation.png
+2025-04-10 22:03:05,469 - src.utils.visualization - INFO - 瓜钩玂: outputs\hybrid_20250410_215024\evaluation\visualizations\attention_weights.png
+2025-04-10 22:03:05,921 - src.utils.visualization - INFO - ネΘ 6 跌谋て瓜 outputs\hybrid_20250410_215024\evaluation\visualizations
+2025-04-10 22:03:05,921 - __main__ - INFO - 蝶︳ЧΘ挡狦玂: outputs\hybrid_20250410_215024\evaluation
+2025-04-10 22:03:05,921 - __main__ - INFO - ヴ叭ЧΘ

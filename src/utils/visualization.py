@@ -34,6 +34,23 @@ except Exception as e:
 logger = logging.getLogger(__name__)
 
 
+def _save_figure(fig, save_path):
+    """
+    保存圖像的通用函數
+    
+    參數:
+        fig (matplotlib.figure.Figure): 圖像對象
+        save_path (str): 保存圖像的路徑
+    """
+    if save_path:
+        try:
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            fig.savefig(save_path, dpi=300, bbox_inches='tight')
+            logger.info(f"圖像已保存至: {save_path}")
+        except Exception as e:
+            logger.error(f"保存圖像失敗: {str(e)}")
+
+
 def plot_prediction_vs_true(y_true, y_pred, model_name=None, figsize=(10, 6), 
                            save_path=None, show_metrics=True, log_scale=False):
     """
@@ -64,8 +81,7 @@ def plot_prediction_vs_true(y_true, y_pred, model_name=None, figsize=(10, 6),
         ax.set_yscale('log')
     
     # 繪製散點圖
-    scatter = ax.scatter(y_true, y_pred, alpha=0.6, 
-                        edgecolor='k', s=50)
+    scatter = ax.scatter(y_true, y_pred, alpha=0.6, edgecolor='k', s=50)
     
     # 繪製理想的對角線
     min_val = min(np.min(y_true), np.min(y_pred))
@@ -133,23 +149,7 @@ def plot_prediction_vs_true(y_true, y_pred, model_name=None, figsize=(10, 6),
     plt.tight_layout()
     
     # 保存圖像
-    if save_path:
-        try:
-            # 確保目錄存在
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            logger.info(f"圖像已保存至: {save_path}")
-        except Exception as e:
-            logger.error(f"保存圖像失敗: {str(e)}")
-    
-    # 保存圖像
-    if save_path:
-        try:
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            logger.info(f"圖像已保存至: {save_path}")
-        except Exception as e:
-            logger.error(f"保存圖像失敗: {str(e)}")
+    _save_figure(fig, save_path)
     
     return fig
 
@@ -177,8 +177,7 @@ def plot_parameter_impact(parameters, predictions, parameter_name="結構參數"
     fig, ax = plt.subplots(figsize=figsize)
     
     # 繪製散點圖
-    scatter = ax.scatter(parameters, predictions, 
-                        alpha=0.7, edgecolor='k')
+    scatter = ax.scatter(parameters, predictions, alpha=0.7, edgecolor='k')
     
     # 嘗試繪製趨勢線
     try:
@@ -226,13 +225,7 @@ def plot_parameter_impact(parameters, predictions, parameter_name="結構參數"
     plt.tight_layout(rect=[0, 0.03, 1, 0.97])
     
     # 保存圖像
-    if save_path:
-        try:
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            logger.info(f"圖像已保存至: {save_path}")
-        except Exception as e:
-            logger.error(f"保存圖像失敗: {str(e)}")
+    _save_figure(fig, save_path)
     
     return fig
 
@@ -266,8 +259,7 @@ def plot_physical_constraint_validation(delta_w_values, nf_values, figsize=(10, 
     ax.set_yscale('log')
     
     # 繪製散點圖
-    scatter = ax.scatter(delta_w_values, nf_values, 
-                        alpha=0.7, edgecolor='k', label='預測值')
+    scatter = ax.scatter(delta_w_values, nf_values, alpha=0.7, edgecolor='k', label='預測值')
     
     # 生成理論曲線
     x_range = np.logspace(np.log10(np.min(delta_w_values) * 0.5), 
@@ -310,13 +302,7 @@ def plot_physical_constraint_validation(delta_w_values, nf_values, figsize=(10, 
     plt.tight_layout()
     
     # 保存圖像
-    if save_path:
-        try:
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            logger.info(f"圖像已保存至: {save_path}")
-        except Exception as e:
-            logger.error(f"保存圖像失敗: {str(e)}")
+    _save_figure(fig, save_path)
     
     return fig
 
@@ -390,38 +376,13 @@ def visualize_model_results(results, output_dir="./visualizations", prefix=""):
     # 6. 融合權重視覺化
     if 'fusion_weights' in results:
         fusion_path = os.path.join(output_dir, f"{prefix}fusion_weights.png")
-        fusion_weights = results['fusion_weights']
         
         fig, ax = plt.subplots(figsize=(8, 6))
         labels = ['PINN', 'LSTM']
         
-        # 檢查 fusion_weights 的型態和維度並適當處理
-        if isinstance(fusion_weights, np.ndarray):
-            if fusion_weights.ndim > 1:
-                # 如果是多維數組，取平均值
-                avg_weights = np.mean(fusion_weights, axis=0)
-            elif fusion_weights.ndim == 1 and fusion_weights.size >= 2:
-                # 如果是一維且長度>=2，直接使用前兩個元素
-                avg_weights = fusion_weights[:2]
-            elif fusion_weights.ndim == 0 or fusion_weights.size == 1:
-                # 如果是0維數組或只有1個元素，創建 [fusion_weights, 1-fusion_weights]
-                scalar_value = float(fusion_weights.item() if hasattr(fusion_weights, 'item') else fusion_weights)
-                avg_weights = np.array([scalar_value, 1.0 - scalar_value])
-            else:
-                # 其他情況使用預設值
-                avg_weights = np.array([0.5, 0.5])
-        else:
-            # 如果不是數組，嘗試轉換為浮點數
-            try:
-                scalar_value = float(fusion_weights)
-                avg_weights = np.array([scalar_value, 1.0 - scalar_value])
-            except (TypeError, ValueError):
-                avg_weights = np.array([0.5, 0.5])
-        
-        # 確保 avg_weights 長度至少為2
-        if not hasattr(avg_weights, '__len__') or len(avg_weights) < 2:
-            scalar_value = float(avg_weights) if np.isscalar(avg_weights) else 0.5
-            avg_weights = np.array([scalar_value, 1.0 - scalar_value])
+        # 處理不同形式的融合權重
+        fusion_weights = results['fusion_weights']
+        avg_weights = _process_fusion_weights(fusion_weights)
         
         ax.bar(labels, avg_weights[:2], color=['blue', 'orange'])
         ax.set_ylabel('平均權重')
@@ -441,41 +402,36 @@ def visualize_model_results(results, output_dir="./visualizations", prefix=""):
     return saved_paths
 
 
-if __name__ == "__main__":
-    # 簡單的測試代碼
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+def _process_fusion_weights(fusion_weights):
+    """處理不同形式的融合權重數據"""
+    if isinstance(fusion_weights, np.ndarray):
+        if fusion_weights.ndim > 1:
+            # 如果是多維數組，取平均值
+            avg_weights = np.mean(fusion_weights, axis=0)
+        elif fusion_weights.ndim == 1 and fusion_weights.size >= 2:
+            # 如果是一維且長度>=2，直接使用前兩個元素
+            avg_weights = fusion_weights[:2]
+        elif fusion_weights.ndim == 0 or fusion_weights.size == 1:
+            # 如果是0維數組或只有1個元素，創建 [fusion_weights, 1-fusion_weights]
+            scalar_value = float(fusion_weights.item() if hasattr(fusion_weights, 'item') else fusion_weights)
+            avg_weights = np.array([scalar_value, 1.0 - scalar_value])
+        else:
+            # 其他情況使用預設值
+            avg_weights = np.array([0.5, 0.5])
+    else:
+        # 如果不是數組，嘗試轉換為浮點數
+        try:
+            scalar_value = float(fusion_weights)
+            avg_weights = np.array([scalar_value, 1.0 - scalar_value])
+        except (TypeError, ValueError):
+            avg_weights = np.array([0.5, 0.5])
     
-    # 創建測試數據
-    np.random.seed(42)
-    y_true = np.exp(np.random.normal(10, 2, size=50))  # 模擬疲勞壽命真實值
-    y_pred = y_true * (1 + np.random.normal(0, 0.3, size=y_true.shape))  # 模擬預測值
+    # 確保 avg_weights 長度至少為2
+    if not hasattr(avg_weights, '__len__') or len(avg_weights) < 2:
+        scalar_value = float(avg_weights) if np.isscalar(avg_weights) else 0.5
+        avg_weights = np.array([scalar_value, 1.0 - scalar_value])
     
-    # 測試預測值與真實值對比圖
-    logger.info("測試預測值與真實值對比圖")
-    fig = plot_prediction_vs_true(y_true, y_pred, model_name="PINN-LSTM")
-    plt.show()
-    
-    # 測試誤差分析圖
-    logger.info("測試誤差分析圖")
-    fig = plot_prediction_error_analysis(y_true, y_pred)
-    plt.show()
-    
-    # 測試物理約束驗證圖
-    logger.info("測試物理約束驗證圖")
-    delta_w = np.power(y_true / 55.83, 1/-2.259) * (1 + np.random.normal(0, 0.1, size=y_true.shape))
-    fig = plot_physical_constraint_validation(delta_w, y_pred)
-    plt.show()
-    
-    # 測試注意力權重視覺化
-    logger.info("測試注意力權重視覺化")
-    attention_weights = np.random.dirichlet(np.ones(4), size=1)[0]  # 模擬注意力權重
-    fig = plot_attention_weights(attention_weights)
-    plt.show()
-    
-    logger.info("所有測試完成")
+    return avg_weights
 
 
 def plot_prediction_error_analysis(y_true, y_pred, x_feature=None, feature_name=None,
@@ -574,13 +530,7 @@ def plot_prediction_error_analysis(y_true, y_pred, x_feature=None, feature_name=
     plt.tight_layout(rect=[0, 0.05, 1, 0.95])  # 為底部文本留出空間
     
     # 保存圖像
-    if save_path:
-        try:
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            logger.info(f"圖像已保存至: {save_path}")
-        except Exception as e:
-            logger.error(f"保存圖像失敗: {str(e)}")
+    _save_figure(fig, save_path)
     
     return fig
 
@@ -619,6 +569,10 @@ def plot_training_history(history, metrics=None, figsize=(12, 6),
         ax = axes[i]
         
         # 獲取指標數據
+        values = []
+        label = ''
+        color = 'blue'
+        
         if metric == 'loss':
             values = history.get('train_loss', [])
             label = 'Training Loss'
@@ -631,12 +585,11 @@ def plot_training_history(history, metrics=None, figsize=(12, 6),
             # 嘗試從metrics_history中獲取
             if 'metrics_history' in history and metric in history['metrics_history']:
                 values = history['metrics_history'][metric]
-                label = f'{metric.replace("_", " ").title()}'
-                color = 'green'
             else:
                 values = history.get(metric, [])
-                label = f'{metric.replace("_", " ").title()}'
-                color = 'green'
+            
+            label = f'{metric.replace("_", " ").title()}'
+            color = 'green'
         
         # 截取歷史記錄
         if start_epoch > 0 and len(values) > start_epoch:
@@ -646,11 +599,11 @@ def plot_training_history(history, metrics=None, figsize=(12, 6),
             epochs = np.arange(len(values))
         
         # 繪製曲線
-        ax.plot(epochs, values, marker='o', linestyle='-', 
-               color=color, label=label, markersize=3)
-        
-        # 標記最佳值
         if len(values) > 0:
+            ax.plot(epochs, values, marker='o', linestyle='-', 
+                  color=color, label=label, markersize=3)
+            
+            # 標記最佳值
             if metric in ['val_loss', 'loss', 'rmse', 'mae', 'mape']:
                 # 對於這些指標，值越小越好
                 best_epoch = np.argmin(values)
@@ -675,38 +628,22 @@ def plot_training_history(history, metrics=None, figsize=(12, 6),
         ax.set_title(f'{label} vs. Epoch')
         ax.grid(True, linestyle='--', alpha=0.7)
         
-        # 如果指標是損失，添加標記
-        if 'loss' in metric.lower():
-            if len(values) > 10:
-                # 計算移動平均線以顯示趨勢
-                window_size = min(5, len(values) // 5)
-                if window_size > 1:
-                    moving_avg = np.convolve(values, np.ones(window_size)/window_size, mode='valid')
-                    moving_avg_epochs = epochs[window_size-1:]
-                    ax.plot(moving_avg_epochs, moving_avg, 'r--', alpha=0.5, 
-                           label=f'{window_size}-Epoch Moving Avg')
-            
-            # 如果有其他損失成分，也可以一併繪製
-            if 'loss_components' in history:
-                components = history['loss_components']
-                for comp_name, comp_values in components.items():
-                    if len(comp_values) > 0:
-                        comp_epochs = np.arange(len(comp_values))
-                        ax.plot(comp_epochs, comp_values, '--', alpha=0.5, 
-                               label=f'{comp_name.replace("_", " ").title()}')
+        # 如果指標是損失，添加移動平均線
+        if 'loss' in metric.lower() and len(values) > 10:
+            # 計算移動平均線以顯示趨勢
+            window_size = min(5, len(values) // 5)
+            if window_size > 1:
+                moving_avg = np.convolve(values, np.ones(window_size)/window_size, mode='valid')
+                moving_avg_epochs = epochs[window_size-1:]
+                ax.plot(moving_avg_epochs, moving_avg, 'r--', alpha=0.5, 
+                       label=f'{window_size}-Epoch Moving Avg')
         
         ax.legend()
     
     plt.tight_layout()
     
     # 保存圖像
-    if save_path:
-        try:
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            logger.info(f"圖像已保存至: {save_path}")
-        except Exception as e:
-            logger.error(f"保存圖像失敗: {str(e)}")
+    _save_figure(fig, save_path)
     
     return fig
 
@@ -764,13 +701,7 @@ def plot_feature_importance(feature_names, importance_values, model_name=None,
     plt.tight_layout()
     
     # 保存圖像
-    if save_path:
-        try:
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            logger.info(f"圖像已保存至: {save_path}")
-        except Exception as e:
-            logger.error(f"保存圖像失敗: {str(e)}")
+    _save_figure(fig, save_path)
     
     return fig
 
@@ -810,16 +741,14 @@ def plot_attention_weights(attention_weights, sequence_labels=None, figsize=(10,
             sequence_labels = [f'Step {i+1}' for i in range(seq_len)]
     
     # 創建圖像
-    fig, axes = plt.subplots(1, 1, figsize=figsize)
+    fig, ax = plt.subplots(figsize=figsize)
     
     # 如果批次大小為1，直接繪製單個條形圖
     if batch_size == 1:
-        ax = axes
         weights = attention_weights[0]
         
         # 繪製條形圖
-        bars = ax.bar(sequence_labels, weights, 
-                     color='skyblue', edgecolor='navy')
+        bars = ax.bar(sequence_labels, weights, color='skyblue', edgecolor='navy')
         
         # 在條形上添加數值
         for i, (bar, weight) in enumerate(zip(bars, weights)):
@@ -846,39 +775,33 @@ def plot_attention_weights(attention_weights, sequence_labels=None, figsize=(10,
         y_labels = [f'Sample {i+1}' for i in range(max_samples)]
         
         # 繪製熱力圖
-        im = axes.imshow(weights, cmap=cmap, aspect='auto')
+        im = ax.imshow(weights, cmap=cmap, aspect='auto')
         
         # 添加顏色條
-        cbar = fig.colorbar(im, ax=axes)
+        cbar = fig.colorbar(im, ax=ax)
         cbar.set_label('Attention Weight')
         
         # 設置標籤
-        axes.set_xticks(np.arange(len(sequence_labels)))
-        axes.set_xticklabels(sequence_labels)
-        axes.set_yticks(np.arange(len(y_labels)))
-        axes.set_yticklabels(y_labels)
+        ax.set_xticks(np.arange(len(sequence_labels)))
+        ax.set_xticklabels(sequence_labels)
+        ax.set_yticks(np.arange(len(y_labels)))
+        ax.set_yticklabels(y_labels)
         
         # 在每個單元格中添加文本
         for i in range(len(y_labels)):
             for j in range(len(sequence_labels)):
-                text = axes.text(j, i, f'{weights[i, j]:.2f}',
-                                ha="center", va="center", color="w" if weights[i, j] > 0.5 else "k")
+                ax.text(j, i, f'{weights[i, j]:.2f}',
+                       ha="center", va="center", color="w" if weights[i, j] > 0.5 else "k")
         
         if title:
-            axes.set_title(title)
+            ax.set_title(title)
         else:
-            axes.set_title('Attention Weights Heatmap')
+            ax.set_title('Attention Weights Heatmap')
     
     plt.tight_layout()
     
     # 保存圖像
-    if save_path:
-        try:
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            logger.info(f"圖像已保存至: {save_path}")
-        except Exception as e:
-            logger.error(f"保存圖像失敗: {str(e)}")
+    _save_figure(fig, save_path)
     
     return fig
 
@@ -920,9 +843,7 @@ def create_error_histogram(y_true, y_pred, bins=20, figsize=(10, 6),
     fig, ax = plt.subplots(figsize=figsize)
     
     # 繪製直方圖
-    n, bins, patches = ax.hist(errors, bins=bins, 
-                              color=color, alpha=0.7, 
-                              edgecolor='black')
+    n, bins, patches = ax.hist(errors, bins=bins, color=color, alpha=0.7, edgecolor='black')
     
     # 計算統計量
     mean_error = np.mean(errors)
@@ -930,12 +851,9 @@ def create_error_histogram(y_true, y_pred, bins=20, figsize=(10, 6),
     p90_error = np.percentile(errors, 90)
     
     # 在圖上標記統計量
-    ax.axvline(mean_error, color='red', linestyle='--', 
-              label=f'Mean: {mean_error:.2f}')
-    ax.axvline(median_error, color='orange', linestyle='-', 
-              label=f'Median: {median_error:.2f}')
-    ax.axvline(p90_error, color='purple', linestyle='-.', 
-              label=f'90th Percentile: {p90_error:.2f}')
+    ax.axvline(mean_error, color='red', linestyle='--', label=f'Mean: {mean_error:.2f}')
+    ax.axvline(median_error, color='orange', linestyle='-', label=f'Median: {median_error:.2f}')
+    ax.axvline(p90_error, color='purple', linestyle='-.', label=f'90th Percentile: {p90_error:.2f}')
     
     # 設置標籤和標題
     ax.set_xlabel(x_label)
@@ -964,3 +882,47 @@ def create_error_histogram(y_true, y_pred, bins=20, figsize=(10, 6),
            verticalalignment='top', horizontalalignment='right',
            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
            fontsize=9)
+    
+    plt.tight_layout()
+    
+    # 保存圖像
+    _save_figure(fig, save_path)
+    
+    return fig
+
+
+if __name__ == "__main__":
+    # 簡單的測試代碼
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # 創建測試數據
+    np.random.seed(42)
+    y_true = np.exp(np.random.normal(10, 2, size=50))  # 模擬疲勞壽命真實值
+    y_pred = y_true * (1 + np.random.normal(0, 0.3, size=y_true.shape))  # 模擬預測值
+    
+    # 測試預測值與真實值對比圖
+    logger.info("測試預測值與真實值對比圖")
+    fig = plot_prediction_vs_true(y_true, y_pred, model_name="PINN-LSTM")
+    plt.show()
+    
+    # 測試誤差分析圖
+    logger.info("測試誤差分析圖")
+    fig = plot_prediction_error_analysis(y_true, y_pred)
+    plt.show()
+    
+    # 測試物理約束驗證圖
+    logger.info("測試物理約束驗證圖")
+    delta_w = np.power(y_true / 55.83, 1/-2.259) * (1 + np.random.normal(0, 0.1, size=y_true.shape))
+    fig = plot_physical_constraint_validation(delta_w, y_pred)
+    plt.show()
+    
+    # 測試注意力權重視覺化
+    logger.info("測試注意力權重視覺化")
+    attention_weights = np.random.dirichlet(np.ones(4), size=1)[0]  # 模擬注意力權重
+    fig = plot_attention_weights(attention_weights)
+    plt.show()
+    
+    logger.info("所有測試完成")

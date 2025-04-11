@@ -46,8 +46,6 @@ class MSELoss(nn.Module):
         self.log_space = log_space
         self.relative_error_weight = relative_error_weight
         self.mse = nn.MSELoss(reduction=reduction)
-    
-    
     def forward(self, pred, target):
         """
         計算均方誤差損失
@@ -97,8 +95,6 @@ class MSELoss(nn.Module):
             loss = (1 - self.relative_error_weight) * loss + self.relative_error_weight * relative_loss
     
         return loss
-
-
 class PhysicsConstraintLoss(nn.Module):
     """
     物理約束損失函數
@@ -123,8 +119,6 @@ class PhysicsConstraintLoss(nn.Module):
         self.micro_weight = micro_weight
         self.macro_weight = macro_weight
     
-    # 修改 src/training/losses.py 中的 PhysicsConstraintLoss.forward 方法
-
     def forward(self, delta_w, nf_pred, nf_true):
         """
         計算物理約束損失
@@ -148,18 +142,14 @@ class PhysicsConstraintLoss(nn.Module):
         delta_w_theory = torch.clamp(delta_w_theory, min=1e-8)
     
         # 確保兩個張量具有相同的維度
-        # 如果 delta_w 是 (N,) 而 delta_w_theory 是 (N,1) 或相反，進行維度調整
         if delta_w.dim() != delta_w_theory.dim():
             if delta_w.dim() > delta_w_theory.dim():
-                # delta_w 維度更多，則擴展 delta_w_theory
                 delta_w_theory = delta_w_theory.view_as(delta_w)
             else:
-                # delta_w_theory 維度更多，則擴展 delta_w
                 delta_w = delta_w.view_as(delta_w_theory)
             
         # 微觀損失: 預測的delta_w應與理論值一致
         micro_loss = F.mse_loss(delta_w, delta_w_theory, reduction=self.reduction)
-    
         # 2. 宏觀物理約束 - 預測值應符合物理模型
         # 從delta_w計算理論壽命
         nf_physics = self.a * torch.pow(delta_w, self.b)
@@ -167,10 +157,8 @@ class PhysicsConstraintLoss(nn.Module):
         # 確保兩個張量具有相同的維度
         if nf_pred.dim() != nf_physics.dim():
             if nf_pred.dim() > nf_physics.dim():
-                # nf_pred 維度更多，則擴展 nf_physics
                 nf_physics = nf_physics.view_as(nf_pred)
             else:
-                # nf_physics 維度更多，則擴展 nf_pred
                 nf_pred = nf_pred.view_as(nf_physics)
             
         # 宏觀損失: 預測的nf應符合物理模型
@@ -205,7 +193,6 @@ class ConsistencyLoss(nn.Module):
         self.reduction = reduction
         self.log_space = log_space
         self.correlation_weight = correlation_weight
-    
     def forward(self, pinn_pred, lstm_pred):
         """
         計算一致性損失
@@ -221,7 +208,7 @@ class ConsistencyLoss(nn.Module):
         pinn_pred = torch.clamp(pinn_pred, min=1e-8)
         lstm_pred = torch.clamp(lstm_pred, min=1e-8)
     
-        #   確保 pinn_pred 和 lstm_pred 具有相同的形狀以避免廣播問題
+        # 確保 pinn_pred 和 lstm_pred 具有相同的形狀以避免廣播問題
         if pinn_pred.dim() != lstm_pred.dim() or pinn_pred.shape != lstm_pred.shape:
             # 嘗試將維度較低的張量擴展到與維度較高的張量相同的形狀
             if pinn_pred.dim() < lstm_pred.dim():
@@ -263,8 +250,7 @@ class ConsistencyLoss(nn.Module):
             except Exception as e:
                 # 捕捉潛在的計算錯誤
                 logger.warning(f"計算相關性損失時出錯: {str(e)}")
-    
-        # 總一致性損失
+                # 總一致性損失
         consistency_loss = basic_loss + self.correlation_weight * correlation_loss
     
         # 返回各部分損失
@@ -273,6 +259,7 @@ class ConsistencyLoss(nn.Module):
             'basic_loss': basic_loss,
             'correlation_loss': correlation_loss
         }
+
 
 class HybridLoss(nn.Module):
     """
@@ -312,7 +299,6 @@ class HybridLoss(nn.Module):
             log_space=log_space, 
             relative_error_weight=relative_error_weight
         )
-        
         self.physics_loss = PhysicsConstraintLoss(
             a=a, 
             b=b, 
@@ -330,7 +316,6 @@ class HybridLoss(nn.Module):
         logger.info(f"初始化HybridLoss: lambda_physics={lambda_physics}, "
                   f"lambda_consistency={lambda_consistency}, a={a}, b={b}, "
                   f"log_space={log_space}, l1_reg={l1_reg}, l2_reg={l2_reg}")
-    
     
     def forward(self, outputs, targets, model=None):
         """
@@ -359,8 +344,7 @@ class HybridLoss(nn.Module):
         
             # 更新 outputs 字典
             outputs['nf_pred'] = nf_pred
-            
-        # 計算主要預測損失 (MSE)
+            # 計算主要預測損失 (MSE)
         pred_loss = self.mse_loss(outputs['nf_pred'], targets)
     
         # 計算物理約束損失
@@ -402,8 +386,7 @@ class HybridLoss(nn.Module):
                     l2_term += torch.sum(param ** 2)
         
             reg_loss = self.l1_reg * l1_term + self.l2_reg * l2_term
-    
-        # 計算總損失
+            # 計算總損失
         total_loss = (
             pred_loss + 
             self.lambda_physics * physics_loss + 
@@ -445,8 +428,6 @@ class HybridLoss(nn.Module):
         if lambda_consistency is not None:
             self.lambda_consistency = lambda_consistency
             logger.info(f"更新一致性損失權重為: {lambda_consistency}")
-
-
 class AdaptiveHybridLoss(HybridLoss):
     """
     自適應混合損失函數
@@ -488,7 +469,6 @@ class AdaptiveHybridLoss(HybridLoss):
             micro_weight=micro_weight, macro_weight=macro_weight,
             correlation_weight=correlation_weight, l1_reg=l1_reg, l2_reg=l2_reg
         )
-        
         self.initial_lambda_physics = initial_lambda_physics
         self.max_lambda_physics = max_lambda_physics
         self.initial_lambda_consistency = initial_lambda_consistency
@@ -541,41 +521,40 @@ class AdaptiveHybridLoss(HybridLoss):
                 else:
                     # 默認線性
                     factor = effective_epoch / effective_max
-        
-        # 計算當前權重
-        current_lambda_physics = self.initial_lambda_physics + (
-            self.max_lambda_physics - self.initial_lambda_physics) * factor
-        current_lambda_consistency = self.initial_lambda_consistency + (
-            self.max_lambda_consistency - self.initial_lambda_consistency) * factor
-        
-        # 更新權重
-        self.update_lambda(current_lambda_physics, current_lambda_consistency)
+                # 計算當前權重
+            current_lambda_physics = self.initial_lambda_physics + (
+                self.max_lambda_physics - self.initial_lambda_physics) * factor
+            current_lambda_consistency = self.initial_lambda_consistency + (
+                self.max_lambda_consistency - self.initial_lambda_consistency) * factor
+            
+            # 更新權重
+            self.update_lambda(current_lambda_physics, current_lambda_consistency)
 
 
-def get_loss_function(loss_type='hybrid', **kwargs):
-    """
-    獲取指定類型的損失函數
-    
-    參數:
-        loss_type (str): 損失函數類型，可選 'mse', 'physics', 'consistency', 
-                        'hybrid', 'adaptive'
-        **kwargs: 傳遞給損失函數的額外參數
-    
-    返回:
-        nn.Module: 指定類型的損失函數實例
-    """
-    if loss_type.lower() == 'mse':
-        return MSELoss(**kwargs)
-    elif loss_type.lower() == 'physics':
-        return PhysicsConstraintLoss(**kwargs)
-    elif loss_type.lower() == 'consistency':
-        return ConsistencyLoss(**kwargs)
-    elif loss_type.lower() == 'hybrid':
-        return HybridLoss(**kwargs)
-    elif loss_type.lower() == 'adaptive':
-        return AdaptiveHybridLoss(**kwargs)
-    else:
-        raise ValueError(f"不支援的損失函數類型: {loss_type}")
+    def get_loss_function(loss_type='hybrid', **kwargs):
+        """
+        獲取指定類型的損失函數
+        
+        參數:
+            loss_type (str): 損失函數類型，可選 'mse', 'physics', 'consistency', 
+                            'hybrid', 'adaptive'
+            **kwargs: 傳遞給損失函數的額外參數
+        
+        返回:
+            nn.Module: 指定類型的損失函數實例
+        """
+        if loss_type.lower() == 'mse':
+            return MSELoss(**kwargs)
+        elif loss_type.lower() == 'physics':
+            return PhysicsConstraintLoss(**kwargs)
+        elif loss_type.lower() == 'consistency':
+            return ConsistencyLoss(**kwargs)
+        elif loss_type.lower() == 'hybrid':
+            return HybridLoss(**kwargs)
+        elif loss_type.lower() == 'adaptive':
+            return AdaptiveHybridLoss(**kwargs)
+        else:
+            raise ValueError(f"不支援的損失函數類型: {loss_type}")
 
 
 if __name__ == "__main__":
@@ -632,3 +611,4 @@ if __name__ == "__main__":
 EnhancedPhysicsConstraintLoss = PhysicsConstraintLoss
 EnhancedConsistencyLoss = ConsistencyLoss  
 EnhancedHybridLoss = HybridLoss
+                    

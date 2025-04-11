@@ -985,9 +985,79 @@ class Trainer:
                 logger.error(f"保存圖像失敗: {str(e)}")
         
         return fig
-    
 
-    def create_optimizer(model, config, stage_config=None):
+
+    
+def prepare_training_config(config, train_config, stage="all", start_epoch=0):
+        """
+        根據訓練階段準備訓練配置
+        
+        參數:
+            config (dict): 模型配置
+            train_config (dict): 訓練配置
+            stage (str): 訓練階段: all, warmup, main, finetune
+            start_epoch (int): 起始輪次
+            
+        返回:
+            dict: 訓練配置
+        """
+        # 獲取分階段訓練配置
+        training_strategy = train_config.get("training_strategy", {})
+        stages = training_strategy.get("stages", [])
+        
+        # 如果沒有分階段配置或選擇了'all'，使用默認配置
+        if not stages or stage == "all":
+            return {
+                "epochs": config["training"]["epochs"],
+                "learning_rate": config["training"]["optimizer"]["learning_rate"],
+                "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
+                "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
+                "batch_size": config["training"]["batch_size"],
+                "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
+                "description": "完整訓練"
+            }
+        
+        # 根據指定階段獲取配置
+        for stage_config in stages:
+            if stage_config["name"] == stage:
+                # 計算學習率
+                base_lr = config["training"]["optimizer"]["learning_rate"]
+                lr_factor = stage_config.get("learning_rate_factor", 1.0)
+                
+                # 獲取物理約束和一致性權重
+                if stage == "warmup":
+                    lambda_physics = stage_config.get("lambda_physics", 0.01)
+                    lambda_consistency = stage_config.get("lambda_consistency", 0.01)
+                elif stage == "main":
+                    lambda_physics = stage_config.get("lambda_physics_start", 0.05)
+                    lambda_consistency = stage_config.get("lambda_consistency_start", 0.05)
+                elif stage == "finetune":
+                    lambda_physics = stage_config.get("lambda_physics", 0.5)
+                    lambda_consistency = stage_config.get("lambda_consistency", 0.3)
+                
+                return {
+                    "epochs": stage_config["epochs"],
+                    "learning_rate": base_lr * lr_factor,
+                    "lambda_physics": lambda_physics,
+                    "lambda_consistency": lambda_consistency,
+                    "batch_size": config["training"]["batch_size"],
+                    "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
+                    "description": stage_config.get("description", f"{stage}階段訓練")
+                }
+        
+        # 如果找不到指定階段，使用默認配置
+        logger.warning(f"找不到指定訓練階段: {stage}，使用默認配置")
+        return {
+            "epochs": config["training"]["epochs"],
+            "learning_rate": config["training"]["optimizer"]["learning_rate"],
+            "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
+            "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
+            "batch_size": config["training"]["batch_size"],
+            "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
+            "description": "默認訓練"
+        }
+
+def create_optimizer(model, config, stage_config=None):
         """
         創建優化器
         
@@ -1022,8 +1092,7 @@ class Trainer:
         logger.info(f"創建{optimizer_config['name']}優化器，學習率: {lr}，權重衰減: {weight_decay}")
         return optimizer
 
-
-    def create_lr_scheduler(optimizer, config, stage_config=None, total_epochs=None):
+def create_lr_scheduler(optimizer, config, stage_config=None, total_epochs=None):
         """
         創建學習率調度器
         
@@ -1078,8 +1147,7 @@ class Trainer:
         
         return scheduler
 
-
-    def train_hybrid_model_with_stages(model, dataloaders, config, train_config, device, 
+def train_hybrid_model_with_stages(model, dataloaders, config, train_config, device, 
                                     output_dir, use_physics=True, stages=None):
         """
         使用分階段策略訓練混合模型
@@ -1364,74 +1432,7 @@ class Trainer:
         
         return all_history
 
-def prepare_training_config(config, train_config, stage="all", start_epoch=0):
-        """
-        根據訓練階段準備訓練配置
-        
-        參數:
-            config (dict): 模型配置
-            train_config (dict): 訓練配置
-            stage (str): 訓練階段: all, warmup, main, finetune
-            start_epoch (int): 起始輪次
-            
-        返回:
-            dict: 訓練配置
-        """
-        # 獲取分階段訓練配置
-        training_strategy = train_config.get("training_strategy", {})
-        stages = training_strategy.get("stages", [])
-        
-        # 如果沒有分階段配置或選擇了'all'，使用默認配置
-        if not stages or stage == "all":
-            return {
-                "epochs": config["training"]["epochs"],
-                "learning_rate": config["training"]["optimizer"]["learning_rate"],
-                "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
-                "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
-                "batch_size": config["training"]["batch_size"],
-                "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-                "description": "完整訓練"
-            }
-        
-        # 根據指定階段獲取配置
-        for stage_config in stages:
-            if stage_config["name"] == stage:
-                # 計算學習率
-                base_lr = config["training"]["optimizer"]["learning_rate"]
-                lr_factor = stage_config.get("learning_rate_factor", 1.0)
-                
-                # 獲取物理約束和一致性權重
-                if stage == "warmup":
-                    lambda_physics = stage_config.get("lambda_physics", 0.01)
-                    lambda_consistency = stage_config.get("lambda_consistency", 0.01)
-                elif stage == "main":
-                    lambda_physics = stage_config.get("lambda_physics_start", 0.05)
-                    lambda_consistency = stage_config.get("lambda_consistency_start", 0.05)
-                elif stage == "finetune":
-                    lambda_physics = stage_config.get("lambda_physics", 0.5)
-                    lambda_consistency = stage_config.get("lambda_consistency", 0.3)
-                
-                return {
-                    "epochs": stage_config["epochs"],
-                    "learning_rate": base_lr * lr_factor,
-                    "lambda_physics": lambda_physics,
-                    "lambda_consistency": lambda_consistency,
-                    "batch_size": config["training"]["batch_size"],
-                    "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-                    "description": stage_config.get("description", f"{stage}階段訓練")
-                }
-        
-        # 如果找不到指定階段，使用默認配置
-        logger.warning(f"找不到指定訓練階段: {stage}，使用默認配置")
-        return {
-            "epochs": config["training"]["epochs"],
-            "learning_rate": config["training"]["optimizer"]["learning_rate"],
-            "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
-            "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
-            "batch_size": config["training"]["batch_size"],
-            "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-            "description": "默認訓練"
-        }
+
 
 if __name__ == "__main__":
     # 設定日誌

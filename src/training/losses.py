@@ -555,7 +555,30 @@ class AdaptiveHybridLoss(HybridLoss):
             return AdaptiveHybridLoss(**kwargs)
         else:
             raise ValueError(f"不支援的損失函數類型: {loss_type}")
-
+def get_loss_function(loss_type='hybrid', **kwargs):
+    """
+    獲取指定類型的損失函數
+    
+    參數:
+        loss_type (str): 損失函數類型，可選 'mse', 'physics', 'consistency', 
+                        'hybrid', 'adaptive'
+        **kwargs: 傳遞給損失函數的額外參數
+    
+    返回:
+        nn.Module: 指定類型的損失函數實例
+    """
+    if loss_type.lower() == 'mse':
+        return MSELoss(**kwargs)
+    elif loss_type.lower() == 'physics':
+        return PhysicsConstraintLoss(**kwargs)
+    elif loss_type.lower() == 'consistency':
+        return ConsistencyLoss(**kwargs)
+    elif loss_type.lower() == 'hybrid':
+        return HybridLoss(**kwargs)
+    elif loss_type.lower() == 'adaptive':
+        return AdaptiveHybridLoss(**kwargs)
+    else:
+        raise ValueError(f"不支援的損失函數類型: {loss_type}")
 
 if __name__ == "__main__":
     # 簡單的測試代碼

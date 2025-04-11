@@ -80,7 +80,7 @@ class PhysicsLayer(nn.Module):
             nf = a * torch.pow(delta_w, b)      
     
         # 確保輸出是正數且數值穩定
-        nf = torch.clamp(nf, min=1e-8)
+        nf = torch.clamp(nf, min=10.0)
     
         return nf
 
@@ -651,12 +651,15 @@ class HybridPINNLSTMModel(nn.Module):
                     nn.Linear(fusion_dim // 2, 1)
                 )
         # 修改點: 添加對數變換的縮放因子，以處理大範圍值
-        self.log_scale = nn.Parameter(torch.tensor([1.0], dtype=torch.float32))
-
+        self.log_scale = nn.Parameter(torch.tensor([2.5], dtype=torch.float32))  # 初始值更大，縮放更顯著
         # 修改點: 添加最終輸出校正層
         self.output_correction = nn.Sequential(
-            nn.Linear(1, 16),
-            nn.ReLU(),
+            nn.Linear(1, 32),            # 增加層寬度提升表達能力
+            nn.BatchNorm1d(32),          # 添加批標準化提高穩定性
+            nn.LeakyReLU(0.1),           # 使用LeakyReLU激活改善訓練
+            nn.Dropout(0.1),             # 輕微Dropout防止過擬合
+            nn.Linear(32, 16),
+            nn.LeakyReLU(0.1),
             nn.Linear(16, 1)
         )
 
@@ -665,15 +668,23 @@ class HybridPINNLSTMModel(nn.Module):
         self._initialize_weights()
     
     def _initialize_weights(self):
-        """初始化網絡權重"""
+        """
+        初始化網絡權重 - 改進初始化策略
+        """
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 if m.weight.dim() >= 2:  # 檢查維度
-                    nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
                 else:
                     nn.init.uniform_(m.weight, -0.1, 0.1)
+                    
                 if m.bias is not None:
-                    nn.init.zeros_(m.bias)
+                    # ==== 關鍵修改：對於輸出層，初始化偏置使輸出在合理範圍 ====
+                    if m.out_features == 1:  # 輸出層
+                        nn.init.constant_(m.bias, 5.0)  # log(150) ≈ 5.0，初始預測值約為150
+                    else:
+                        nn.init.zeros_(m.bias)
+                        
             elif isinstance(m, nn.BatchNorm1d):
                 nn.init.ones_(m.weight)
                 nn.init.zeros_(m.bias)
@@ -865,8 +876,8 @@ class HybridPINNLSTMModel(nn.Module):
         
         # 3. 根据集成方法合并预测结果 - 修改點：增加數值穩定性檢查
         # 確保預測值均為正數且不為零
-        pinn_nf_pred = torch.clamp(pinn_nf_pred, min=1.0)  # 增加最小閾值到1.0
-        lstm_nf_pred = torch.clamp(lstm_nf_pred, min=1.0)  # 增加最小閾值到1.0
+        pinn_nf_pred = torch.clamp(pinn_nf_pred, min=10.0)
+        lstm_nf_pred = torch.clamp(lstm_nf_pred, min=10.0)
         
         if self.ensemble_method == 'weighted':
             # 获取基础分支权重
@@ -896,7 +907,7 @@ class HybridPINNLSTMModel(nn.Module):
                 
                 # 融合物理模型和神經網絡預測（給物理模型更大權重）
                 physics_weight = 0.7  # 增加物理模型權重
-                nf_pred = physics_weight * physics_nf + (1 - physics_weight) * nf_pred
+                nf_pred = physics_weight * physics_nf + (1 - physics_weight) * nf_pred  
             
             # 最終確保預測值合理
             nf_pred = torch.clamp(nf_pred, min=10.0, max=1e5)  # 設定最小值和最大值
@@ -970,7 +981,7 @@ class HybridPINNLSTMModel(nn.Module):
                 'dynamic_weights': batch_dynamic_weights
             }
 
-        # 确保l2_penalty是标量值（修改此处）
+        # 確保l2_penalty是標量值
         total_l2_penalty = pinn_l2_penalty + lstm_l2_penalty
         if isinstance(total_l2_penalty, torch.Tensor):
             if total_l2_penalty.dim() > 0:

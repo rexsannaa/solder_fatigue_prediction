@@ -230,10 +230,7 @@ def evaluate_model(y_true, y_pred, model_name=None, verbose=True, return_datafra
         
         logger.info('\n'.join(output_str))
     
-    if return_dataframe:
-        return pd.DataFrame([metrics])
-    
-    return metrics
+    return pd.DataFrame([metrics]) if return_dataframe else metrics
 
 
 def compare_models(models_results, sort_by='rmse', ascending=True):
@@ -256,7 +253,7 @@ def compare_models(models_results, sort_by='rmse', ascending=True):
     
     # 排序結果
     if sort_by in results_df.columns:
-        results_df = results_df.sort_values(by=sort_by, ascending=ascending)
+        return results_df.sort_values(by=sort_by, ascending=ascending)
     
     return results_df
 
@@ -273,8 +270,7 @@ def plot_metrics_comparison(models_results, metrics=None, figsize=(12, 8)):
     返回:
         matplotlib.figure.Figure: 圖像對象
     """
-    if metrics is None:
-        metrics = ['rmse', 'r2', 'mae', 'mape']
+    metrics = metrics or ['rmse', 'r2', 'mae', 'mape']
     
     # 確保models_results是DataFrame
     if not isinstance(models_results, pd.DataFrame):
@@ -325,7 +321,7 @@ def plot_metrics_comparison(models_results, metrics=None, figsize=(12, 8)):
 
 
 if __name__ == "__main__":
-    # 簡單的測試代碼
+    # 設定日誌
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'

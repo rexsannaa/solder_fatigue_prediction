@@ -499,11 +499,3 @@ if __name__ == "__main__":
                    f"Nf = {synthetic_data['nf'][i]:.2f}")
     
     logger.info("所有測試完成")
-
-
-import numpy as np
-import logging
-
-logger = logging.getLogger(__name__)
-
-

@@ -52,71 +52,149 @@ class PhysicsLayer(nn.Module):
 
 class PINNModel(nn.Module):
     """
-    物理資訊神經網絡(PINN)模型
-    將物理知識融入神經網絡架構中，專注於處理銲錫接點的靜態結構參數
+    改進的物理資訊神經網絡(PINN)模型
+    處理靜態結構參數特徵並應用物理約束
     """
-    def __init__(self, input_dim=5, hidden_dims=[64, 32, 16], output_dim=1, 
-                 dropout_rate=0.2, use_physics_layer=True):
-        """
-        初始化PINN模型
-        
-        參數:
-            input_dim (int): 輸入特徵維度，預設為5 (Die, Stud, Mold, PCB, Unit_warpage)
-            hidden_dims (list): 隱藏層維度列表，預設為[64, 32, 16]
-            output_dim (int): 輸出維度，預設為1 (疲勞壽命)
-            dropout_rate (float): Dropout比率，用於防止過擬合
-            use_physics_layer (bool): 是否使用物理約束層
-        """
+    def __init__(self, input_dim=5, hidden_dims=[32, 16], output_dim=1, 
+                 dropout_rate=0.2, use_physics_layer=True, physics_layer_trainable=False,
+                 use_batch_norm=True, activation='relu', a_coefficient=55.83, b_coefficient=-2.259,
+                 l2_reg=0.001):
+        """初始化PINN模型"""
         super(PINNModel, self).__init__()
         
         self.input_dim = input_dim
         self.hidden_dims = hidden_dims
         self.output_dim = output_dim
         self.use_physics_layer = use_physics_layer
+        self.l2_reg = l2_reg
+        
+        # 選擇激活函數
+        if activation == 'relu':
+            self.activation = nn.ReLU()
+        elif activation == 'leaky_relu':
+            self.activation = nn.LeakyReLU(0.1)
+        elif activation == 'elu':
+            self.activation = nn.ELU()
+        elif activation == 'selu':
+            self.activation = nn.SELU()
+        else:
+            self.activation = nn.ReLU()
         
         # 構建特徵提取層
-        layers = []
+        feature_layers = []
         prev_dim = input_dim
         
         for i, hidden_dim in enumerate(hidden_dims):
-            layers.append(nn.Linear(prev_dim, hidden_dim))
-            layers.append(nn.BatchNorm1d(hidden_dim))
-            layers.append(nn.ReLU())
+            feature_layers.append(nn.Linear(prev_dim, hidden_dim))
+            
+            if use_batch_norm:
+                feature_layers.append(nn.BatchNorm1d(hidden_dim))
+                
+            feature_layers.append(self.activation)
             
             if dropout_rate > 0:
-                layers.append(nn.Dropout(dropout_rate))
+                feature_layers.append(nn.Dropout(dropout_rate))
                 
             prev_dim = hidden_dim
         
         # 特徵提取網絡
-        self.feature_extractor = nn.Sequential(*layers)
+        self.feature_extractor = nn.Sequential(*feature_layers)
         
-        # 能量密度變化量(ΔW)預測層
-        self.delta_w_predictor = nn.Linear(hidden_dims[-1], 1)
+        # 改進：delta_w預測層 - 使用多層處理
+        self.delta_w_layers = nn.Sequential(
+            nn.Linear(hidden_dims[-1], hidden_dims[-1] // 2),
+            nn.BatchNorm1d(hidden_dims[-1] // 2),
+            nn.LeakyReLU(0.1),
+            nn.Linear(hidden_dims[-1] // 2, 1)
+        )
         
         # 物理約束層
-        self.physics_layer = PhysicsLayer() if use_physics_layer else None
-        
-        # 如果不使用物理層，則直接預測疲勞壽命
-        if not use_physics_layer:
+        if use_physics_layer:
+            self.physics_layer = PhysicsLayer(
+                a=a_coefficient, 
+                b=b_coefficient,
+                trainable=physics_layer_trainable
+            )
+        else:
+            # 如果不使用物理層，則直接預測疲勞壽命
             self.direct_predictor = nn.Linear(hidden_dims[-1], output_dim)
-        
-        logger.info(f"初始化PINNModel，輸入維度: {input_dim}, 隱藏層: {hidden_dims}, "
-                   f"使用物理層: {use_physics_layer}")
         
         # 初始化權重
         self._initialize_weights()
     
     def _initialize_weights(self):
-        """初始化網絡權重"""
+        """初始化網絡權重 - 改進的初始化策略"""
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                if m.weight.dim() >= 2:  # 檢查維度
+                    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
+                else:
+                    nn.init.uniform_(m.weight, -0.1, 0.1)
                 if m.bias is not None:
-                    nn.init.zeros_(m.bias)
+                    # 對於輸出層，初始化偏置使輸出在合理範圍
+                    if m == self.delta_w_layers[-1]:  # delta_w輸出層
+                        nn.init.constant_(m.bias, -3.0)  # exp(-3) ≈ 0.05，初始delta_w約為0.05
+                    elif hasattr(self, 'direct_predictor') and m == self.direct_predictor:
+                        nn.init.constant_(m.bias, 5.0)  # 初始預測值約為150
+                    else:
+                        nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm1d):
                 nn.init.ones_(m.weight)
                 nn.init.zeros_(m.bias)
+
+    def forward(self, x):
+        """
+        前向傳播 - 增強數值穩定性與物理一致性
+        
+        參數:
+            x (torch.Tensor): 輸入特徵，形狀為 (batch_size, input_dim)
+            
+        返回:
+            dict: 包含預測結果的字典:
+                - 'nf_pred': 預測的疲勞壽命
+                - 'delta_w': 預測的非線性塑性應變能密度變化量(如果使用物理層)
+                - 'features': 提取的特徵表示
+        """
+        # 特徵提取
+        features = self.feature_extractor(x)
+
+        # 計算非線性塑性應變能密度變化量(ΔW) - 使用改進的計算方式
+        delta_w_logits = self.delta_w_layers(features)  # 獲取對數空間輸出
+        delta_w = torch.exp(delta_w_logits)  # 轉換為線性空間，確保為正值
+        
+        # 確保delta_w範圍合理 - 增強數值穩定性
+        delta_w = torch.clamp(delta_w, min=1e-6, max=10.0)  # 限制在合理範圍內
+
+        if self.use_physics_layer:
+            # 使用物理層計算疲勞壽命
+            nf_pred = self.physics_layer(delta_w)
+        else:
+            # 直接預測疲勞壽命
+            nf_pred = torch.exp(self.direct_predictor(features))  # 使用exp確保為正值
+
+        # 應用L2正則化 - 修改以確保l2_penalty是標量
+        l2_penalty = 0.0
+        if self.l2_reg > 0:
+            for param in self.parameters():
+                l2_penalty += torch.norm(param, 2)
+            
+            # 確保l2_penalty是標量
+            if isinstance(l2_penalty, torch.Tensor) and l2_penalty.dim() > 0:
+                l2_penalty = l2_penalty.mean()
+            
+            # 乘以正則化系數
+            l2_penalty = l2_penalty * self.l2_reg
+
+        # 確保預測值都是正數 - 增加最小閾值
+        delta_w = torch.clamp(delta_w, min=1e-6)
+        nf_pred = torch.clamp(nf_pred, min=10.0)  # 提高最小閾值到10
+
+        return {
+            'nf_pred': nf_pred.squeeze(-1),
+            'delta_w': delta_w.squeeze(-1),
+            'features': features,
+            'l2_penalty': l2_penalty
+        }
     
     def forward(self, x):
         """

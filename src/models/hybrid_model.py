@@ -724,6 +724,8 @@ class HybridPINNLSTMModel(nn.Module):
         # 如果不是加權方法，返回預設權重 [0.5, 0.5]
         return torch.tensor([0.5, 0.5], device=self.branch_weight_param.device if hasattr(self, 'branch_weight_param') else torch.device('cpu'))
     
+
+
     def calculate_loss(self, outputs, targets, lambda_physics=0.5, lambda_consistency=0.1):
         """
         計算混合損失 - 修改版：主要針對delta_w的預測精度
@@ -863,6 +865,7 @@ class HybridPINNLSTMModel(nn.Module):
         
         return loss_dict
     
+
     def forward(self, static_features, time_series, return_features=False):
         """
         前向傳播 - 修改版：明確分為預測 delta_w 和使用物理公式計算 Nf 兩個階段
@@ -886,30 +889,16 @@ class HybridPINNLSTMModel(nn.Module):
         # 1.2 LSTM分支前向傳播
         lstm_output = self.lstm_branch(time_series, return_attention=return_features)
         lstm_features = lstm_output['features']
+        lstm_delta_w = lstm_output['delta_w']  # 確保LSTM分支也輸出delta_w
         lstm_l2_penalty = lstm_output.get('l2_penalty', torch.tensor(0.0, device=static_features.device))
         
         # 初始化結果字典
         result = {}
         
-        # 1.3 結合兩個分支的特徵，共同預測delta_w
+        # 1.3 結合兩個分支的預測，共同預測delta_w
         if self.ensemble_method == 'weighted':
             # 獲取分支權重
             branch_weights = self.get_branch_weights()
-            
-            # LSTM分支也需要有一個delta_w預測
-            # 我們需要在LSTM模型中添加一個delta_w_predictor層，或者在這裡臨時創建一個
-            if not hasattr(self, 'lstm_delta_w_predictor'):
-                # 如果LSTM模型沒有delta_w_predictor，在這裡創建一個臨時層
-                self.lstm_delta_w_predictor = nn.Linear(lstm_features.shape[1], 1).to(static_features.device)
-                # 初始化權重，使初始預測接近PINN分支
-                with torch.no_grad():
-                    # 估計PINN delta_w的平均對數值
-                    mean_log_delta_w = torch.log(torch.clamp(pinn_delta_w, min=1e-6)).mean().item()
-                    # 設置bias使初始預測接近這個值
-                    self.lstm_delta_w_predictor.bias.fill_(mean_log_delta_w)
-            
-            # 使用LSTM特徵預測delta_w
-            lstm_delta_w = torch.exp(self.lstm_delta_w_predictor(lstm_features))
             
             # 在對數空間加權平均delta_w
             log_pinn_delta_w = torch.log(torch.clamp(pinn_delta_w, min=1e-6))
@@ -934,15 +923,6 @@ class HybridPINNLSTMModel(nn.Module):
             
             # 針對融合特徵預測delta_w
             if self.ensemble_method == 'gate':
-                # 類似加權平均，但權重是動態計算的
-                if not hasattr(self, 'lstm_delta_w_predictor'):
-                    self.lstm_delta_w_predictor = nn.Linear(lstm_features.shape[1], 1).to(static_features.device)
-                    with torch.no_grad():
-                        mean_log_delta_w = torch.log(torch.clamp(pinn_delta_w, min=1e-6)).mean().item()
-                        self.lstm_delta_w_predictor.bias.fill_(mean_log_delta_w)
-                
-                lstm_delta_w = torch.exp(self.lstm_delta_w_predictor(lstm_features))
-                
                 # 使用門控權重加權
                 delta_w = gate_weights[:, 0].unsqueeze(-1) * pinn_delta_w + gate_weights[:, 1].unsqueeze(-1) * lstm_delta_w
                 result['lstm_delta_w'] = lstm_delta_w
@@ -1005,11 +985,8 @@ class HybridPINNLSTMModel(nn.Module):
         else:
             pinn_nf_pred = pinn_output.get('nf_pred', torch.zeros_like(nf_pred))
         
-        # 對於LSTM分支，如果有lstm_delta_w則使用物理公式計算，否則使用原始輸出
-        if 'lstm_delta_w' in result:
-            lstm_nf_pred = self.a_coefficient * torch.pow(result['lstm_delta_w'], self.b_coefficient)
-        else:
-            lstm_nf_pred = lstm_output.get('output', torch.zeros_like(nf_pred))
+        # 對於LSTM分支，使用物理公式計算nf_pred
+        lstm_nf_pred = self.a_coefficient * torch.pow(lstm_delta_w, self.b_coefficient)
         
         # 添加主要預測結果到結果字典
         result['nf_pred'] = nf_pred

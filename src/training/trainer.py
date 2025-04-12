@@ -459,32 +459,79 @@ class Trainer:
 
         # 計算平均損失與指標
         return self._compute_epoch_results(total_loss, total_samples, all_predictions, all_targets, all_outputs, scalar_outputs)
+    
     def _forward_pass(self, inputs, targets):
-        """執行前向傳播和損失計算"""
+        """執行前向傳播和損失計算 - 更新以支援delta_w專注的模型"""
         if isinstance(inputs, (list, tuple)) and len(inputs) == 2 and hasattr(self.model, 'forward') and 'static_features' in self.model.forward.__code__.co_varnames:
             # 專門用於混合PINN-LSTM模型
             outputs = self.model(inputs[0], inputs[1])
             
             # 檢查outputs是否為字典（用於混合模型）
-            if isinstance(outputs, dict) and 'nf_pred' in outputs:
-                predictions = outputs['nf_pred']
-                losses = self.criterion(outputs, targets, self.model)
-                loss = losses['total_loss']
+            if isinstance(outputs, dict):
+                # 預測值優先使用nf_pred（通過物理公式從delta_w計算）
+                if 'nf_pred' in outputs:
+                    predictions = outputs['nf_pred']
+                # 向後兼容: 如果沒有nf_pred但有output
+                elif 'output' in outputs:
+                    predictions = outputs['output']
+                else:
+                    # 如果都沒有，使用第一個找到的張量作為預測值
+                    for key, value in outputs.items():
+                        if isinstance(value, torch.Tensor) and value.dim() <= 2:
+                            predictions = value
+                            break
+                    else:  # 如果沒有找到合適的張量
+                        raise ValueError("模型輸出中沒有找到有效的預測值")
+                        
+                # 計算損失
+                if hasattr(self.criterion, 'forward') and 'outputs' in self.criterion.forward.__code__.co_varnames:
+                    # 支持字典輸入的損失函數
+                    losses = self.criterion(outputs, targets, self.model)
+                    if isinstance(losses, dict) and 'total_loss' in losses:
+                        loss = losses['total_loss']
+                    else:
+                        loss = losses
+                else:
+                    # 傳統損失函數
+                    loss = self.criterion(predictions, targets)
             else:
+                # 非字典輸出的情況
                 predictions = outputs
                 loss = self.criterion(predictions, targets)
         else:
-            # 一般模型
+            # 一般模型（非混合模型）
             outputs = self.model(inputs)
             
             # 檢查outputs是否為字典
-            if isinstance(outputs, dict) and 'output' in outputs:
-                predictions = outputs['output']
+            if isinstance(outputs, dict):
+                # 優先順序：nf_pred > output > 第一個找到的張量
+                if 'nf_pred' in outputs:
+                    predictions = outputs['nf_pred']
+                elif 'output' in outputs:
+                    predictions = outputs['output']
+                else:
+                    # 使用第一個找到的張量
+                    for key, value in outputs.items():
+                        if isinstance(value, torch.Tensor) and value.dim() <= 2:
+                            predictions = value
+                            break
+                    else:
+                        raise ValueError("模型輸出中沒有找到有效的預測值")
+                
+                # 使用字典輸入的損失函數（如果支持）
+                if hasattr(self.criterion, 'forward') and 'outputs' in self.criterion.forward.__code__.co_varnames:
+                    losses = self.criterion(outputs, targets, self.model)
+                    if isinstance(losses, dict) and 'total_loss' in losses:
+                        loss = losses['total_loss']
+                    else:
+                        loss = losses
+                else:
+                    # 傳統損失函數
+                    loss = self.criterion(predictions, targets)
             else:
+                # 非字典輸出
                 predictions = outputs
-            
-            # 計算損失
-            loss = self.criterion(predictions, targets)
+                loss = self.criterion(predictions, targets)
         
         return outputs, predictions, loss
 
@@ -522,7 +569,7 @@ class Trainer:
             all_targets.append(targets.detach().cpu().numpy())
     
     def _compute_epoch_results(self, total_loss, total_samples, all_predictions, all_targets, all_outputs, scalar_outputs):
-        """計算並返回訓練輪次結果"""
+        """計算並返回訓練輪次結果 - 更新以支援delta_w相關指標"""
         # 計算平均損失
         avg_loss = total_loss / total_samples
 
@@ -584,7 +631,7 @@ class Trainer:
                 except Exception as e:
                     logger.warning(f"合併dynamic_weights時出錯: {str(e)}")
                     outputs_merged[key] = values
-            elif key in ['nf_pred', 'delta_w', 'pinn_nf_pred', 'lstm_nf_pred'] and all(isinstance(val, np.ndarray) for val in values):
+            elif key in ['nf_pred', 'delta_w', 'pinn_nf_pred', 'lstm_nf_pred', 'pinn_delta_w', 'lstm_delta_w'] and all(isinstance(val, np.ndarray) for val in values):
                 try:
                     # 對特定輸出進行特殊處理
                     flat_values = []
@@ -621,6 +668,37 @@ class Trainer:
         # 設置回傳的預測和目標值
         final_predictions = all_pred_flat if has_predictions and 'all_pred_flat' in locals() else None
         final_targets = all_target_flat if has_targets and 'all_target_flat' in locals() else None
+        
+        # 計算並添加delta_w相關指標
+        if final_targets is not None and 'delta_w' in outputs_merged:
+            try:
+                # 從目標值反推理論delta_w
+                delta_w_theory = np.power(
+                    final_targets / 55.83,  # 使用默認a係數
+                    1/-2.259  # 使用默認b係數
+                )
+                delta_w_theory = np.maximum(delta_w_theory, 1e-6)  # 確保正值
+                
+                # 計算delta_w預測精度
+                delta_w_pred = np.maximum(outputs_merged['delta_w'], 1e-6)
+                
+                # 對數空間誤差
+                log_delta_w_theory = np.log10(delta_w_theory)
+                log_delta_w_pred = np.log10(delta_w_pred)
+                log_delta_w_mse = np.mean((log_delta_w_theory - log_delta_w_pred) ** 2)
+                
+                # 相對誤差
+                delta_w_rel_error = np.abs((delta_w_theory - delta_w_pred) / delta_w_theory) * 100
+                delta_w_mean_rel_error = np.mean(delta_w_rel_error)
+                
+                # 添加到指標字典
+                metrics_values['delta_w_log_mse'] = log_delta_w_mse
+                metrics_values['delta_w_mean_rel_error'] = delta_w_mean_rel_error
+                
+                # 將delta_w理論值添加到輸出中，便於後續分析
+                outputs_merged['delta_w_theory'] = delta_w_theory
+            except Exception as e:
+                logger.warning(f"計算delta_w指標時出錯: {str(e)}")
 
         return {
             'loss': avg_loss,
@@ -1201,289 +1279,297 @@ def create_lr_scheduler(optimizer, config, stage_config=None, total_epochs=None)
         return scheduler
 
 def train_hybrid_model_with_stages(model, dataloaders, config, train_config, device, 
-                                    output_dir, use_physics=True, stages=None):
-        """
-        使用分階段策略訓練混合模型
+                                   output_dir, use_physics=True, stages=None):
+    """
+    使用分階段策略訓練混合模型 - 修改以支援delta_w專注模型
+    
+    參數:
+        model (HybridPINNLSTMModel): 混合模型
+        dataloaders (dict): 資料載入器
+        config (dict): 模型配置
+        train_config (dict): 訓練配置
+        device (torch.device): 計算設備
+        output_dir (str): 輸出目錄
+        use_physics (bool): 是否使用物理約束
+        stages (list): 要執行的訓練階段列表
         
-        參數:
-            model (HybridPINNLSTMModel): 混合模型
-            dataloaders (dict): 資料載入器
-            config (dict): 模型配置
-            train_config (dict): 訓練配置
-            device (torch.device): 計算設備
-            output_dir (str): 輸出目錄
-            use_physics (bool): 是否使用物理約束
-            stages (list): 要執行的訓練階段列表
-            
-        返回:
-            dict: 訓練歷史記錄
-        """
-        # 從src.models.hybrid_model模組導入PINNLSTMTrainer類
-        try:
-            from src.models.hybrid_model import PINNLSTMTrainer
-        except ImportError:
-            logger.error("無法導入PINNLSTMTrainer類，請確保hybrid_model模組可用")
-            return {}
-        
-        # 導入回調函數
-        try:
-            from src.training.callbacks import AdaptiveCallbacks
-        except ImportError:
-            logger.warning("無法導入AdaptiveCallbacks類，將使用基本回調")
-            AdaptiveCallbacks = None
-        
-        # 設定預設階段，如果沒有提供
-        if stages is None:
-            stages = ["warmup", "main", "finetune"]
-        
-        all_history = {}
-        best_val_loss_overall = float('inf')
-        best_model_state = None
-        
-        # 定義階段訓練記錄檔案
-        stage_log_file = os.path.join(output_dir, "stage_training_log.txt")
-        with open(stage_log_file, "w") as f:
-            f.write(f"分階段訓練日誌 - 開始時間: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"模型: {config['model']['name']}, 使用物理約束: {use_physics}\n")
-            f.write("="*50 + "\n")
-        
-        current_epoch = 0
-        
-        # stage_configs字典
-        stage_configs = {
-            "warmup": {
-                "epochs": 40,               
-                "learning_rate_factor": 0.2, 
-                "lambda_physics": 0.05 if use_physics else 0.0,
-                "lambda_consistency": 0.01,
-                "description": "低學習率預熱，輕微物理約束"
-            },
-            "main": {
-                "epochs": 200,              
-                "learning_rate_factor": 1.0,
-                "lambda_physics": 0.5 if use_physics else 0.0,  
-                "lambda_physics_max": 1.2 if use_physics else 0.0,  
-                "lambda_consistency": 0.2,  
-                "lambda_consistency_max": 0.4, 
-                "description": "主要訓練階段，強化物理約束"
-            },
-            "finetune": {
-                "epochs": 60,               
-                "learning_rate_factor": 0.01,
-                "lambda_physics": 1.0 if use_physics else 0.0,  
-                "lambda_consistency": 0.4,  
-                "description": "低學習率微調，強化物理約束"
-            }
+    返回:
+        dict: 訓練歷史記錄
+    """
+    # 從src.models.hybrid_model模組導入PINNLSTMTrainer類
+    try:
+        from src.models.hybrid_model import PINNLSTMTrainer
+    except ImportError:
+        logger.error("無法導入PINNLSTMTrainer類，請確保hybrid_model模組可用")
+        return {}
+    
+    # 導入回調函數
+    try:
+        from src.training.callbacks import AdaptiveCallbacks
+    except ImportError:
+        logger.warning("無法導入AdaptiveCallbacks類，將使用基本回調")
+        AdaptiveCallbacks = None
+    
+    # 設定預設階段，如果沒有提供
+    if stages is None:
+        stages = ["warmup", "main", "finetune"]
+    
+    all_history = {}
+    best_val_loss_overall = float('inf')
+    best_model_state = None
+    
+    # 定義階段訓練記錄檔案
+    stage_log_file = os.path.join(output_dir, "stage_training_log.txt")
+    with open(stage_log_file, "w") as f:
+        f.write(f"分階段訓練日誌 - 開始時間: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"模型: {config['model']['name']}, 使用物理約束: {use_physics}\n")
+        f.write("="*50 + "\n")
+    
+    current_epoch = 0
+    
+    # stage_configs字典 - 修改以增強delta_w預測權重
+    stage_configs = {
+        "warmup": {
+            "epochs": 40,
+            "learning_rate_factor": 0.2, 
+            "lambda_physics": 0.05 if use_physics else 0.0,
+            "lambda_consistency": 0.01,
+            "delta_w_weight": 0.8,  # 預熱期delta_w權重適中
+            "description": "低學習率預熱，輕微物理約束，適中delta_w權重"
+        },
+        "main": {
+            "epochs": 200,
+            "learning_rate_factor": 1.0,
+            "lambda_physics": 0.5 if use_physics else 0.0,
+            "lambda_physics_max": 1.2 if use_physics else 0.0,
+            "lambda_consistency": 0.2,
+            "lambda_consistency_max": 0.4,
+            "delta_w_weight": 1.5,         # 主訓練階段delta_w權重較高
+            "delta_w_weight_max": 2.5,     # 逐漸增加delta_w權重
+            "description": "主要訓練階段，強化物理約束，重點關注delta_w預測"
+        },
+        "finetune": {
+            "epochs": 60,
+            "learning_rate_factor": 0.01,
+            "lambda_physics": 1.0 if use_physics else 0.0,
+            "lambda_consistency": 0.4,
+            "delta_w_weight": 3.0,         # 微調階段delta_w權重最高
+            "description": "低學習率微調，強化物理約束，最高delta_w預測權重"
         }
+    }
+    
+    # 遍歷每個訓練階段
+    for stage_idx, stage in enumerate(stages):
+        logger.info("="*50)
+        logger.info(f"開始 {stage} 階段訓練 ({stage_idx+1}/{len(stages)})")
         
-        # 遍歷每個訓練階段
-        for stage_idx, stage in enumerate(stages):
-            logger.info("="*50)
-            logger.info(f"開始 {stage} 階段訓練 ({stage_idx+1}/{len(stages)})")
-            
-            # 獲取階段配置
-            stage_config = stage_configs.get(stage, {})
-            if not stage_config:
-                logger.warning(f"找不到階段 {stage} 的配置，使用預設配置")
-                stage_config = prepare_training_config(config, train_config, stage=stage, start_epoch=current_epoch)
-            
-            logger.info(f"階段描述: {stage_config['description']}")
-            logger.info(f"訓練輪數: {stage_config['epochs']}")
-            logger.info(f"學習率因子: {stage_config['learning_rate_factor']}")
-            logger.info(f"物理約束權重: {stage_config.get('lambda_physics', 0.0)}")
-            logger.info(f"一致性約束權重: {stage_config.get('lambda_consistency', 0.0)}")
-            
-            # 創建階段特定的輸出目錄
-            stage_dir = os.path.join(output_dir, f"stage_{stage}")
-            os.makedirs(stage_dir, exist_ok=True)
-            
-            # 調整基礎學習率
-            if stage == "warmup":
-                base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
-            elif stage == "main":
-                # 從預熱階段學習率平滑過渡
-                if "warmup" in stages and stages.index("warmup") < stages.index("main"):
-                    warmup_lr = config["training"]["optimizer"]["learning_rate"] * stage_configs["warmup"]["learning_rate_factor"]
-                    base_lr = warmup_lr * 5  # 預熱結束後放大學習率
-                else:
-                    base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
-            else:  # finetune
-                # 從主訓練階段學習率平滑過渡
-                if "main" in stages and stages.index("main") < stages.index("finetune"):
-                    main_lr = config["training"]["optimizer"]["learning_rate"] * stage_configs["main"]["learning_rate_factor"]
-                    base_lr = main_lr * stage_config["learning_rate_factor"]  # 顯著降低學習率
-                else:
-                    base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
-            
-            # 創建階段優化器
-            optimizer = torch.optim.Adam(
-                model.parameters(), 
-                lr=base_lr,
-                weight_decay=config["training"]["optimizer"]["weight_decay"]
-            )
-            
-            # 修改學習率調度策略
-            if stage == "warmup":   
-                # 預熱階段使用較溫和的學習率調度
-                scheduler = LearningRateScheduler(
-                    optimizer, 
-                    mode='cosine',
-                    T_max=stage_config["epochs"],
-                    min_lr=base_lr * 0.1,
-                    warmup_epochs=5,
-                    warmup_factor=0.5
-                )
-            elif stage == "main":
-                # 主訓練階段使用循環學習率
-                scheduler = LearningRateScheduler(
-                    optimizer, 
-                    mode='one_cycle',
-                    T_max=stage_config["epochs"],
-                    min_lr=base_lr * 0.01,
-                    cycle_momentum=True 
-                )
-            else:  # finetune
-                # 微調階段使用平原式調度
-                scheduler = LearningRateScheduler(
-                    optimizer, 
-                    mode='plateau',
-                    factor=0.3,
-                    patience=8,
-                    min_lr=base_lr * 0.05
-                )
-            
-            # 調整早停機制
-            if stage == "warmup":
-                early_stopping_patience = 30
-                min_delta = 0.001
-                min_epoch = 20
-            elif stage == "main":
-                early_stopping_patience = 40
-                min_delta = 0.0005
-                min_epoch = 60
-            else:  # finetune
-                early_stopping_patience = 25
-                min_delta = 0.0001
-                min_epoch = 30
-
-            early_stopping = EarlyStopping(
-                patience=early_stopping_patience,
-                min_delta=min_delta,
-                verbose=True,
-                mode='min',
-                restart_threshold=early_stopping_patience // 3,
-                min_epoch=min_epoch
-            )
-            
-            # 創建專用訓練器
-            trainer = PINNLSTMTrainer(
-                model=model,
-                optimizer=optimizer,
-                device=device,
-                lambda_physics_init=stage_config.get("lambda_physics", 0.0),
-                lambda_physics_max=stage_config.get("lambda_physics_max", stage_config.get("lambda_physics", 0.0) * 2),
-                lambda_consistency_init=stage_config.get("lambda_consistency", 0.0),
-                lambda_consistency_max=stage_config.get("lambda_consistency_max", stage_config.get("lambda_consistency", 0.0) * 2),
-                lambda_ramp_epochs=stage_config.get("epochs") // 3,
-                clip_grad_norm=config["training"].get("clip_grad_norm", 1.0),
-                scheduler=scheduler,
-                log_interval=5
-            )
-            
-            # 調整回調函數
-            if AdaptiveCallbacks is not None:
-                callbacks = AdaptiveCallbacks.create_callbacks(
-                    model=model,
-                    dataset_size=len(dataloaders["train_loader"].dataset),
-                    epochs=stage_config["epochs"],
-                    output_dir=stage_dir,
-                    use_tensorboard=True,
-                    use_progress_bar=True,
-                    use_early_stopping=False,  # 我們在trainer中使用自定義早停
-                    patience=early_stopping_patience,
-                    monitor="val_loss",
-                    mode="min",
-                    save_freq=5
-                )
+        # 獲取階段配置
+        stage_config = stage_configs.get(stage, {})
+        if not stage_config:
+            logger.warning(f"找不到階段 {stage} 的配置，使用預設配置")
+            stage_config = prepare_training_config(config, train_config, stage=stage, start_epoch=current_epoch)
+        
+        logger.info(f"階段描述: {stage_config['description']}")
+        logger.info(f"訓練輪數: {stage_config['epochs']}")
+        logger.info(f"學習率因子: {stage_config['learning_rate_factor']}")
+        logger.info(f"物理約束權重: {stage_config.get('lambda_physics', 0.0)}")
+        logger.info(f"一致性約束權重: {stage_config.get('lambda_consistency', 0.0)}")
+        logger.info(f"Delta_W預測權重: {stage_config.get('delta_w_weight', 1.0)}")  # 新增日誌
+        
+        # 創建階段特定的輸出目錄
+        stage_dir = os.path.join(output_dir, f"stage_{stage}")
+        os.makedirs(stage_dir, exist_ok=True)
+        
+        # 調整基礎學習率
+        if stage == "warmup":
+            base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
+        elif stage == "main":
+            # 從預熱階段學習率平滑過渡
+            if "warmup" in stages and stages.index("warmup") < stages.index("main"):
+                warmup_lr = config["training"]["optimizer"]["learning_rate"] * stage_configs["warmup"]["learning_rate_factor"]
+                base_lr = warmup_lr * 5  # 預熱結束後放大學習率
             else:
-                # 使用基本回調
-                callbacks = []
-            
-            # 訓練階段
-            start_time = time.time()
-            
-            stage_history = trainer.train(
-                train_loader=dataloaders["train_loader"],
-                val_loader=dataloaders["val_loader"],
-                epochs=stage_config["epochs"],
-                early_stopping_patience=early_stopping_patience,
-                save_path=os.path.join(stage_dir, "models", "best_model.pt"),
-                callbacks=callbacks
+                base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
+        else:  # finetune
+            # 從主訓練階段學習率平滑過渡
+            if "main" in stages and stages.index("main") < stages.index("finetune"):
+                main_lr = config["training"]["optimizer"]["learning_rate"] * stage_configs["main"]["learning_rate_factor"]
+                base_lr = main_lr * stage_config["learning_rate_factor"]  # 顯著降低學習率
+            else:
+                base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
+        
+        # 創建階段優化器
+        optimizer = torch.optim.Adam(
+            model.parameters(), 
+            lr=base_lr,
+            weight_decay=config["training"]["optimizer"]["weight_decay"]
+        )
+        
+        # 修改學習率調度策略
+        if stage == "warmup":   
+            # 預熱階段使用較溫和的學習率調度
+            scheduler = LearningRateScheduler(
+                optimizer, 
+                mode='cosine',
+                T_max=stage_config["epochs"],
+                min_lr=base_lr * 0.1,
+                warmup_epochs=5,
+                warmup_factor=0.5
             )
+        elif stage == "main":
+            # 主訓練階段使用循環學習率
+            scheduler = LearningRateScheduler(
+                optimizer, 
+                mode='one_cycle',
+                T_max=stage_config["epochs"],
+                min_lr=base_lr * 0.01,
+                cycle_momentum=True 
+            )
+        else:  # finetune
+            # 微調階段使用平原式調度
+            scheduler = LearningRateScheduler(
+                optimizer, 
+                mode='plateau',
+                factor=0.3,
+                patience=8,
+                min_lr=base_lr * 0.05
+            )
+        
+        # 調整早停機制
+        if stage == "warmup":
+            early_stopping_patience = 30
+            min_delta = 0.001
+            min_epoch = 20
+        elif stage == "main":
+            early_stopping_patience = 40
+            min_delta = 0.0005
+            min_epoch = 60
+        else:  # finetune
+            early_stopping_patience = 25
+            min_delta = 0.0001
+            min_epoch = 30
+
+        early_stopping = EarlyStopping(
+            patience=early_stopping_patience,
+            min_delta=min_delta,
+            verbose=True,
+            mode='min',
+            restart_threshold=early_stopping_patience // 3,
+            min_epoch=min_epoch
+        )
+        
+        # 創建專用訓練器 - 更新以包含delta_w權重
+        trainer = PINNLSTMTrainer(
+            model=model,
+            optimizer=optimizer,
+            device=device,
+            lambda_physics_init=stage_config.get("lambda_physics", 0.0),
+            lambda_physics_max=stage_config.get("lambda_physics_max", stage_config.get("lambda_physics", 0.0) * 2),
+            lambda_consistency_init=stage_config.get("lambda_consistency", 0.0),
+            lambda_consistency_max=stage_config.get("lambda_consistency_max", stage_config.get("lambda_consistency", 0.0) * 2),
+            # 添加delta_w相關參數
+            delta_w_weight_init=stage_config.get("delta_w_weight", 1.5),
+            delta_w_weight_max=stage_config.get("delta_w_weight_max", stage_config.get("delta_w_weight", 1.5) * 1.5),
+            lambda_ramp_epochs=stage_config.get("epochs") // 3,
+            clip_grad_norm=config["training"].get("clip_grad_norm", 1.0),
+            scheduler=scheduler,
+            log_interval=5
+        )
+        
+        # 調整回調函數
+        if AdaptiveCallbacks is not None:
+            callbacks = AdaptiveCallbacks.create_callbacks(
+                model=model,
+                dataset_size=len(dataloaders["train_loader"].dataset),
+                epochs=stage_config["epochs"],
+                output_dir=stage_dir,
+                use_tensorboard=True,
+                use_progress_bar=True,
+                use_early_stopping=False,  # 我們在trainer中使用自定義早停
+                patience=early_stopping_patience,
+                monitor="val_loss",
+                mode="min",
+                save_freq=5
+            )
+        else:
+            # 使用基本回調
+            callbacks = []
+        
+        # 訓練階段
+        start_time = time.time()
+        
+        stage_history = trainer.train(
+            train_loader=dataloaders["train_loader"],
+            val_loader=dataloaders["val_loader"],
+            epochs=stage_config["epochs"],
+            early_stopping_patience=early_stopping_patience,
+            save_path=os.path.join(stage_dir, "models", "best_model.pt"),
+            callbacks=callbacks
+        )
+        
+        train_time = time.time() - start_time
+        
+        # 記錄階段訓練結果
+        stage_val_loss = stage_history.get('best_val_loss', float('inf'))
+        with open(stage_log_file, "a") as f:
+            f.write(f"\n階段: {stage}\n")
+            f.write(f"描述: {stage_config['description']}\n")
+            f.write(f"訓練輪數: {stage_config['epochs']}\n")
+            f.write(f"實際訓練輪數: {stage_history.get('epochs_trained', 0)}\n")
+            f.write(f"訓練時間: {train_time:.2f}秒\n")
+            f.write(f"最佳驗證損失: {stage_val_loss:.6f}\n")
             
-            train_time = time.time() - start_time
+            # 記錄關鍵指標
+            if 'val_metrics' in stage_history:
+                metrics = stage_history['val_metrics']
+                for metric_name in ['rmse', 'r2', 'mean_rel_error', 'delta_w_log_mse', 'delta_w_mean_rel_error']:  # 添加delta_w相關指標
+                    if metric_name in metrics and metrics[metric_name]:
+                        f.write(f"{metric_name}: {metrics[metric_name][-1]:.4f}\n")
             
-            # 記錄階段訓練結果
-            stage_val_loss = stage_history.get('best_val_loss', float('inf'))
-            with open(stage_log_file, "a") as f:
-                f.write(f"\n階段: {stage}\n")
-                f.write(f"描述: {stage_config['description']}\n")
-                f.write(f"訓練輪數: {stage_config['epochs']}\n")
-                f.write(f"實際訓練輪數: {stage_history.get('epochs_trained', 0)}\n")
-                f.write(f"訓練時間: {train_time:.2f}秒\n")
-                f.write(f"最佳驗證損失: {stage_val_loss:.6f}\n")
-                
-                # 記錄關鍵指標
-                if 'val_metrics' in stage_history:
-                    metrics = stage_history['val_metrics']
-                    for metric_name in ['rmse', 'r2', 'mean_rel_error']:
-                        if metric_name in metrics and metrics[metric_name]:
-                            f.write(f"{metric_name}: {metrics[metric_name][-1]:.4f}\n")
-                
-                f.write("-"*40 + "\n")
-            
+            f.write("-"*40 + "\n")
+        
+        # 保存全局最佳模型
+        if stage_val_loss < best_val_loss_overall:
+            best_val_loss_overall = stage_val_loss
+            best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
             # 保存全局最佳模型
-            if stage_val_loss < best_val_loss_overall:
-                best_val_loss_overall = stage_val_loss
-                best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
-                # 保存全局最佳模型
-                torch.save({
-                    'model_state_dict': model.state_dict(),
-                    'stage': stage,
-                    'val_loss': stage_val_loss,
-                    'val_metrics': stage_history.get('val_metrics', {}),
-                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
-                }, os.path.join(output_dir, "models", "best_model_overall.pt"))
-                logger.info(f"更新全局最佳模型，階段: {stage}, 驗證損失: {stage_val_loss:.6f}")
-            
-            # 將階段歷史添加到總歷史
-            all_history[stage] = stage_history
-            
-            # 更新當前輪次
-            current_epoch += stage_config["epochs"]
-            
-            logger.info(f"{stage} 階段訓練完成 - 耗時: {train_time:.2f}秒, 最佳驗證損失: {stage_val_loss:.6f}")
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'stage': stage,
+                'val_loss': stage_val_loss,
+                'val_metrics': stage_history.get('val_metrics', {}),
+                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+            }, os.path.join(output_dir, "models", "best_model_overall.pt"))
+            logger.info(f"更新全局最佳模型，階段: {stage}, 驗證損失: {stage_val_loss:.6f}")
         
-        # 最終模型保存
-        os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
-        final_model_path = os.path.join(output_dir, "models", "final_model.pt")
+        # 將階段歷史添加到總歷史
+        all_history[stage] = stage_history
         
-        # 恢復全局最佳模型
-        if best_model_state is not None:
-            model.load_state_dict(best_model_state)
-            logger.info(f"已恢復全局最佳模型，驗證損失: {best_val_loss_overall:.6f}")
+        # 更新當前輪次
+        current_epoch += stage_config["epochs"]
         
-        # 保存最終模型（即全局最佳模型）
-        torch.save({
-            'model_state_dict': model.state_dict(),
-            'training_history': all_history,
-            'final_epoch': current_epoch,
-            'best_val_loss': best_val_loss_overall
-        }, final_model_path)
-        
-        logger.info(f"分階段訓練完成，最終模型已保存至: {final_model_path}")
-        
-        return all_history
+        logger.info(f"{stage} 階段訓練完成 - 耗時: {train_time:.2f}秒, 最佳驗證損失: {stage_val_loss:.6f}")
+    
+    # 最終模型保存
+    os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
+    final_model_path = os.path.join(output_dir, "models", "final_model.pt")
+    
+    # 恢復全局最佳模型
+    if best_model_state is not None:
+        model.load_state_dict(best_model_state)
+        logger.info(f"已恢復全局最佳模型，驗證損失: {best_val_loss_overall:.6f}")
+    
+    # 保存最終模型（即全局最佳模型）
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'training_history': all_history,
+        'final_epoch': current_epoch,
+        'best_val_loss': best_val_loss_overall
+    }, final_model_path)
+    
+    logger.info(f"分階段訓練完成，最終模型已保存至: {final_model_path}")
+    
+    return all_history
 
 
 

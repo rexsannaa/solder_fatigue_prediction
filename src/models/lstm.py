@@ -158,10 +158,10 @@ class LSTMModel(nn.Module):
         
         返回:
             dict: 包含預測結果的字典:
-                - 'delta_w': 預測的非線性塑性應變能密度變化量
-                - 'output': 預測的疲勞壽命 (向後兼容性)
-                - 'features': 提取的時序特徵
-                - 'attention_weights': 注意力權重 (如果使用注意力機制且return_attention=True)
+                    - 'delta_w': 預測的非線性塑性應變能密度變化量
+                    - 'output': 預測的疲勞壽命 (向後兼容性)
+                    - 'features': 提取的時序特徵
+                    - 'attention_weights': 注意力權重 (如果使用注意力機制且return_attention=True)
         """
         # LSTM前向傳播
         lstm_output, (hidden, cell) = self.lstm(x)
@@ -213,9 +213,9 @@ class LSTMModel(nn.Module):
             l2_penalty = l2_penalty * self.l2_reg
 
         result = {
-            'delta_w': delta_w.squeeze(-1),
-            'nf_pred': nf_pred.squeeze(-1),  # 物理計算的壽命
-            'output': output.squeeze(-1),    # 舊版輸出，保持向後兼容
+            'delta_w': delta_w.squeeze(-1),        # 新增：明確輸出delta_w
+            'nf_pred': nf_pred.squeeze(-1),        # 使用物理公式計算的壽命
+            'output': output.squeeze(-1),          # 舊版輸出，保持向後兼容
             'features': context_vector,
             'l2_penalty': l2_penalty
         }

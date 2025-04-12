@@ -151,15 +151,15 @@ class PINNModel(nn.Module):
             
         返回:
             dict: 包含預測結果的字典:
-                - 'delta_w': 預測的非線性塑性應變能密度變化量
-                - 'features': 提取的特徵表示
-                - 'l2_penalty': L2正則化懲罰項
+                    - 'delta_w': 預測的非線性塑性應變能密度變化量
+                    - 'features': 提取的特徵表示
+                    - 'l2_penalty': L2正則化懲罰項
         """
         # 特徵提取
         features = self.feature_extractor(x)
         
         # 計算非線性塑性應變能密度變化量(ΔW) - 使用log空間預測以確保輸出為正值
-        delta_w = torch.exp(self.delta_w_predictor(features))
+        delta_w = torch.exp(self.delta_w_layers(features))
         
         # 確保delta_w為正值且數值穩定
         delta_w = torch.clamp(delta_w, min=1e-6)
@@ -169,7 +169,9 @@ class PINNModel(nn.Module):
             nf_pred = self.physics_layer(delta_w)
         else:
             # 使用物理公式直接計算
-            nf_pred = self.a * torch.pow(delta_w, self.b)
+            a = getattr(self, 'a', 55.83)
+            b = getattr(self, 'b', -2.259)
+            nf_pred = a * torch.pow(delta_w, b)
         
         # 確保nf_pred為正值
         nf_pred = torch.clamp(nf_pred, min=10.0)
@@ -192,36 +194,6 @@ class PINNModel(nn.Module):
             'nf_pred': nf_pred.squeeze(-1),  # 保留向後兼容性
             'features': features,
             'l2_penalty': l2_penalty
-        }
-    
-    def forward(self, x):
-        """
-        前向傳播
-        
-        參數:
-            x (torch.Tensor): 輸入特徵，形狀為 (batch_size, input_dim)
-            
-        返回:
-            dict: 包含預測結果的字典:
-                - 'nf_pred': 預測的疲勞壽命
-                - 'delta_w': 預測的非線性塑性應變能密度變化量(如果使用物理層)
-        """
-        # 特徵提取
-        features = self.feature_extractor(x)
-        
-        # 計算非線性塑性應變能密度變化量(ΔW)
-        delta_w = torch.exp(self.delta_w_predictor(features))  # 使用exp確保delta_w為正值
-        
-        if self.use_physics_layer:
-            # 使用物理層計算疲勞壽命
-            nf_pred = self.physics_layer(delta_w)
-        else:
-            # 直接預測疲勞壽命
-            nf_pred = torch.exp(self.direct_predictor(features))  # 壽命通常為正值
-        
-        return {
-            'nf_pred': nf_pred.squeeze(-1),
-            'delta_w': delta_w.squeeze(-1)
         }
     
     def calculate_physics_loss(self, delta_w, nf_pred, nf_true, lambda_physics=1.0):

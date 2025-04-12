@@ -239,31 +239,37 @@ class PINNModel(nn.Module):
 
     def forward(self, x):
         """
-        前向傳播
-
+        前向傳播 - 修改版：專注於預測delta_w，不直接計算nf_pred
+        
         參數:
             x (torch.Tensor): 輸入特徵，形狀為 (batch_size, input_dim)
-        
+            
         返回:
             dict: 包含預測結果的字典:
-                - 'nf_pred': 預測的疲勞壽命
-                - 'delta_w': 預測的非線性塑性應變能密度變化量(如果使用物理層)
+                - 'delta_w': 預測的非線性塑性應變能密度變化量
                 - 'features': 提取的特徵表示
+                - 'l2_penalty': L2正則化懲罰項
         """
-        # 提取特徵
+        # 特徵提取
         features = self.feature_extractor(x)
-
-        # 計算非線性塑性應變能密度變化量(ΔW)
-        delta_w = torch.exp(self.delta_w_predictor(features))  # 使用exp確保為正值
-
+        
+        # 計算非線性塑性應變能密度變化量(ΔW) - 使用log空間預測以確保輸出為正值
+        delta_w = torch.exp(self.delta_w_predictor(features))
+        
+        # 確保delta_w為正值且數值穩定
+        delta_w = torch.clamp(delta_w, min=1e-6)
+        
+        # 如果需要，也可以計算疲勞壽命作為參考
         if self.use_physics_layer:
-            # 使用物理層計算疲勞壽命
             nf_pred = self.physics_layer(delta_w)
         else:
-            # 直接預測疲勞壽命
-            nf_pred = torch.exp(self.direct_predictor(features))  # 使用exp確保為正值
-
-        # 應用L2正則化 - 修改以確保l2_penalty是標量
+            # 使用物理公式直接計算
+            nf_pred = self.a * torch.pow(delta_w, self.b)
+        
+        # 確保nf_pred為正值
+        nf_pred = torch.clamp(nf_pred, min=10.0)
+        
+        # 應用L2正則化
         l2_penalty = 0.0
         if self.l2_reg > 0:
             for param in self.parameters():
@@ -275,14 +281,10 @@ class PINNModel(nn.Module):
             
             # 乘以正則化系數
             l2_penalty = l2_penalty * self.l2_reg
-
-        # 確保預測值都是正數
-        delta_w = torch.clamp(delta_w, min=1e-8)
-        nf_pred = torch.clamp(nf_pred, min=1e-8)
-
+        
         return {
-            'nf_pred': nf_pred.squeeze(-1),
             'delta_w': delta_w.squeeze(-1),
+            'nf_pred': nf_pred.squeeze(-1),  # 保留向後兼容性
             'features': features,
             'l2_penalty': l2_penalty
         }
@@ -290,12 +292,12 @@ class PINNModel(nn.Module):
     
 class LSTMModel(nn.Module):
     """
-    長短期記憶網絡模型
-    專門用於處理銲錫接點的非線性塑性應變功時間序列資料
+    長短期記憶網絡模型 - 修改版
+    專門用於處理銲錫接點的非線性塑性應變功時間序列資料，預測delta_w
     """
     def __init__(self, input_dim=2, hidden_size=32, num_layers=1, output_dim=1,
                  bidirectional=True, dropout_rate=0.2, use_attention=True,
-                 l2_reg=0.001):
+                 l2_reg=0.001, a_coefficient=55.83, b_coefficient=-2.259):
         """
         初始化LSTM模型
         
@@ -308,6 +310,8 @@ class LSTMModel(nn.Module):
             dropout_rate (float): Dropout比率
             use_attention (bool): 是否使用注意力機制
             l2_reg (float): L2正則化系數
+            a_coefficient (float): 物理模型係數a
+            b_coefficient (float): 物理模型係數b
         """
         super(LSTMModel, self).__init__()
         
@@ -317,6 +321,10 @@ class LSTMModel(nn.Module):
         self.bidirectional = bidirectional
         self.use_attention = use_attention
         self.l2_reg = l2_reg
+        
+        # 儲存物理模型係數
+        self.register_buffer('a_coefficient', torch.tensor(a_coefficient, dtype=torch.float32))
+        self.register_buffer('b_coefficient', torch.tensor(b_coefficient, dtype=torch.float32))
         
         # LSTM層
         self.lstm = nn.LSTM(
@@ -335,7 +343,7 @@ class LSTMModel(nn.Module):
         if use_attention:
             self.attention = AttentionLayer(lstm_output_dim)
         
-        # 全連接層，用於最終預測
+        # 全連接層，用於特徵處理
         fc_layers = []
         fc_input_dim = lstm_output_dim
         fc_hidden_dims = [lstm_output_dim // 2]
@@ -349,6 +357,11 @@ class LSTMModel(nn.Module):
             fc_input_dim = hidden_dim
         
         self.fc_layers = nn.Sequential(*fc_layers)
+        
+        # 修改：添加專門用於預測delta_w的輸出層
+        self.delta_w_layer = nn.Linear(fc_input_dim, 1)
+        
+        # 保留原來預測壽命的層，以保持向後兼容性
         self.output_layer = nn.Linear(fc_input_dim, output_dim)
         
         # 初始化權重
@@ -384,10 +397,14 @@ class LSTMModel(nn.Module):
                     nn.init.uniform_(param.data, -0.1, 0.1)
             elif 'linear' in name and 'bias' in name:
                 nn.init.zeros_(param.data)
+            
+            # 初始化delta_w層的偏置，使初始預測在合理範圍
+            if hasattr(self, 'delta_w_layer') and 'delta_w_layer.bias' in name:
+                nn.init.constant_(param.data, -3.0)  # ln(0.05) ≈ -3.0
     
     def forward(self, x, return_attention=False):
         """
-        前向傳播
+        前向傳播 - 修改版：專注於預測delta_w
 
         參數:
             x (torch.Tensor): 輸入時間序列，形狀為 (batch_size, seq_len, input_dim)
@@ -395,7 +412,8 @@ class LSTMModel(nn.Module):
         
         返回:
             dict: 包含預測結果的字典:
-                - 'output': 預測的疲勞壽命
+                - 'delta_w': 預測的非線性塑性應變能密度變化量
+                - 'output': 預測的疲勞壽命 (向後兼容性)
                 - 'features': 提取的時序特徵
                 - 'attention_weights': 注意力權重 (如果使用注意力機制且return_attention=True)
         """
@@ -419,14 +437,23 @@ class LSTMModel(nn.Module):
             attention_weights = None
 
         # 全連接層處理
-        # 使用log空間預測，確保輸出為正值
         fc_output = self.fc_layers(context_vector)
+        
+        # 預測delta_w - 使用對數空間確保輸出為正值
+        delta_w = torch.exp(self.delta_w_layer(fc_output))
+        
+        # 使用物理公式計算壽命（為了向後兼容）
+        nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
+        
+        # 向後兼容的輸出層
         output = torch.exp(self.output_layer(fc_output))
 
         # 確保預測值是正數
-        output = torch.clamp(output, min=1e-8)
+        delta_w = torch.clamp(delta_w, min=1e-6)
+        output = torch.clamp(output, min=10.0)
+        nf_pred = torch.clamp(nf_pred, min=10.0)
 
-        # 應用L2正則化 - 修改以確保l2_penalty是標量
+        # 應用L2正則化
         l2_penalty = 0.0
         if self.l2_reg > 0:
             for param in self.parameters():
@@ -440,7 +467,9 @@ class LSTMModel(nn.Module):
             l2_penalty = l2_penalty * self.l2_reg
 
         result = {
-            'output': output.squeeze(-1),
+            'delta_w': delta_w.squeeze(-1),
+            'nf_pred': nf_pred.squeeze(-1),  # 物理計算的壽命
+            'output': output.squeeze(-1),    # 舊版輸出，保持向後兼容
             'features': context_vector,
             'l2_penalty': l2_penalty
         }
@@ -534,29 +563,28 @@ class HybridPINNLSTMModel(nn.Module):
     結合物理信息神經網絡和長短期記憶網絡的優勢，專為小樣本數據集優化
     """
     def __init__(self, 
-                 static_input_dim=5,
-                 time_input_dim=2,
-                 time_steps=4,
-                 pinn_hidden_dims=[64, 32, 16],  # 修改點: 增加模型容量
-                 lstm_hidden_size=64,            # 修改點: 增加LSTM隱藏層大小
-                 lstm_num_layers=2,              # 修改點: 增加LSTM層數
-                 fusion_dim=32,                  # 修改點: 增加融合層維度
-                 dropout_rate=0.1,               # 修改點: 減少dropout以減少資訊損失
-                 bidirectional=True,
-                 use_attention=True,
-                 use_physics_layer=True,
-                 physics_layer_trainable=True,   # 修改點: 允許物理層參數微調
-                 use_batch_norm=True,
-                 pinn_weight_init=0.8,           # 修改點: 增加PINN分支初始權重
-                 lstm_weight_init=0.2,           # 修改點: 減少LSTM分支初始權重
-                 a_coefficient=55.83,
-                 b_coefficient=-2.259,
-                 use_log_transform=True,
-                 ensemble_method='weighted',     # 可考慮改為'deep_fusion'
-                 l2_reg=0.0005):                 # 修改點: 減少L2正則化強度
-        super(HybridPINNLSTMModel, self).__init__()
+                static_input_dim=5,
+                time_input_dim=2,
+                time_steps=4,
+                pinn_hidden_dims=[64, 32, 16],
+                lstm_hidden_size=64,
+                lstm_num_layers=2,
+                fusion_dim=32,
+                dropout_rate=0.1,
+                bidirectional=True,
+                use_attention=True,
+                use_physics_layer=True,
+                physics_layer_trainable=True,
+                use_batch_norm=True,
+                pinn_weight_init=0.8,
+                lstm_weight_init=0.2,
+                a_coefficient=55.83,
+                b_coefficient=-2.259,
+                use_log_transform=True,
+                ensemble_method='weighted',
+                l2_reg=0.0005):
         """
-        初始化混合PINN-LSTM模型
+        初始化混合PINN-LSTM模型 - 修改版：明確強調模型的目標是預測delta_w
         
         參數:
             static_input_dim (int): 靜態特徵輸入維度
@@ -589,16 +617,18 @@ class HybridPINNLSTMModel(nn.Module):
         self.use_log_transform = use_log_transform
         self.ensemble_method = ensemble_method
         self.l2_reg = l2_reg
-        self.a_coefficient = a_coefficient
-        self.b_coefficient = b_coefficient
         
-        # 1. PINN分支，處理靜態結構參數
+        # 保存物理模型係數作為模型參數
+        self.register_buffer('a_coefficient', torch.tensor(a_coefficient, dtype=torch.float32))
+        self.register_buffer('b_coefficient', torch.tensor(b_coefficient, dtype=torch.float32))
+        
+        # 1. PINN分支，專注於從靜態結構參數預測delta_w
         self.pinn_branch = PINNModel(
             input_dim=static_input_dim,
             hidden_dims=pinn_hidden_dims,
             output_dim=1,
             dropout_rate=dropout_rate,
-            use_physics_layer=use_physics_layer,
+            use_physics_layer=False,  # 關鍵修改：不在PINN分支內使用物理層，而是在整個模型的最後使用
             physics_layer_trainable=physics_layer_trainable,
             use_batch_norm=use_batch_norm,
             a_coefficient=a_coefficient,
@@ -618,7 +648,7 @@ class HybridPINNLSTMModel(nn.Module):
             l2_reg=l2_reg
         )
         
-        # 3. 分支權重 - 可訓練參數
+        # 3. 分支權重 - 可訓練參數，用於加權融合delta_w預測
         if ensemble_method == 'weighted':
             # 初始化分支權重 - 使用sigmoid確保正值並在0-1之間，且和為1
             weight_param = torch.tensor(
@@ -642,28 +672,15 @@ class HybridPINNLSTMModel(nn.Module):
                 dropout_rate=dropout_rate,
                 use_batch_norm=use_batch_norm
             )
-            
-            # 對於deep_fusion方法，添加輸出層
-            if ensemble_method == 'deep_fusion':
-                self.output_layer = nn.Sequential(
-                    nn.Linear(fusion_dim, fusion_dim // 2),
-                    nn.ReLU(),
-                    nn.Linear(fusion_dim // 2, 1)
-                )
-        # 修改點: 添加對數變換的縮放因子，以處理大範圍值
-        self.log_scale = nn.Parameter(torch.tensor([2.5], dtype=torch.float32))  # 初始值更大，縮放更顯著
-        # 修改點: 添加最終輸出校正層
-        self.output_correction = nn.Sequential(
-            nn.Linear(1, 32),            # 增加層寬度提升表達能力
-            nn.BatchNorm1d(32),          # 添加批標準化提高穩定性
-            nn.LeakyReLU(0.1),           # 使用LeakyReLU激活改善訓練
-            nn.Dropout(0.1),             # 輕微Dropout防止過擬合
-            nn.Linear(32, 16),
-            nn.LeakyReLU(0.1),
-            nn.Linear(16, 1)
-        )
-
-
+        
+        # 5. 物理層 - 用於在最後階段將delta_w轉換為疲勞壽命Nf
+        if use_physics_layer:
+            self.physics_layer = PhysicsLayer(
+                a=a_coefficient, 
+                b=b_coefficient,
+                trainable=physics_layer_trainable
+            )
+        
         # 初始化權重
         self._initialize_weights()
     
@@ -704,156 +721,146 @@ class HybridPINNLSTMModel(nn.Module):
     
     def calculate_loss(self, outputs, targets, lambda_physics=0.5, lambda_consistency=0.1):
         """
-        計算混合損失，增強在對數空間的損失權重
-
+        計算混合損失 - 修改版：主要針對delta_w的預測精度
+        
         參數:
             outputs (dict): 模型輸出
             targets (torch.Tensor): 目標疲勞壽命
             lambda_physics (float): 物理約束損失權重
             lambda_consistency (float): 分支間一致性損失權重
-
+            
         返回:
             dict: 包含各部分損失的字典
         """
-        # 確保targets和predictions都是正值，提高安全性
-        targets = torch.clamp(targets, min=10.0)  # 提高最小閾值到10
-        predictions = torch.clamp(outputs['nf_pred'], min=10.0)  # 提高最小閾值到10
-
+        # 確保targets和predictions都是正值
+        targets = torch.clamp(targets, min=10.0)
+        predictions = torch.clamp(outputs['nf_pred'], min=10.0)
+        
         # 獲取對數空間的目標值和預測值
-        log_targets = torch.log10(targets)  # 使用以10為底的對數，更直觀
+        log_targets = torch.log10(targets)
         log_predictions = torch.log10(predictions)
-
-        # 1. 主要預測損失 - 主要使用對數空間損失
+        
+        # 1. 主要預測損失 - 最終疲勞壽命的預測精度
         # 常規空間的均方誤差
         mse_loss = F.mse_loss(predictions, targets)
-
+        
         # 對數空間的均方誤差 (更適合跨度大的數據)
         log_mse_loss = F.mse_loss(log_predictions, log_targets)
-
+        
         # 結合損失，95%使用對數空間損失
         pred_loss = 0.05 * mse_loss + 0.95 * log_mse_loss
         
-        # 針對大值區域的特殊處理 - 增強大值區域權重
-        large_value_mask = log_targets > 6.0  # 閾值對應約1100循環
+        # 針對大值區域的特殊處理
+        large_value_mask = log_targets > 6.0  # 閾值對應約1000循環
         if torch.any(large_value_mask):
             large_value_loss = F.mse_loss(
                 log_predictions[large_value_mask], 
                 log_targets[large_value_mask]
             )
             pred_loss = pred_loss + large_value_loss * 2.0  # 增加大值區域權重
-
-        # 2. 物理約束損失
-        if self.use_physics_layer and 'delta_w' in outputs:
-            # 確保delta_w是正值
-            delta_w = torch.clamp(outputs['delta_w'], min=1e-6)  # 提高最小閾值
         
-            # 從真實壽命推算的理論上的delta_w (使用物理公式)
+        # 2. Delta_W 預測損失 (核心部分) - 確保模型準確預測非線性塑性應變能密度變化量
+        if 'delta_w' in outputs:
+            # 從目標疲勞壽命反算理論上的 delta_w
             delta_w_theory = torch.pow(targets / self.a_coefficient, 1/self.b_coefficient)
-            delta_w_theory = torch.clamp(delta_w_theory, min=1e-6)  # 提高最小閾值
-        
-            # 使用對數空間的損失，對於大範圍值更穩定
-            log_delta_w = torch.log10(delta_w)
+            delta_w_theory = torch.clamp(delta_w_theory, min=1e-6)
+            
+            # 預測的 delta_w
+            delta_w_pred = torch.clamp(outputs['delta_w'], min=1e-6)
+            
+            # 在對數空間計算 delta_w 預測損失
+            log_delta_w_pred = torch.log10(delta_w_pred)
             log_delta_w_theory = torch.log10(delta_w_theory)
-            delta_w_loss = F.mse_loss(log_delta_w, log_delta_w_theory)
-        
-            # 物理預測一致性損失 - 強制PINN分支符合物理模型
-            nf_physics = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
-            nf_physics = torch.clamp(nf_physics, min=10.0)  # 提高最小閾值到10
-        
-            log_nf_physics = torch.log10(nf_physics)
-            log_pinn_pred = torch.log10(torch.clamp(outputs['pinn_nf_pred'], min=10.0))  # 提高最小閾值到10
-            physics_consistency_loss = F.mse_loss(log_pinn_pred, log_nf_physics)
-        
-            # 整合物理損失 - 增加物理一致性權重
-            physics_loss = 0.5 * delta_w_loss + 0.5 * physics_consistency_loss  # 物理一致性權重從0.4增加到0.5
-        
-            # 新增: 直接監督總輸出符合物理模型 (這是確保最終預測遵循物理模型的關鍵)
-            log_nf_from_physics = torch.log10(nf_physics)
-            direct_physics_loss = F.mse_loss(log_predictions, log_nf_from_physics)
-            physics_loss = physics_loss + 0.7 * direct_physics_loss  # 大幅提高直接物理監督權重
-        
-            # 針對大值區域的物理約束強化
+            delta_w_loss = F.mse_loss(log_delta_w_pred, log_delta_w_theory)
+            
+            # 針對大值區域加強 delta_w 預測
             if torch.any(large_value_mask):
                 large_delta_w_loss = F.mse_loss(
-                    log_delta_w[large_value_mask],
+                    log_delta_w_pred[large_value_mask],
                     log_delta_w_theory[large_value_mask]
                 )
-                physics_loss = physics_loss + large_delta_w_loss * 1.5  # 增強大值區域物理約束
+                delta_w_loss = delta_w_loss + large_delta_w_loss * 1.5
         else:
-            physics_loss = torch.tensor(0.0, device=targets.device)
             delta_w_loss = torch.tensor(0.0, device=targets.device)
-            physics_consistency_loss = torch.tensor(0.0, device=targets.device)
-            direct_physics_loss = torch.tensor(0.0, device=targets.device)
-
-        # 3. 分支間一致性損失
-        if 'pinn_nf_pred' in outputs and 'lstm_nf_pred' in outputs:
-            pinn_pred = torch.clamp(outputs['pinn_nf_pred'], min=10.0)  # 提高最小閾值到10
-            lstm_pred = torch.clamp(outputs['lstm_nf_pred'], min=10.0)  # 提高最小閾值到10
         
-            log_pinn_pred = torch.log10(pinn_pred)
-            log_lstm_pred = torch.log10(lstm_pred)
-        
-            consistency_loss = F.mse_loss(log_pinn_pred, log_lstm_pred)
+        # 3. PINN 分支 delta_w 預測損失
+        if 'pinn_delta_w' in outputs:
+            pinn_delta_w = torch.clamp(outputs['pinn_delta_w'], min=1e-6)
+            log_pinn_delta_w = torch.log10(pinn_delta_w)
+            pinn_delta_w_loss = F.mse_loss(log_pinn_delta_w, log_delta_w_theory)
         else:
-            consistency_loss = torch.tensor(0.0, device=targets.device)
-
-        # 4. L2正則化損失
+            pinn_delta_w_loss = torch.tensor(0.0, device=targets.device)
+        
+        # 4. LSTM 分支 delta_w 預測損失
+        if 'lstm_delta_w' in outputs:
+            lstm_delta_w = torch.clamp(outputs['lstm_delta_w'], min=1e-6)
+            log_lstm_delta_w = torch.log10(lstm_delta_w)
+            lstm_delta_w_loss = F.mse_loss(log_lstm_delta_w, log_delta_w_theory)
+        else:
+            lstm_delta_w_loss = torch.tensor(0.0, device=targets.device)
+        
+        # 5. delta_w 分支一致性損失
+        if 'pinn_delta_w' in outputs and 'lstm_delta_w' in outputs:
+            log_pinn_delta_w = torch.log10(torch.clamp(outputs['pinn_delta_w'], min=1e-6))
+            log_lstm_delta_w = torch.log10(torch.clamp(outputs['lstm_delta_w'], min=1e-6))
+            delta_w_consistency_loss = F.mse_loss(log_pinn_delta_w, log_lstm_delta_w)
+        else:
+            delta_w_consistency_loss = torch.tensor(0.0, device=targets.device)
+        
+        # 6. L2正則化損失
         l2_loss = outputs.get('l2_penalty', torch.tensor(0.0, device=targets.device))
         
         # 確保l2_loss是標量
         if isinstance(l2_loss, torch.Tensor) and l2_loss.dim() > 0:
             l2_loss = l2_loss.mean()
-
-        # 5. 自適應物理約束權重 - 大幅增強物理約束權重
+        
+        # 7. 自適應物理約束權重
         rel_error = torch.abs((targets - predictions) / targets)
         mean_rel_error = torch.mean(rel_error)
         # 當誤差較大時，更加依賴物理模型
-        adaptive_lambda_physics = lambda_physics * (5.0 + torch.clamp(mean_rel_error, 0.0, 5.0))
-
-        # 6. 輸出偏移損失 - 鼓勵輸出遠離零
-        zero_avoidance_loss = torch.mean(1.0 / (predictions + 1e-3))
-
-        # 7. 總損失 - 物理約束權重更大
+        adaptive_lambda_physics = lambda_physics * (1.0 + torch.clamp(mean_rel_error, 0.0, 2.0))
+        
+        # 8. 物理約束總損失 - 現在主要針對delta_w預測
+        physics_loss = delta_w_loss + 0.8 * pinn_delta_w_loss + 0.5 * lstm_delta_w_loss
+        
+        # 9. 一致性總損失
+        consistency_loss = delta_w_consistency_loss
+        
+        # 10. 總損失 - 重點是delta_w的準確預測
         total_loss = (
             pred_loss + 
             adaptive_lambda_physics * physics_loss + 
             lambda_consistency * consistency_loss +
-            l2_loss +
-            0.1 * zero_avoidance_loss
+            l2_loss
         )
-
+        
         # 確保所有返回的損失都是標量
         def ensure_scalar(tensor):
             if isinstance(tensor, torch.Tensor) and tensor.dim() > 0:
                 return tensor.mean()
             return tensor
-
-        # 建立損失字典，確保所有值都是標量
+        
+        # 建立損失字典
         loss_dict = {
             'total_loss': ensure_scalar(total_loss),
             'pred_loss': ensure_scalar(pred_loss),
             'physics_loss': ensure_scalar(physics_loss),
+            'delta_w_loss': ensure_scalar(delta_w_loss),
+            'pinn_delta_w_loss': ensure_scalar(pinn_delta_w_loss),
+            'lstm_delta_w_loss': ensure_scalar(lstm_delta_w_loss),
             'consistency_loss': ensure_scalar(consistency_loss),
+            'delta_w_consistency_loss': ensure_scalar(delta_w_consistency_loss),
             'mse_loss': ensure_scalar(mse_loss),
             'log_mse_loss': ensure_scalar(log_mse_loss),
             'l2_loss': ensure_scalar(l2_loss),
-            'rel_error': ensure_scalar(mean_rel_error),
-            'zero_avoidance_loss': ensure_scalar(zero_avoidance_loss)
+            'rel_error': ensure_scalar(mean_rel_error)
         }
         
-        # 添加物理損失組件（如果可用）
-        if self.use_physics_layer and 'delta_w' in outputs:
-            loss_dict.update({
-                'delta_w_loss': ensure_scalar(delta_w_loss),
-                'physics_consistency_loss': ensure_scalar(physics_consistency_loss),
-                'direct_physics_loss': ensure_scalar(direct_physics_loss)
-            })
-
         return loss_dict
     
     def forward(self, static_features, time_series, return_features=False):
         """
-        前向傳播
+        前向傳播 - 修改版：明確分為預測 delta_w 和使用物理公式計算 Nf 兩個階段
         
         參數:
             static_features (torch.Tensor): 靜態特徵，形狀為 (batch_size, static_input_dim)
@@ -863,121 +870,147 @@ class HybridPINNLSTMModel(nn.Module):
         返回:
             dict: 包含預測結果和中間特徵的字典
         """
-        # 1. PINN分支前向傳播
+        # 階段 1: 預測 delta_w - 使用 PINN 和 LSTM 分支
+        
+        # 1.1 PINN分支前向傳播
         pinn_output = self.pinn_branch(static_features)
-        pinn_nf_pred = pinn_output['nf_pred']
-        pinn_delta_w = pinn_output['delta_w']
+        pinn_delta_w = pinn_output['delta_w']  # 關鍵輸出：PINN預測的delta_w
         pinn_features = pinn_output['features']
         pinn_l2_penalty = pinn_output.get('l2_penalty', torch.tensor(0.0, device=static_features.device))
-
-        # 2. LSTM分支前向傳播
+        
+        # 1.2 LSTM分支前向傳播
         lstm_output = self.lstm_branch(time_series, return_attention=return_features)
-        lstm_nf_pred = lstm_output['output']
         lstm_features = lstm_output['features']
         lstm_l2_penalty = lstm_output.get('l2_penalty', torch.tensor(0.0, device=static_features.device))
-        
-        # 3. 根据集成方法合并预测结果
-        # 確保預測值均為正數且不為零
-        pinn_nf_pred = torch.clamp(pinn_nf_pred, min=10.0)
-        lstm_nf_pred = torch.clamp(lstm_nf_pred, min=10.0)
         
         # 初始化結果字典
         result = {}
         
-        if self.use_physics_layer and hasattr(self, 'a_coefficient') and hasattr(self, 'b_coefficient'):
-            # 直接使用物理模型計算最終預測，完全跳過融合步驟
-            # 物理模型: Nf = a * (delta_w)^b
-            physics_nf = self.a_coefficient * torch.pow(pinn_delta_w, self.b_coefficient)
+        # 1.3 結合兩個分支的特徵，共同預測delta_w
+        if self.ensemble_method == 'weighted':
+            # 獲取分支權重
+            branch_weights = self.get_branch_weights()
             
-            # 使用物理計算結果作為最終預測，這是關鍵修改
-            nf_pred = physics_nf
+            # LSTM分支也需要有一個delta_w預測
+            # 我們需要在LSTM模型中添加一個delta_w_predictor層，或者在這裡臨時創建一個
+            if not hasattr(self, 'lstm_delta_w_predictor'):
+                # 如果LSTM模型沒有delta_w_predictor，在這裡創建一個臨時層
+                self.lstm_delta_w_predictor = nn.Linear(lstm_features.shape[1], 1).to(static_features.device)
+                # 初始化權重，使初始預測接近PINN分支
+                with torch.no_grad():
+                    # 估計PINN delta_w的平均對數值
+                    mean_log_delta_w = torch.log(torch.clamp(pinn_delta_w, min=1e-6)).mean().item()
+                    # 設置bias使初始預測接近這個值
+                    self.lstm_delta_w_predictor.bias.fill_(mean_log_delta_w)
             
-            # 將物理計算的結果添加到結果中
-            result['physics_nf'] = physics_nf
-        else:
-            # 如果未啟用物理層，則回退到原有的融合邏輯
-            if self.ensemble_method == 'weighted':
-                # 獲取分支權重
-                branch_weights = self.get_branch_weights()
+            # 使用LSTM特徵預測delta_w
+            lstm_delta_w = torch.exp(self.lstm_delta_w_predictor(lstm_features))
+            
+            # 在對數空間加權平均delta_w
+            log_pinn_delta_w = torch.log(torch.clamp(pinn_delta_w, min=1e-6))
+            log_lstm_delta_w = torch.log(torch.clamp(lstm_delta_w, min=1e-6))
+            log_delta_w = branch_weights[0] * log_pinn_delta_w + branch_weights[1] * log_lstm_delta_w
+            
+            # 轉回線性空間
+            delta_w = torch.exp(log_delta_w)
+            
+            # 融合權重
+            fusion_weights = torch.tensor([branch_weights[0].item(), 
+                                        branch_weights[1].item()], 
+                                        device=static_features.device)
+            
+            # 添加融合權重到結果中
+            result['fusion_weights'] = fusion_weights
+            result['lstm_delta_w'] = lstm_delta_w
+        
+        elif self.ensemble_method in ['gate', 'deep_fusion']:
+            # 使用特徵融合層進行融合
+            fused_features, gate_weights = self.fusion_layer(pinn_features, lstm_features)
+            
+            # 針對融合特徵預測delta_w
+            if self.ensemble_method == 'gate':
+                # 類似加權平均，但權重是動態計算的
+                if not hasattr(self, 'lstm_delta_w_predictor'):
+                    self.lstm_delta_w_predictor = nn.Linear(lstm_features.shape[1], 1).to(static_features.device)
+                    with torch.no_grad():
+                        mean_log_delta_w = torch.log(torch.clamp(pinn_delta_w, min=1e-6)).mean().item()
+                        self.lstm_delta_w_predictor.bias.fill_(mean_log_delta_w)
                 
-                # 確保預測值的維度一致以進行加權
-                if pinn_nf_pred.dim() != lstm_nf_pred.dim() or pinn_nf_pred.shape != lstm_nf_pred.shape:
-                    if pinn_nf_pred.dim() < lstm_nf_pred.dim():
-                        pinn_nf_pred = pinn_nf_pred.view(lstm_nf_pred.shape)
-                    elif lstm_nf_pred.dim() < pinn_nf_pred.dim():
-                        lstm_nf_pred = lstm_nf_pred.view(pinn_nf_pred.shape)
+                lstm_delta_w = torch.exp(self.lstm_delta_w_predictor(lstm_features))
                 
-                # 使用對數空間加權平均
-                log_pinn_pred = torch.log(pinn_nf_pred)
-                log_lstm_pred = torch.log(lstm_nf_pred)
-                log_nf_pred = branch_weights[0] * log_pinn_pred + branch_weights[1] * log_lstm_pred
-                
-                # 轉回線性空間
-                nf_pred = torch.exp(log_nf_pred)
-                
-                # 融合權重
-                fusion_weights = torch.tensor([branch_weights[0].item(), 
-                                            branch_weights[1].item()], 
-                                            device=static_features.device)
-                
-                # 添加融合權重到結果中
-                result['fusion_weights'] = fusion_weights
-                
-            elif self.ensemble_method == 'gate':
-                # 使用特徵融合層進行融合，並使用門控機制
-                fused_features, gate_weights = self.fusion_layer(pinn_features, lstm_features)
-                
-                # 確保預測值的維度一致以進行加權
-                if pinn_nf_pred.dim() != lstm_nf_pred.dim() or pinn_nf_pred.shape != lstm_nf_pred.shape:
-                    if pinn_nf_pred.dim() < lstm_nf_pred.dim():
-                        pinn_nf_pred = pinn_nf_pred.view(lstm_nf_pred.shape)
-                    elif lstm_nf_pred.dim() < pinn_nf_pred.dim():
-                        lstm_nf_pred = lstm_nf_pred.view(pinn_nf_pred.shape)
-                
-                # 加權平均兩個分支的預測
-                nf_pred = gate_weights[:, 0].unsqueeze(-1) * pinn_nf_pred + gate_weights[:, 1].unsqueeze(-1) * lstm_nf_pred
-                
-                # 融合權重
-                fusion_weights = gate_weights.mean(dim=0)  # 取平均為整體權重
-                
-                # 定義dynamic_weights為gate_weights.T，便於合併
-                batch_dynamic_weights = gate_weights.t()  # 形狀為(2, batch_size)
-                
-                # 添加到結果中
-                result['fusion_weights'] = fusion_weights
-                result['dynamic_weights'] = batch_dynamic_weights
-                
+                # 使用門控權重加權
+                delta_w = gate_weights[:, 0].unsqueeze(-1) * pinn_delta_w + gate_weights[:, 1].unsqueeze(-1) * lstm_delta_w
+                result['lstm_delta_w'] = lstm_delta_w
+            
             else:  # deep_fusion
-                # 使用特徵融合層進行深度融合
-                fused_features, gate_weights = self.fusion_layer(pinn_features, lstm_features)
+                # 使用融合特徵直接預測delta_w
+                if not hasattr(self, 'fusion_delta_w_predictor'):
+                    self.fusion_delta_w_predictor = nn.Sequential(
+                        nn.Linear(fused_features.shape[1], fused_features.shape[1] // 2),
+                        nn.ReLU(),
+                        nn.Linear(fused_features.shape[1] // 2, 1)
+                    ).to(static_features.device)
+                    # 初始化最後一層的偏置
+                    with torch.no_grad():
+                        mean_log_delta_w = torch.log(torch.clamp(pinn_delta_w, min=1e-6)).mean().item()
+                        self.fusion_delta_w_predictor[-1].bias.fill_(mean_log_delta_w)
                 
-                # 使用輸出層進行預測
-                if self.use_log_transform:
-                    # 使用對數空間進行預測，確保預測值為正
-                    nf_pred = torch.exp(self.output_layer(fused_features)).squeeze(-1)
-                else:
-                    # 直接預測，使用softplus確保正值
-                    nf_pred = F.softplus(self.output_layer(fused_features)).squeeze(-1)
-                
-                # 融合權重
-                fusion_weights = gate_weights.mean(dim=0)  # 取平均為整體權重
-                
-                # 定義dynamic_weights為gate_weights.T，便於合併
-                batch_dynamic_weights = gate_weights.t()  # 形狀為(2, batch_size)
-                
-                # 添加到結果中
-                result['fusion_weights'] = fusion_weights
-                result['dynamic_weights'] = batch_dynamic_weights
-                
-                if return_features:
-                    result['fused_features'] = fused_features
+                # 使用融合特徵預測delta_w
+                delta_w = torch.exp(self.fusion_delta_w_predictor(fused_features))
+            
+            # 融合權重
+            fusion_weights = gate_weights.mean(dim=0)  # 取平均為整體權重
+            
+            # 定義dynamic_weights為gate_weights.T，便於合併
+            batch_dynamic_weights = gate_weights.t()  # 形狀為(2, batch_size)
+            
+            # 添加到結果中
+            result['fusion_weights'] = fusion_weights
+            result['dynamic_weights'] = batch_dynamic_weights
+            
+            if return_features:
+                result['fused_features'] = fused_features
+        
+        else:
+            # 默認使用PINN分支的delta_w
+            delta_w = pinn_delta_w
+        
+        # 確保delta_w為正值且數值穩定
+        delta_w = torch.clamp(delta_w, min=1e-6)
+        
+        # 階段 2: 使用物理模型從delta_w計算疲勞壽命Nf
+        if hasattr(self, 'a_coefficient') and hasattr(self, 'b_coefficient'):
+            # 直接使用物理公式 Nf = a * (delta_w)^b 計算疲勞壽命
+            nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
+        else:
+            # 如果沒有物理係數，使用PhysicsLayer
+            if hasattr(self, 'physics_layer'):
+                nf_pred = self.physics_layer(delta_w)
+            else:
+                # 創建一個臨時的物理層
+                physics_layer = PhysicsLayer(a=55.83, b=-2.259).to(static_features.device)
+                nf_pred = physics_layer(delta_w)
         
         # 確保最終預測值在合理範圍內
         nf_pred = torch.clamp(nf_pred, min=10.0, max=1e5)
         
+        # 為了保持向後兼容，計算PINN和LSTM分支的各自預測結果
+        if self.use_physics_layer:
+            pinn_nf_pred = self.a_coefficient * torch.pow(pinn_delta_w, self.b_coefficient)
+        else:
+            pinn_nf_pred = pinn_output.get('nf_pred', torch.zeros_like(nf_pred))
+        
+        # 對於LSTM分支，如果有lstm_delta_w則使用物理公式計算，否則使用原始輸出
+        if 'lstm_delta_w' in result:
+            lstm_nf_pred = self.a_coefficient * torch.pow(result['lstm_delta_w'], self.b_coefficient)
+        else:
+            lstm_nf_pred = lstm_output.get('output', torch.zeros_like(nf_pred))
+        
         # 添加主要預測結果到結果字典
         result['nf_pred'] = nf_pred
+        result['delta_w'] = delta_w
         result['pinn_nf_pred'] = pinn_nf_pred
+        result['pinn_delta_w'] = pinn_delta_w
         result['lstm_nf_pred'] = lstm_nf_pred
         
         # 確保l2_penalty是標量值
@@ -985,10 +1018,6 @@ class HybridPINNLSTMModel(nn.Module):
         if isinstance(total_l2_penalty, torch.Tensor) and total_l2_penalty.dim() > 0:
             total_l2_penalty = total_l2_penalty.mean()
         result['l2_penalty'] = total_l2_penalty
-        
-        # 添加delta_w到結果中
-        if self.use_physics_layer:
-            result['delta_w'] = torch.clamp(pinn_delta_w, min=1e-8)
         
         # 添加特征到结果中
         if return_features:

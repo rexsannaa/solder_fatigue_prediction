@@ -34,12 +34,10 @@ def load_data(filepath):
         pandas.DataFrame: 載入的資料框
     """
     try:
-        # 檢查檔案是否存在
         file_path = Path(filepath)
         if not file_path.exists():
             raise FileNotFoundError(f"找不到資料檔案: {filepath}")
         
-        # 根據副檔名決定載入方式
         suffix = file_path.suffix.lower()
         if suffix == '.csv':
             df = pd.read_csv(filepath)
@@ -50,7 +48,6 @@ def load_data(filepath):
         
         logger.info(f"成功載入資料檔案: {filepath}，共 {len(df)} 筆資料，{df.shape[1]} 個欄位")
         
-        # 檢查資料完整性
         missing_counts = df.isnull().sum()
         missing_cols = missing_counts[missing_counts > 0]
         if not missing_cols.empty:
@@ -74,19 +71,15 @@ def standardize_features(df, feature_cols, target_col=None):
         tuple: (標準化後的特徵, 標準化器, 目標值)
     """
     try:
-        # 檢查特徵欄位是否存在
         for col in feature_cols:
             if col not in df.columns:
                 raise ValueError(f"特徵欄位 '{col}' 不存在於資料中")
         
-        # 準備標準化器
         scaler = StandardScaler()
         
-        # 擷取特徵並標準化
         X = df[feature_cols].values
         X_scaled = scaler.fit_transform(X)
         
-        # 擷取目標值（如果有提供）
         y = None
         if target_col:
             if target_col not in df.columns:
@@ -114,23 +107,17 @@ def prepare_time_series(df, time_series_prefix=None, time_points=None):
         numpy.ndarray: 時間序列資料，形狀為 (樣本數, 時間步數, 特徵數)
     """
     try:
-        # 自動偵測時間序列欄位
         if time_series_prefix is None:
-            # 預設前綴
             time_series_prefix = ['NLPLWK_up_', 'NLPLWK_down_']
         
-        # 自動偵測時間點
         if time_points is None:
-            # 如果列名中包含明確的時間點數字，則使用這些數字
-            time_points = [3600, 7200, 10800, 14400]  # 設置預設時間點
+            time_points = [3600, 7200, 10800, 14400]
             
-            # 嘗試從列名中找出時間點
             all_cols = df.columns
             time_points_set = set()
             
             for prefix in time_series_prefix:
                 cols = [col for col in all_cols if col.startswith(prefix)]
-                # 從欄位名稱中擷取時間點
                 for col in cols:
                     try:
                         time_point = col.replace(prefix, '')
@@ -142,15 +129,12 @@ def prepare_time_series(df, time_series_prefix=None, time_points=None):
             if time_points_set:
                 time_points = sorted(list(time_points_set))
         
-        # 構建時間序列資料
         n_samples = len(df)
         n_time_steps = len(time_points)
         n_features = len(time_series_prefix)
         
-        # 初始化時間序列陣列
         time_series_data = np.zeros((n_samples, n_time_steps, n_features))
         
-        # 填充時間序列資料
         for feature_idx, prefix in enumerate(time_series_prefix):
             for time_idx, time_point in enumerate(time_points):
                 col_name = f"{prefix}{time_point}"
@@ -185,15 +169,12 @@ def train_val_test_split(X, time_series, y, test_size=0.15, val_size=0.15, rando
     """
     try:
         if stratify is not None:
-            # 如果stratify是連續值（疲勞壽命），需要先分組
             if np.issubdtype(stratify.dtype, np.number) and len(np.unique(stratify)) > 10:
-                # 對數變換後分組，適用於疲勞壽命這類跨度大的數值
                 y_log = np.log(stratify + 1e-8)
-                n_bins = min(10, len(y) // 8)  # 確保每組至少有8個樣本
+                n_bins = min(10, len(y) // 8)
                 bins = np.linspace(y_log.min(), y_log.max(), n_bins + 1)
                 stratify = np.digitize(y_log, bins)
         
-        # 首先，將資料分割為臨時集和測試集
         if len(X.shape) == 1:
             X = X.reshape(-1, 1)
         
@@ -201,13 +182,11 @@ def train_val_test_split(X, time_series, y, test_size=0.15, val_size=0.15, rando
             X, time_series, y, test_size=test_size, random_state=random_state, stratify=stratify
         )
         
-        # 如果有分層依據，需要更新
         if stratify is not None:
             stratify_temp = stratify[np.isin(np.arange(len(stratify)), np.arange(len(X))[~np.isin(np.arange(len(X)), np.where(np.isin(X, X_test))[0])])]
         else:
             stratify_temp = None
         
-        # 然後，將臨時集進一步分割為訓練集和驗證集
         val_ratio = val_size / (1 - test_size)
         X_train, X_val, ts_train, ts_val, y_train, y_val = train_test_split(
             X_temp, ts_temp, y_temp, test_size=val_ratio, random_state=random_state, stratify=stratify_temp
@@ -243,22 +222,12 @@ def process_pipeline(filepath, feature_cols, target_col, time_series_prefix=None
         dict: 包含處理後資料的字典
     """
     try:
-        # 載入資料
         df = load_data(filepath)
-        
-        # 標準化特徵
         X, feature_scaler, y = standardize_features(df, feature_cols, target_col)
-        
-        # 準備時間序列資料
         time_series = prepare_time_series(df, time_series_prefix, time_points)
-        
-        # 分割資料
         split_data = train_val_test_split(X, time_series, y, test_size, val_size, random_state)
         
-        # 將標準化器添加到結果中
         split_data['feature_scaler'] = feature_scaler
-        
-        # 添加原始資料框
         split_data['df'] = df
         
         logger.info("完整資料處理流程完成")
@@ -270,17 +239,14 @@ def process_pipeline(filepath, feature_cols, target_col, time_series_prefix=None
         raise
 
 if __name__ == "__main__":
-    # 設定日誌
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    # 簡單測試
     try:
         logger.info("測試資料預處理模組")
         
-        # 建立測試資料
         test_data = {
             'Die': [250, 200, 150],
             'stud': [80, 70, 60],
@@ -297,24 +263,19 @@ if __name__ == "__main__":
         test_df = pd.DataFrame(test_data)
         test_df.to_csv('test_data.csv', index=False)
         
-        # 測試載入資料
         df = load_data('test_data.csv')
         logger.info(f"載入的資料頭部:\n{df.head()}")
         
-        # 測試標準化特徵
         feature_cols = ['Die', 'stud', 'mold', 'PCB', 'Unit_warpage']
         X, scaler, y = standardize_features(df, feature_cols, 'Nf_pred (cycles)')
         logger.info(f"標準化後的特徵形狀: {X.shape}")
         
-        # 測試準備時間序列資料
         time_series = prepare_time_series(df, ['NLPLWK_up_', 'NLPLWK_down_'], [3600, 7200])
         logger.info(f"時間序列資料形狀: {time_series.shape}")
         
-        # 測試資料分割
         split_data = train_val_test_split(X, time_series, y, test_size=0.33, val_size=0.33)
         logger.info(f"分割後的訓練集形狀: {split_data['X_train'].shape}")
         
-        # 測試完整流程
         pipeline_data = process_pipeline(
             'test_data.csv', 
             feature_cols, 
@@ -324,7 +285,6 @@ if __name__ == "__main__":
         )
         logger.info("完整流程測試通過")
         
-        # 刪除測試文件
         import os
         os.remove('test_data.csv')
         

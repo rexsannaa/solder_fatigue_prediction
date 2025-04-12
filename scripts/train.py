@@ -518,7 +518,19 @@ def evaluate_trained_model(model, data_dict, device, output_dir):
                 logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
                 # 如果不能合併，保留為列表
                 pass
-            
+    # 形狀檢查與處理
+    if len(all_predictions) != len(all_targets):
+        # 如果長度不同，取兩者中較短的長度
+        min_len = min(len(all_predictions), len(all_targets))
+        all_predictions = all_predictions[:min_len]
+        all_targets = all_targets[:min_len]
+        logger.warning(f"目標值和預測值的長度不同，已截斷至共同長度 {min_len}")
+    
+    # 確保兩者都是一維數組
+    if all_predictions.ndim > 1:
+        all_predictions = all_predictions.flatten()
+    if all_targets.ndim > 1:
+        all_targets = all_targets.flatten()           
     
     # 添加預測和目標到輸出
     all_outputs["predictions"] = all_predictions

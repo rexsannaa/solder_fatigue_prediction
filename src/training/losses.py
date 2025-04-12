@@ -122,7 +122,7 @@ class PhysicsConstraintLoss(nn.Module):
     def forward(self, delta_w, nf_pred, nf_true):
         """
         計算物理約束損失
-    
+        
         參數:
             delta_w (torch.Tensor): 預測的非線性塑性應變能密度變化量
             nf_pred (torch.Tensor): 預測的疲勞壽命
@@ -135,38 +135,52 @@ class PhysicsConstraintLoss(nn.Module):
         delta_w = torch.clamp(delta_w, min=1e-8)
         nf_pred = torch.clamp(nf_pred, min=1e-8)
         nf_true = torch.clamp(nf_true, min=1e-8)
-    
+        
+        # 檢查和調整維度
+        # 首先確保 delta_w 和 nf_pred 是一維或二維的
+        if delta_w.dim() > 2:
+            delta_w = delta_w.view(delta_w.size(0), -1)
+        if nf_pred.dim() > 2:
+            nf_pred = nf_pred.view(nf_pred.size(0), -1)
+        
+        # 確保 nf_true 是一維的
+        if nf_true.dim() > 1:
+            nf_true = nf_true.view(-1)
+        
+        # 如果 delta_w 是二維且第二維大於1，取第一列
+        if delta_w.dim() == 2 and delta_w.size(1) > 1:
+            delta_w = delta_w[:, 0].unsqueeze(1)
+        
+        # 同樣處理 nf_pred
+        if nf_pred.dim() == 2 and nf_pred.size(1) > 1:
+            nf_pred = nf_pred[:, 0].unsqueeze(1)
+
         # 1. 微觀物理約束 - delta_w與理論值的一致性
         # 從真實壽命反推理論上的delta_w
         delta_w_theory = torch.pow(nf_true / self.a, 1/self.b)
         delta_w_theory = torch.clamp(delta_w_theory, min=1e-8)
-    
-        # 確保兩個張量具有相同的維度
-        if delta_w.dim() != delta_w_theory.dim():
-            if delta_w.dim() > delta_w_theory.dim():
-                delta_w_theory = delta_w_theory.view_as(delta_w)
-            else:
-                delta_w = delta_w.view_as(delta_w_theory)
-            
+        
+        # 確保 delta_w_theory 的形狀與 delta_w 兼容
+        if delta_w.dim() > delta_w_theory.dim():
+            delta_w_theory = delta_w_theory.unsqueeze(-1)
+        
         # 微觀損失: 預測的delta_w應與理論值一致
-        micro_loss = F.mse_loss(delta_w, delta_w_theory, reduction=self.reduction)
+        micro_loss = F.mse_loss(delta_w.squeeze(), delta_w_theory.squeeze(), reduction=self.reduction)
+        
         # 2. 宏觀物理約束 - 預測值應符合物理模型
         # 從delta_w計算理論壽命
         nf_physics = self.a * torch.pow(delta_w, self.b)
-    
-        # 確保兩個張量具有相同的維度
+        
+        # 確保 nf_physics 的形狀與 nf_pred 兼容
         if nf_pred.dim() != nf_physics.dim():
-            if nf_pred.dim() > nf_physics.dim():
-                nf_physics = nf_physics.view_as(nf_pred)
-            else:
-                nf_pred = nf_pred.view_as(nf_physics)
-            
+            nf_physics = nf_physics.view_as(nf_pred)
+        
         # 宏觀損失: 預測的nf應符合物理模型
-        macro_loss = F.mse_loss(nf_pred, nf_physics, reduction=self.reduction)
-    
+        macro_loss = F.mse_loss(nf_pred.squeeze(), nf_physics.squeeze(), reduction=self.reduction)
+        
         # 總物理約束損失
         physics_loss = self.micro_weight * micro_loss + self.macro_weight * macro_loss
-    
+        
         # 返回各部分損失
         return {
             'physics_loss': physics_loss,

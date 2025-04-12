@@ -73,11 +73,12 @@ class AttentionLayer(nn.Module):
 
 class LSTMModel(nn.Module):
     """
-    長短期記憶網絡模型
-    專門用於處理銲錫接點的非線性塑性應變功時間序列資料
+    長短期記憶網絡模型 - 修改版
+    專門用於處理銲錫接點的非線性塑性應變功時間序列資料，預測delta_w
     """
-    def __init__(self, input_dim=2, hidden_size=64, num_layers=2, output_dim=1,
-                 bidirectional=True, dropout_rate=0.2, use_attention=True):
+    def __init__(self, input_dim=2, hidden_size=32, num_layers=1, output_dim=1,
+                 bidirectional=True, dropout_rate=0.2, use_attention=True,
+                 l2_reg=0.001, a_coefficient=55.83, b_coefficient=-2.259):
         """
         初始化LSTM模型
         
@@ -89,6 +90,9 @@ class LSTMModel(nn.Module):
             bidirectional (bool): 是否使用雙向LSTM
             dropout_rate (float): Dropout比率
             use_attention (bool): 是否使用注意力機制
+            l2_reg (float): L2正則化系數
+            a_coefficient (float): 物理模型係數a
+            b_coefficient (float): 物理模型係數b
         """
         super(LSTMModel, self).__init__()
         
@@ -97,8 +101,13 @@ class LSTMModel(nn.Module):
         self.num_layers = num_layers
         self.bidirectional = bidirectional
         self.use_attention = use_attention
+        self.l2_reg = l2_reg
         
-        # LSTM層數
+        # 儲存物理模型係數
+        self.register_buffer('a_coefficient', torch.tensor(a_coefficient, dtype=torch.float32))
+        self.register_buffer('b_coefficient', torch.tensor(b_coefficient, dtype=torch.float32))
+        
+        # LSTM層
         self.lstm = nn.LSTM(
             input_size=input_dim,
             hidden_size=hidden_size,
@@ -115,10 +124,10 @@ class LSTMModel(nn.Module):
         if use_attention:
             self.attention = AttentionLayer(lstm_output_dim)
         
-        # 全連接層，用於最終預測
+        # 全連接層，用於特徵處理
         fc_layers = []
         fc_input_dim = lstm_output_dim
-        fc_hidden_dims = [lstm_output_dim // 2, lstm_output_dim // 4]
+        fc_hidden_dims = [lstm_output_dim // 2]
         
         for hidden_dim in fc_hidden_dims:
             fc_layers.append(nn.Linear(fc_input_dim, hidden_dim))
@@ -129,63 +138,39 @@ class LSTMModel(nn.Module):
             fc_input_dim = hidden_dim
         
         self.fc_layers = nn.Sequential(*fc_layers)
-        self.output_layer = nn.Linear(fc_input_dim, output_dim)
         
-        logger.info(f"初始化LSTMModel，輸入維度: {input_dim}, 隱藏層大小: {hidden_size}, "
-                  f"LSTM層數: {num_layers}, 雙向: {bidirectional}, 使用注意力: {use_attention}")
+        # 修改：添加專門用於預測delta_w的輸出層
+        self.delta_w_layer = nn.Linear(fc_input_dim, 1)
+        
+        # 保留原來預測壽命的層，以保持向後兼容性
+        self.output_layer = nn.Linear(fc_input_dim, output_dim)
         
         # 初始化權重
         self._initialize_weights()
     
-    def _initialize_weights(self):
-        """初始化網絡權重"""
-        for name, param in self.named_parameters():
-            if 'lstm' in name:
-                if 'weight_ih' in name:
-                    if param.dim() >= 2:  # 檢查維度
-                        nn.init.xavier_uniform_(param.data)
-                elif 'weight_hh' in name:
-                    if param.dim() >= 2:  # 檢查維度
-                        nn.init.orthogonal_(param.data)
-                elif 'bias' in name:
-                    nn.init.zeros_(param.data)
-            elif 'attention_weights' in name:
-                if param.dim() >= 2:  # 檢查維度
-                    nn.init.xavier_uniform_(param.data)
-                else:
-                    # 處理一維參數
-                    nn.init.uniform_(param.data, -0.1, 0.1)
-            elif 'linear' in name and 'weight' in name:
-                if param.dim() >= 2:  # 檢查維度
-                    nn.init.xavier_uniform_(param.data)
-                else:
-                    # 處理一維參數
-                    nn.init.uniform_(param.data, -0.1, 0.1)
-            elif 'linear' in name and 'bias' in name:
-                nn.init.zeros_(param.data)
-    
     def forward(self, x, return_attention=False):
         """
-        前向傳播
-    
+        前向傳播 - 修改版：專注於預測delta_w
+
         參數:
             x (torch.Tensor): 輸入時間序列，形狀為 (batch_size, seq_len, input_dim)
             return_attention (bool): 是否返回注意力權重
         
         返回:
             dict: 包含預測結果的字典:
-                - 'output': 預測的疲勞壽命
+                - 'delta_w': 預測的非線性塑性應變能密度變化量
+                - 'output': 預測的疲勞壽命 (向後兼容性)
                 - 'features': 提取的時序特徵
                 - 'attention_weights': 注意力權重 (如果使用注意力機制且return_attention=True)
         """
         # LSTM前向傳播
         lstm_output, (hidden, cell) = self.lstm(x)
         # lstm_output形狀: (batch_size, seq_len, hidden_size*2 if bidirectional else hidden_size)
-    
+
         # 獲取特徵向量
         if self.use_attention:
             # 使用注意力機制
-            context_vector, attention_weights = self.attention(lstm_output)  # 修正：只傳遞lstm_output
+            context_vector, attention_weights = self.attention(lstm_output)
         else:
             # 使用最後一個時間步的輸出
             if self.bidirectional:
@@ -196,27 +181,48 @@ class LSTMModel(nn.Module):
             else:
                 context_vector = hidden[-1, :, :]
             attention_weights = None
-    
+
         # 全連接層處理
-        # 使用log空間預測，確保輸出為正值
         fc_output = self.fc_layers(context_vector)
+        
+        # 預測delta_w - 使用對數空間確保輸出為正值
+        delta_w = torch.exp(self.delta_w_layer(fc_output))
+        
+        # 使用物理公式計算壽命（為了向後兼容）
+        nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
+        
+        # 向後兼容的輸出層
         output = torch.exp(self.output_layer(fc_output))
-    
+
+        # 確保預測值是正數
+        delta_w = torch.clamp(delta_w, min=1e-6)
+        output = torch.clamp(output, min=10.0)
+        nf_pred = torch.clamp(nf_pred, min=10.0)
+
         # 應用L2正則化
         l2_penalty = 0.0
         if self.l2_reg > 0:
             for param in self.parameters():
                 l2_penalty += torch.norm(param, 2)
-    
+            
+            # 確保l2_penalty是標量
+            if isinstance(l2_penalty, torch.Tensor) and l2_penalty.dim() > 0:
+                l2_penalty = l2_penalty.mean()
+            
+            # 乘以正則化系數
+            l2_penalty = l2_penalty * self.l2_reg
+
         result = {
-            'output': output.squeeze(-1),
+            'delta_w': delta_w.squeeze(-1),
+            'nf_pred': nf_pred.squeeze(-1),  # 物理計算的壽命
+            'output': output.squeeze(-1),    # 舊版輸出，保持向後兼容
             'features': context_vector,
-            'l2_penalty': l2_penalty * self.l2_reg
+            'l2_penalty': l2_penalty
         }
-    
+
         if return_attention and attention_weights is not None:
             result['attention_weights'] = attention_weights
-    
+
         return result
     
     def get_time_features(self, x):

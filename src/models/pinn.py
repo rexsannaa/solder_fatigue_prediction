@@ -144,35 +144,37 @@ class PINNModel(nn.Module):
 
     def forward(self, x):
         """
-        前向傳播 - 增強數值穩定性與物理一致性
+        前向傳播 - 修改版：專注於預測delta_w，不直接計算nf_pred
         
         參數:
             x (torch.Tensor): 輸入特徵，形狀為 (batch_size, input_dim)
             
         返回:
             dict: 包含預測結果的字典:
-                - 'nf_pred': 預測的疲勞壽命
-                - 'delta_w': 預測的非線性塑性應變能密度變化量(如果使用物理層)
+                - 'delta_w': 預測的非線性塑性應變能密度變化量
                 - 'features': 提取的特徵表示
+                - 'l2_penalty': L2正則化懲罰項
         """
         # 特徵提取
         features = self.feature_extractor(x)
-
-        # 計算非線性塑性應變能密度變化量(ΔW) - 使用改進的計算方式
-        delta_w_logits = self.delta_w_layers(features)  # 獲取對數空間輸出
-        delta_w = torch.exp(delta_w_logits)  # 轉換為線性空間，確保為正值
         
-        # 確保delta_w範圍合理 - 增強數值穩定性
-        delta_w = torch.clamp(delta_w, min=1e-6, max=10.0)  # 限制在合理範圍內
-
+        # 計算非線性塑性應變能密度變化量(ΔW) - 使用log空間預測以確保輸出為正值
+        delta_w = torch.exp(self.delta_w_predictor(features))
+        
+        # 確保delta_w為正值且數值穩定
+        delta_w = torch.clamp(delta_w, min=1e-6)
+        
+        # 如果需要，也可以計算疲勞壽命作為參考
         if self.use_physics_layer:
-            # 使用物理層計算疲勞壽命
             nf_pred = self.physics_layer(delta_w)
         else:
-            # 直接預測疲勞壽命
-            nf_pred = torch.exp(self.direct_predictor(features))  # 使用exp確保為正值
-
-        # 應用L2正則化 - 修改以確保l2_penalty是標量
+            # 使用物理公式直接計算
+            nf_pred = self.a * torch.pow(delta_w, self.b)
+        
+        # 確保nf_pred為正值
+        nf_pred = torch.clamp(nf_pred, min=10.0)
+        
+        # 應用L2正則化
         l2_penalty = 0.0
         if self.l2_reg > 0:
             for param in self.parameters():
@@ -184,14 +186,10 @@ class PINNModel(nn.Module):
             
             # 乘以正則化系數
             l2_penalty = l2_penalty * self.l2_reg
-
-        # 確保預測值都是正數 - 增加最小閾值
-        delta_w = torch.clamp(delta_w, min=1e-6)
-        nf_pred = torch.clamp(nf_pred, min=10.0)  # 提高最小閾值到10
-
+        
         return {
-            'nf_pred': nf_pred.squeeze(-1),
             'delta_w': delta_w.squeeze(-1),
+            'nf_pred': nf_pred.squeeze(-1),  # 保留向後兼容性
             'features': features,
             'l2_penalty': l2_penalty
         }

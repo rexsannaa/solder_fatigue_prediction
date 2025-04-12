@@ -532,14 +532,43 @@ class Trainer:
         has_targets = len(all_targets) > 0
 
         if has_predictions and has_targets:
-            all_predictions = np.concatenate([p.reshape(-1) for p in all_predictions])
-            all_targets = np.concatenate([t.reshape(-1) for t in all_targets])
-
-            for name, metric_fn in self.metrics.items():
-                try:
-                    metrics_values[name] = metric_fn(all_targets, all_predictions)
-                except Exception as e:
-                    logger.warning(f"計算指標 {name} 時出錯: {str(e)}")
+            try:
+                # 嘗試統一處理預測和目標值
+                flat_predictions = []
+                flat_targets = []
+                
+                # 確保每個預測和對應的目標具有相同的元素數量
+                for pred_batch, target_batch in zip(all_predictions, all_targets):
+                    # 展平每個批次的預測和目標
+                    pred_flat = pred_batch.reshape(-1)
+                    target_flat = target_batch.reshape(-1)
+                    
+                    # 確保它們具有相同的長度（取較短的那個）
+                    min_len = min(len(pred_flat), len(target_flat))
+                    if min_len > 0:  # 只處理非空的批次
+                        flat_predictions.append(pred_flat[:min_len])
+                        flat_targets.append(target_flat[:min_len])
+                
+                # 連接所有處理後的批次
+                if flat_predictions and flat_targets:
+                    all_pred_flat = np.concatenate(flat_predictions)
+                    all_target_flat = np.concatenate(flat_targets)
+                    
+                    # 計算指標
+                    for name, metric_fn in self.metrics.items():
+                        try:
+                            metrics_values[name] = metric_fn(all_target_flat, all_pred_flat)
+                        except Exception as e:
+                            logger.warning(f"計算指標 {name} 時出錯: {str(e)}")
+                            metrics_values[name] = float('nan')
+                else:
+                    # 如果沒有有效的預測/目標對，設置NaN指標
+                    for name in self.metrics:
+                        metrics_values[name] = float('nan')
+            except Exception as e:
+                logger.warning(f"處理預測和目標時出錯: {str(e)}")
+                # 設置預設指標值
+                for name in self.metrics:
                     metrics_values[name] = float('nan')
 
         # 合併所有輸出
@@ -555,25 +584,49 @@ class Trainer:
                 except Exception as e:
                     logger.warning(f"合併dynamic_weights時出錯: {str(e)}")
                     outputs_merged[key] = values
-            elif all(isinstance(val, np.ndarray) for val in values):
+            elif key in ['nf_pred', 'delta_w', 'pinn_nf_pred', 'lstm_nf_pred'] and all(isinstance(val, np.ndarray) for val in values):
                 try:
-                    outputs_merged[key] = np.concatenate(values)
+                    # 對特定輸出進行特殊處理
+                    flat_values = []
+                    for val in values:
+                        if val.ndim > 1:
+                            # 只保留第一列
+                            flat_values.append(val[:, 0] if val.shape[1] > 0 else val.reshape(-1))
+                        else:
+                            flat_values.append(val.reshape(-1))
+                    
+                    if flat_values:
+                        outputs_merged[key] = np.concatenate(flat_values)
+                    else:
+                        outputs_merged[key] = np.array([])
                 except Exception as e:
                     logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
                     outputs_merged[key] = values
+            elif all(isinstance(val, np.ndarray) for val in values):
+                try:
+                    # 嘗試直接連接
+                    outputs_merged[key] = np.concatenate(values)
+                except Exception as e:
+                    logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
+                    # 如果無法連接，保留列表
+                    outputs_merged[key] = values
             else:
                 outputs_merged[key] = values
-    
+
         # 處理標量輸出，計算平均值
         for key, values in scalar_outputs.items():
             if values:
                 outputs_merged[key] = np.mean(values)
 
+        # 設置回傳的預測和目標值
+        final_predictions = all_pred_flat if has_predictions and 'all_pred_flat' in locals() else None
+        final_targets = all_target_flat if has_targets and 'all_target_flat' in locals() else None
+
         return {
             'loss': avg_loss,
             'metrics': metrics_values,
-            'predictions': all_predictions if has_predictions else None,
-            'targets': all_targets if has_targets else None,
+            'predictions': final_predictions,
+            'targets': final_targets,
             'outputs': outputs_merged
         }
 

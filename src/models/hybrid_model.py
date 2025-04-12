@@ -169,6 +169,10 @@ class PINNModel(nn.Module):
         self.use_physics_layer = use_physics_layer
         self.l2_reg = l2_reg
         
+        # 註冊物理模型常數作為 buffer
+        self.register_buffer('a', torch.tensor(a_coefficient, dtype=torch.float32))
+        self.register_buffer('b', torch.tensor(b_coefficient, dtype=torch.float32))
+        
         # 選擇激活函數
         if activation == 'relu':
             self.activation = nn.ReLU()
@@ -296,8 +300,8 @@ class LSTMModel(nn.Module):
     專門用於處理銲錫接點的非線性塑性應變功時間序列資料，預測delta_w
     """
     def __init__(self, input_dim=2, hidden_size=32, num_layers=1, output_dim=1,
-                 bidirectional=True, dropout_rate=0.2, use_attention=True,
-                 l2_reg=0.001, a_coefficient=55.83, b_coefficient=-2.259):
+                bidirectional=True, dropout_rate=0.2, use_attention=True,
+                l2_reg=0.001, a_coefficient=55.83, b_coefficient=-2.259):
         """
         初始化LSTM模型
         
@@ -321,7 +325,8 @@ class LSTMModel(nn.Module):
         self.bidirectional = bidirectional
         self.use_attention = use_attention
         self.l2_reg = l2_reg
-        
+        self.register_buffer('a', torch.tensor(a_coefficient, dtype=torch.float32))
+        self.register_buffer('b', torch.tensor(b_coefficient, dtype=torch.float32))
         # 儲存物理模型係數
         self.register_buffer('a_coefficient', torch.tensor(a_coefficient, dtype=torch.float32))
         self.register_buffer('b_coefficient', torch.tensor(b_coefficient, dtype=torch.float32))

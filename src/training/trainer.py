@@ -23,8 +23,6 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
-
-
 # EarlyStopping 類
 class EarlyStopping:
     def __init__(self, patience=30, min_delta=0.0005, verbose=True, mode='min', 
@@ -66,18 +64,15 @@ class EarlyStopping:
             if self.verbose and self.counter > 0:
                 logger.info(f"尚未達到最小訓練輪數({self.min_epoch})，不觸發早停")
             
-            # 仍然進行最佳模型的保存
             score_improved = self._check_improvement(score)
             if score_improved and model is not None and save_path is not None:
                 self._save_checkpoint(model, score, save_path)
             
             return False
         
-        # 檢查指標是否改善
         score_improved = self._check_improvement(score)
         
         if score_improved:
-            # 指標改善，重置計數器
             if self.verbose:
                 improvement = "" if self.best_score is None else f", 從 {self.best_score:.6f} 改善到 {score:.6f}"
                 logger.info(f"{self.mode}模式下監控指標改善{improvement}")
@@ -86,44 +81,32 @@ class EarlyStopping:
             self.counter = 0
             self.plateau_counter = 0  # 重置停滯計數器
             
-            # 保存模型
             if model is not None and save_path is not None:
                 self._save_checkpoint(model, score, save_path)
         else:
-            # 指標未改善，增加計數器
             self.counter += 1
             self.plateau_counter += 1
             if self.verbose:
                 logger.info(f"監控指標未改善，已連續 {self.counter} 輪。最佳值: {self.best_score:.6f}, 當前值: {score:.6f}")
-            
-            # 檢查是否需要重啟
             if self.plateau_counter >= self.restart_threshold and self.restart_threshold > 0:
                 if self.verbose:
                     logger.info(f"檢測到訓練停滯，嘗試重啟訓練...")
-                
-                self.plateau_counter = 0  # 重置停滯計數器
-                self.counter = max(0, self.counter - self.restart_threshold // 2)  # 減少計數器
+                self.plateau_counter = 0
+                self.counter = max(0, self.counter - self.restart_threshold // 2)
                 self.restart_history.append(self.current_epoch)
-                
-                return False  # 不觸發早停，但建議調整學習率
-            
-            # 檢查是否達到早停條件
+                return False
             if self.counter >= self.patience:
                 self.early_stop = True
                 if self.verbose:
                     logger.info(f"早停觸發！{self.counter} 輪未改善")
-        
         return self.early_stop
     
     def _check_improvement(self, score):
         """檢查指標是否改善"""
         if self.mode == 'min':
-            # 對於需要最小化的指標（如損失）
             score_improved = self.best_score is None or score < self.best_score - self.min_delta
         else:
-            # 對於需要最大化的指標（如準確率）
             score_improved = self.best_score is None or score > self.best_score + self.min_delta
-        
         return score_improved
     
     def _save_checkpoint(self, model, score, save_path):
@@ -135,12 +118,8 @@ class EarlyStopping:
             score (float): 監控指標值
             save_path (str): 保存路徑
         """
-        # 確保目錄存在
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        
-        # 保存模型
         torch.save(model.state_dict(), save_path)
-        
         if self.verbose:
             logger.info(f"監控指標改善，模型已保存至 {save_path}")
     
@@ -150,7 +129,6 @@ class EarlyStopping:
         self.best_score = None
         self.early_stop = False
         self.val_loss_min = float('inf') if self.mode == 'min' else float('-inf')
-
 # LearningRateScheduler 類
 class LearningRateScheduler:
     def __init__(self, optimizer, mode='cosine', step_size=10, gamma=0.1, 
@@ -178,7 +156,6 @@ class LearningRateScheduler:
         self.cycle_momentum = cycle_momentum
         self.base_lrs = [param_group['lr'] for param_group in optimizer.param_groups]
         
-        # 創建調度器
         if mode == 'step':
             self.scheduler = optim.lr_scheduler.StepLR(
                 optimizer, step_size=step_size, gamma=gamma
@@ -197,7 +174,6 @@ class LearningRateScheduler:
                 optimizer, T_max=T_max, eta_min=min_lr
             )
         elif mode == 'cyclic':
-            # 使用循環學習率
             max_lr = [lr * 10 for lr in self.base_lrs]
             self.scheduler = optim.lr_scheduler.CyclicLR(
                 optimizer, base_lr=self.base_lrs, max_lr=max_lr,
@@ -205,7 +181,6 @@ class LearningRateScheduler:
                 cycle_momentum=cycle_momentum
             )
         elif mode == 'one_cycle':
-            # 使用one cycle策略
             max_lr = [lr * 10 for lr in self.base_lrs]
             self.scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, max_lr=max_lr, total_steps=T_max,
@@ -215,11 +190,8 @@ class LearningRateScheduler:
         else:
             raise ValueError(f"不支援的調度模式: {mode}")
         
-        # 初始化預熱狀態
         self.in_warmup = warmup_epochs > 0
         self.warmup_step = 0
-        
-        # 當前學習率
         self.current_lr = [param_group['lr'] for param_group in optimizer.param_groups]
     
     def step(self, val=None, epoch=None):
@@ -230,77 +202,39 @@ class LearningRateScheduler:
             val (float, optional): 監控指標的值，用於plateau模式
             epoch (int, optional): 當前輪次，用於預熱階段
         """
-        # 處理預熱階段
         if self.in_warmup and epoch is not None and epoch < self.warmup_epochs:
             progress = (epoch + 1) / self.warmup_epochs
             factor = self.warmup_factor + (1 - self.warmup_factor) * progress
-            
             for param_group, base_lr in zip(self.optimizer.param_groups, self.base_lrs):
                 param_group['lr'] = base_lr * factor
-            
             if self.verbose:
                 logger.info(f"預熱階段 ({epoch+1}/{self.warmup_epochs}), "
                           f"學習率設置為 {[param_group['lr'] for param_group in self.optimizer.param_groups]}")
-            
             self.warmup_step += 1
             if self.warmup_step >= self.warmup_epochs:
                 self.in_warmup = False
-            
-            # 更新當前學習率
             self.current_lr = [param_group['lr'] for param_group in self.optimizer.param_groups]
             return
-        
-        # 預熱階段結束後的正常調度
         if self.mode == 'plateau' and val is not None:
-            # 平原式調度需要監控指標值
             self.scheduler.step(val)
         else:
-            # 其他調度模式直接步進
             self.scheduler.step()
-        
-        # 更新當前學習率
         self.current_lr = [param_group['lr'] for param_group in self.optimizer.param_groups]
-        
         if self.verbose:
             logger.debug(f"學習率更新為: {self.current_lr}")
     
     def step_with_metrics(self, val):
-        """
-        使用指標值執行學習率調度
-        
-        參數:
-            val (float): 監控指標的值
-        """
         self.step(val)
     
     def get_lr(self):
-        """
-        獲取當前學習率
-        
-        返回:
-            list: 當前學習率列表（可能有多個參數組）
-        """
         return self.current_lr
     
     def state_dict(self):
-        """
-        獲取調度器狀態字典
-        
-        返回:
-            dict: 調度器狀態
-        """
         return self.scheduler.state_dict()
     
     def load_state_dict(self, state_dict):
-        """
-        載入調度器狀態字典
-        
-        參數:
-            state_dict (dict): 調度器狀態
-        """
         self.scheduler.load_state_dict(state_dict)
         self.current_lr = [param_group['lr'] for param_group in self.optimizer.param_groups]
-
 class Trainer:
     """
     訓練器
@@ -337,14 +271,12 @@ class Trainer:
         self.log_interval = log_interval
         self.use_amp = use_amp
         
-        # 初始化訓練記錄
         self.train_losses = []
         self.val_losses = []
         self.train_metrics = defaultdict(list)
         self.val_metrics = defaultdict(list)
         self.learning_rates = []
         
-        # 初始化混合精度訓練
         if self.use_amp:
             self.scaler = torch.cuda.amp.GradScaler()
             logger.info("啟用自動混合精度訓練")
@@ -381,10 +313,8 @@ class Trainer:
         total_samples = 0
         all_targets = []
         all_predictions = []
-        all_outputs = {}  # 收集所有輸出，包括dynamic_weights
-        scalar_outputs = defaultdict(list)  # 收集標量值
-
-        # 使用tqdm顯示進度條（如果可用）
+        all_outputs = {}
+        scalar_outputs = defaultdict(list)
         try:
             from tqdm import tqdm
             train_iter = tqdm(train_loader, desc="Training", leave=False)
@@ -392,133 +322,90 @@ class Trainer:
             train_iter = train_loader
 
         for batch_idx, data in enumerate(train_iter):
-            # 處理不同形式的數據批次
             if isinstance(data, (list, tuple)) and len(data) >= 2:
                 if len(data) == 2:
-                    # 基本形式: (inputs, targets)
                     inputs, targets = data
                     if isinstance(inputs, (list, tuple)):
-                        # 多輸入形式: ([input1, input2, ...], targets)
                         inputs = [x.to(self.device) for x in inputs]
                     else:
-                        # 單輸入形式: (input, targets)
                         inputs = inputs.to(self.device)
                     targets = targets.to(self.device)
                 elif len(data) == 3:
-                    # 混合PINN-LSTM形式: (static_features, time_series, targets)
                     static_features, time_series, targets = data
                     static_features = static_features.to(self.device)
                     time_series = time_series.to(self.device)
                     targets = targets.to(self.device)
-                    # 保存為元組用於前向傳播
                     inputs = (static_features, time_series)
             else:
-                # 自定義批次格式
                 raise ValueError("不支援的批次數據格式")
-
-            # 清零梯度
             self.optimizer.zero_grad()
-
-            # 根據是否使用自動混合精度選擇不同的前向和反向傳播方式
             if self.use_amp:
                 with torch.cuda.amp.autocast():
                     outputs, predictions, loss = self._forward_pass(inputs, targets)
-    
-                # 使用scaler處理反向傳播和優化器步驟
                 self.scaler.scale(loss).backward()
-    
-                # 梯度裁剪
                 if self.clip_grad_norm > 0:
                     self.scaler.unscale_(self.optimizer)
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad_norm)
-    
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
             else:
                 outputs, predictions, loss = self._forward_pass(inputs, targets)
                 loss.backward()
-    
-                # 梯度裁剪
                 if self.clip_grad_norm > 0:
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad_norm)
-    
-                # 參數更新
                 self.optimizer.step()
 
-            # 更新記錄數據
             batch_size = targets.size(0)
             total_loss += loss.item() * batch_size
             total_samples += batch_size
             
             self._collect_outputs(outputs, all_outputs, scalar_outputs)
             self._collect_predictions(predictions, targets, all_predictions, all_targets)
-
-            # 更新進度條
             if hasattr(train_iter, 'set_postfix'):
                 train_iter.set_postfix({'loss': loss.item()})
-
-        # 計算平均損失與指標
         return self._compute_epoch_results(total_loss, total_samples, all_predictions, all_targets, all_outputs, scalar_outputs)
     
     def _forward_pass(self, inputs, targets):
         """執行前向傳播和損失計算 - 更新以支援delta_w專注的模型"""
         if isinstance(inputs, (list, tuple)) and len(inputs) == 2 and hasattr(self.model, 'forward') and 'static_features' in self.model.forward.__code__.co_varnames:
-            # 專門用於混合PINN-LSTM模型
             outputs = self.model(inputs[0], inputs[1])
-            
-            # 檢查outputs是否為字典（用於混合模型）
             if isinstance(outputs, dict):
-                # 預測值優先使用nf_pred（通過物理公式從delta_w計算）
                 if 'nf_pred' in outputs:
                     predictions = outputs['nf_pred']
-                # 向後兼容: 如果沒有nf_pred但有output
                 elif 'output' in outputs:
                     predictions = outputs['output']
                 else:
-                    # 如果都沒有，使用第一個找到的張量作為預測值
                     for key, value in outputs.items():
                         if isinstance(value, torch.Tensor) and value.dim() <= 2:
                             predictions = value
                             break
-                    else:  # 如果沒有找到合適的張量
+                    else:
                         raise ValueError("模型輸出中沒有找到有效的預測值")
-                        
-                # 計算損失
                 if hasattr(self.criterion, 'forward') and 'outputs' in self.criterion.forward.__code__.co_varnames:
-                    # 支持字典輸入的損失函數
                     losses = self.criterion(outputs, targets, self.model)
                     if isinstance(losses, dict) and 'total_loss' in losses:
                         loss = losses['total_loss']
                     else:
                         loss = losses
                 else:
-                    # 傳統損失函數
                     loss = self.criterion(predictions, targets)
             else:
-                # 非字典輸出的情況
                 predictions = outputs
                 loss = self.criterion(predictions, targets)
         else:
-            # 一般模型（非混合模型）
             outputs = self.model(inputs)
-            
-            # 檢查outputs是否為字典
             if isinstance(outputs, dict):
-                # 優先順序：nf_pred > output > 第一個找到的張量
                 if 'nf_pred' in outputs:
                     predictions = outputs['nf_pred']
                 elif 'output' in outputs:
                     predictions = outputs['output']
                 else:
-                    # 使用第一個找到的張量
                     for key, value in outputs.items():
                         if isinstance(value, torch.Tensor) and value.dim() <= 2:
                             predictions = value
                             break
                     else:
                         raise ValueError("模型輸出中沒有找到有效的預測值")
-                
-                # 使用字典輸入的損失函數（如果支持）
                 if hasattr(self.criterion, 'forward') and 'outputs' in self.criterion.forward.__code__.co_varnames:
                     losses = self.criterion(outputs, targets, self.model)
                     if isinstance(losses, dict) and 'total_loss' in losses:
@@ -526,35 +413,27 @@ class Trainer:
                     else:
                         loss = losses
                 else:
-                    # 傳統損失函數
                     loss = self.criterion(predictions, targets)
             else:
-                # 非字典輸出
                 predictions = outputs
                 loss = self.criterion(predictions, targets)
-        
         return outputs, predictions, loss
-
+    
     def _collect_outputs(self, outputs, all_outputs, scalar_outputs):
         """收集模型輸出，區分張量和標量值"""
         if not isinstance(outputs, dict):
             return
-        
         for key, value in outputs.items():
-            # 標量值和l2_penalty特殊處理
             if isinstance(value, torch.Tensor) and (value.ndim == 0 or key == 'l2_penalty'):
                 scalar_outputs[key].append(float(value.detach().cpu().item()))
                 continue
-                
             if key not in all_outputs:
                 all_outputs[key] = []
-                
             if isinstance(value, torch.Tensor):
-                # 特殊處理dynamic_weights
                 if key == 'dynamic_weights':
                     value_np = value.detach().cpu().numpy()
                     if value_np.ndim == 2:
-                        all_outputs[key].append(value_np.T)  # 轉置後添加
+                        all_outputs[key].append(value_np.T)
                     else:
                         continue
                 else:
@@ -570,38 +449,25 @@ class Trainer:
     
     def _compute_epoch_results(self, total_loss, total_samples, all_predictions, all_targets, all_outputs, scalar_outputs):
         """計算並返回訓練輪次結果 - 更新以支援delta_w相關指標"""
-        # 計算平均損失
         avg_loss = total_loss / total_samples
-
-        # 計算指標
         metrics_values = {}
         has_predictions = len(all_predictions) > 0
         has_targets = len(all_targets) > 0
 
         if has_predictions and has_targets:
             try:
-                # 嘗試統一處理預測和目標值
                 flat_predictions = []
                 flat_targets = []
-                
-                # 確保每個預測和對應的目標具有相同的元素數量
                 for pred_batch, target_batch in zip(all_predictions, all_targets):
-                    # 展平每個批次的預測和目標
                     pred_flat = pred_batch.reshape(-1)
                     target_flat = target_batch.reshape(-1)
-                    
-                    # 確保它們具有相同的長度（取較短的那個）
                     min_len = min(len(pred_flat), len(target_flat))
-                    if min_len > 0:  # 只處理非空的批次
+                    if min_len > 0:
                         flat_predictions.append(pred_flat[:min_len])
                         flat_targets.append(target_flat[:min_len])
-                
-                # 連接所有處理後的批次
                 if flat_predictions and flat_targets:
                     all_pred_flat = np.concatenate(flat_predictions)
                     all_target_flat = np.concatenate(flat_targets)
-                    
-                    # 計算指標
                     for name, metric_fn in self.metrics.items():
                         try:
                             metrics_values[name] = metric_fn(all_target_flat, all_pred_flat)
@@ -609,22 +475,16 @@ class Trainer:
                             logger.warning(f"計算指標 {name} 時出錯: {str(e)}")
                             metrics_values[name] = float('nan')
                 else:
-                    # 如果沒有有效的預測/目標對，設置NaN指標
                     for name in self.metrics:
                         metrics_values[name] = float('nan')
             except Exception as e:
                 logger.warning(f"處理預測和目標時出錯: {str(e)}")
-                # 設置預設指標值
                 for name in self.metrics:
                     metrics_values[name] = float('nan')
-
-        # 合併所有輸出
         outputs_merged = {}
         for key, values in all_outputs.items():
             if not values:
                 continue
-            
-            # 特殊處理dynamic_weights
             if key == 'dynamic_weights':
                 try:
                     outputs_merged[key] = np.vstack(values)
@@ -633,15 +493,12 @@ class Trainer:
                     outputs_merged[key] = values
             elif key in ['nf_pred', 'delta_w', 'pinn_nf_pred', 'lstm_nf_pred', 'pinn_delta_w', 'lstm_delta_w'] and all(isinstance(val, np.ndarray) for val in values):
                 try:
-                    # 對特定輸出進行特殊處理
                     flat_values = []
                     for val in values:
                         if val.ndim > 1:
-                            # 只保留第一列
                             flat_values.append(val[:, 0] if val.shape[1] > 0 else val.reshape(-1))
                         else:
                             flat_values.append(val.reshape(-1))
-                    
                     if flat_values:
                         outputs_merged[key] = np.concatenate(flat_values)
                     else:
@@ -651,55 +508,33 @@ class Trainer:
                     outputs_merged[key] = values
             elif all(isinstance(val, np.ndarray) for val in values):
                 try:
-                    # 嘗試直接連接
                     outputs_merged[key] = np.concatenate(values)
                 except Exception as e:
                     logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
-                    # 如果無法連接，保留列表
                     outputs_merged[key] = values
             else:
                 outputs_merged[key] = values
-
-        # 處理標量輸出，計算平均值
         for key, values in scalar_outputs.items():
             if values:
                 outputs_merged[key] = np.mean(values)
-
-        # 設置回傳的預測和目標值
         final_predictions = all_pred_flat if has_predictions and 'all_pred_flat' in locals() else None
         final_targets = all_target_flat if has_targets and 'all_target_flat' in locals() else None
         
-        # 計算並添加delta_w相關指標
         if final_targets is not None and 'delta_w' in outputs_merged:
             try:
-                # 從目標值反推理論delta_w
-                delta_w_theory = np.power(
-                    final_targets / 55.83,  # 使用默認a係數
-                    1/-2.259  # 使用默認b係數
-                )
-                delta_w_theory = np.maximum(delta_w_theory, 1e-6)  # 確保正值
-                
-                # 計算delta_w預測精度
+                delta_w_theory = np.power(final_targets / 55.83, 1/-2.259)
+                delta_w_theory = np.maximum(delta_w_theory, 1e-6)
                 delta_w_pred = np.maximum(outputs_merged['delta_w'], 1e-6)
-                
-                # 對數空間誤差
                 log_delta_w_theory = np.log10(delta_w_theory)
                 log_delta_w_pred = np.log10(delta_w_pred)
                 log_delta_w_mse = np.mean((log_delta_w_theory - log_delta_w_pred) ** 2)
-                
-                # 相對誤差
                 delta_w_rel_error = np.abs((delta_w_theory - delta_w_pred) / delta_w_theory) * 100
                 delta_w_mean_rel_error = np.mean(delta_w_rel_error)
-                
-                # 添加到指標字典
                 metrics_values['delta_w_log_mse'] = log_delta_w_mse
                 metrics_values['delta_w_mean_rel_error'] = delta_w_mean_rel_error
-                
-                # 將delta_w理論值添加到輸出中，便於後續分析
                 outputs_merged['delta_w_theory'] = delta_w_theory
             except Exception as e:
                 logger.warning(f"計算delta_w指標時出錯: {str(e)}")
-
         return {
             'loss': avg_loss,
             'metrics': metrics_values,
@@ -707,7 +542,7 @@ class Trainer:
             'targets': final_targets,
             'outputs': outputs_merged
         }
-
+    
     def validate(self, val_loader):
         """
         驗證模型
@@ -728,10 +563,8 @@ class Trainer:
 
         with torch.no_grad():
             for data in val_loader:
-                # 處理不同形式的數據批次
                 if isinstance(data, (list, tuple)) and len(data) >= 2:
                     if len(data) == 2:
-                        # 基本形式: (inputs, targets)
                         inputs, targets = data
                         if isinstance(inputs, (list, tuple)):
                             inputs = [x.to(self.device) for x in inputs]
@@ -739,7 +572,6 @@ class Trainer:
                             inputs = inputs.to(self.device)
                         targets = targets.to(self.device)
                     elif len(data) == 3:
-                        # 混合PINN-LSTM形式: (static_features, time_series, targets)
                         static_features, time_series, targets = data
                         static_features = static_features.to(self.device)
                         time_series = time_series.to(self.device)
@@ -748,22 +580,17 @@ class Trainer:
                 else:
                     raise ValueError("不支援的批次數據格式")
 
-                # 前向傳播和損失計算
                 outputs, predictions, loss = self._forward_pass(inputs, targets)
-
-                # 更新記錄
                 batch_size = targets.size(0)
                 total_loss += loss.item() * batch_size
                 total_samples += batch_size
                 
                 self._collect_outputs(outputs, all_outputs, scalar_outputs)
                 self._collect_predictions(predictions, targets, all_predictions, all_targets)
-
-        # 計算平均損失與指標
         return self._compute_epoch_results(total_loss, total_samples, all_predictions, all_targets, all_outputs, scalar_outputs)
     
     def train(self, train_loader, val_loader, epochs, early_stopping=None,
-             callbacks=None, save_path=None):
+              callbacks=None, save_path=None):
         """
         訓練模型
         
@@ -790,65 +617,40 @@ class Trainer:
         
         logger.info(f"開始訓練，總輪數: {epochs}")
         
-        # 遍歷每個訓練輪次
         for epoch in range(epochs):
             epoch_start_time = time.time()
-            
-            # 訓練一個輪次
             train_results = self.train_epoch(train_loader)
             train_loss = train_results['loss']
             train_metrics = train_results['metrics']
-            
-            # 驗證
             val_results = self.validate(val_loader)
             val_loss = val_results['loss']
             val_metrics = val_results['metrics']
-            
-            # 記錄學習率
             current_lr = self.optimizer.param_groups[0]['lr']
             history['learning_rate'].append(current_lr)
-            
-            # 更新學習率
             if self.scheduler is not None:
-                # 使用驗證損失更新學習率（對於ReduceLROnPlateau）
                 if hasattr(self.scheduler, 'step_with_metrics'):
                     self.scheduler.step_with_metrics(val_loss)
                 else:
                     self.scheduler.step()
-            
-            # 記錄歷史
             history['train_loss'].append(train_loss)
             history['val_loss'].append(val_loss)
-            
             for name, value in train_metrics.items():
                 history['train_metrics'][name].append(value)
-            
             for name, value in val_metrics.items():
                 history['val_metrics'][name].append(value)
-            
-            # 輸出日誌
             if epoch % self.log_interval == 0 or epoch == epochs - 1:
-                # 計算輪次訓練時間
                 epoch_time = time.time() - epoch_start_time
-                
-                # 準備日誌信息
                 log_info = [
                     f"輪次 {epoch+1}/{epochs}",
                     f"訓練損失: {train_loss:.6f}",
                     f"驗證損失: {val_loss:.6f}",
                 ]
-                
-                # 添加主要指標
                 for name in ['rmse', 'r2', 'mae']:
                     if name in val_metrics:
                         log_info.append(f"{name}: {val_metrics[name]:.6f}")
-                
                 log_info.append(f"學習率: {current_lr:.6f}")
                 log_info.append(f"時間: {epoch_time:.2f}秒")
-                
                 logger.info(" - ".join(log_info))
-            
-            # 執行回調函數
             for callback in callbacks:
                 callback(epoch, {
                     'model': self.model,
@@ -858,22 +660,16 @@ class Trainer:
                     'metrics': val_metrics,
                     'epoch': epoch
                 })
-            
-            # 檢查早停條件
             if early_stopping is not None:
                 if early_stopping(val_loss, self.model, save_path, epoch):
                     logger.info(f"早停觸發，在輪次 {epoch+1} 停止訓練")
                     break
             elif save_path is not None and epoch == epochs - 1:
-                # 如果沒有早停但提供了保存路徑，在最後一輪保存模型
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 torch.save(self.model.state_dict(), save_path)
                 logger.info(f"模型已保存至 {save_path}")
-        
-        # 計算總訓練時間
         total_time = time.time() - start_time
         logger.info(f"訓練完成，總時間: {total_time:.2f}秒")
-        
         return history
     
     def predict(self, data_loader):
@@ -889,47 +685,31 @@ class Trainer:
         self.model.eval()
         all_predictions = []
         all_outputs = {}
-        
         with torch.no_grad():
             for data in data_loader:
-                # 處理不同形式的數據批次
                 if isinstance(data, (list, tuple)):
                     if len(data) == 2:
-                        # 基本形式: (inputs, targets)
                         inputs, targets = data
                         if isinstance(inputs, (list, tuple)):
-                            # 多輸入形式: ([input1, input2, ...], targets)
                             inputs = [x.to(self.device) for x in inputs]
                         else:
-                            # 單輸入形式: (input, targets)
                             inputs = inputs.to(self.device)
                     elif len(data) == 3:
-                        # 混合PINN-LSTM形式: (static_features, time_series, targets)
                         static_features, time_series, _ = data
                         static_features = static_features.to(self.device)
                         time_series = time_series.to(self.device)
-                        # 保存為元組用於前向傳播
                         inputs = (static_features, time_series)
                     else:
                         inputs = data[0].to(self.device)
                 else:
-                    # 自定義批次格式
                     inputs = data.to(self.device)
-                
-                # 前向傳播
                 if isinstance(inputs, (list, tuple)) and len(inputs) == 2 and hasattr(self.model, 'forward') and 'static_features' in self.model.forward.__code__.co_varnames:
-                    # 專門用於混合PINN-LSTM模型
                     outputs = self.model(inputs[0], inputs[1], return_features=True)
-                    
-                    # 檢查outputs是否為字典（用於混合模型）
                     if isinstance(outputs, dict) and 'nf_pred' in outputs:
                         predictions = outputs['nf_pred']
-                        
-                        # 收集輸出
                         for key, value in outputs.items():
                             if key not in all_outputs:
                                 all_outputs[key] = []
-                            
                             if isinstance(value, torch.Tensor):
                                 all_outputs[key].append(value.cpu().numpy())
                             else:
@@ -937,19 +717,13 @@ class Trainer:
                     else:
                         predictions = outputs
                 else:
-                    # 一般模型
                     outputs = self.model(inputs)
-                    
-                    # 檢查outputs是否為字典
                     if isinstance(outputs, dict) and 'output' in outputs:
                         predictions = outputs['output']
                     else:
                         predictions = outputs
-                
-                # 收集預測結果
                 if isinstance(predictions, torch.Tensor):
                     all_predictions.append(predictions.detach().cpu().numpy())
-                # 合併預測結果
         merged_predictions = None
         if all_predictions:
             try:
@@ -957,8 +731,6 @@ class Trainer:
             except Exception as e:
                 logger.error(f"合併預測結果時出錯: {str(e)}")
                 merged_predictions = all_predictions
-        
-        # 合併所有輸出
         outputs_merged = {}
         for key, values in all_outputs.items():
             if values and isinstance(values[0], np.ndarray):
@@ -969,11 +741,8 @@ class Trainer:
                     outputs_merged[key] = values
             else:
                 outputs_merged[key] = values
-        
-        # 添加預測結果
         if merged_predictions is not None:
             outputs_merged['predictions'] = merged_predictions
-        
         return outputs_merged
     
     def save_model(self, path, epoch=None, train_loss=None, val_loss=None, metrics=None):
@@ -987,32 +756,21 @@ class Trainer:
             val_loss (float, optional): 驗證損失
             metrics (dict, optional): 指標字典
         """
-        # 確保目錄存在
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        
-        # 構建保存內容
         save_dict = {
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict()
         }
-        
-        # 添加額外信息
         if epoch is not None:
             save_dict['epoch'] = epoch
-        
         if train_loss is not None:
             save_dict['train_loss'] = train_loss
-        
         if val_loss is not None:
             save_dict['val_loss'] = val_loss
-        
         if metrics is not None:
             save_dict['metrics'] = metrics
-        
         if self.scheduler is not None and hasattr(self.scheduler, 'state_dict'):
             save_dict['scheduler_state_dict'] = self.scheduler.state_dict()
-        
-        # 保存模型
         torch.save(save_dict, path)
         logger.info(f"模型已保存至 {path}")
     
@@ -1028,42 +786,29 @@ class Trainer:
         返回:
             dict: 載入的額外數據
         """
-        # 檢查文件是否存在
         if not os.path.exists(path):
             raise FileNotFoundError(f"模型檔案不存在: {path}")
-        
-        # 載入檢查點
         checkpoint = torch.load(path, map_location=self.device)
-        
-        # 載入模型權重
         try:
             self.model.load_state_dict(checkpoint['model_state_dict'])
         except Exception as e:
             logger.error(f"載入模型權重時出錯: {str(e)}")
             raise
-        
-        # 載入優化器狀態（如果需要）
         if load_optimizer and 'optimizer_state_dict' in checkpoint and self.optimizer is not None:
             try:
                 self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             except Exception as e:
                 logger.warning(f"載入優化器狀態時出錯: {str(e)}")
-        
-        # 載入調度器狀態（如果需要）
         if load_scheduler and 'scheduler_state_dict' in checkpoint and self.scheduler is not None:
             try:
                 self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
             except Exception as e:
                 logger.warning(f"載入調度器狀態時出錯: {str(e)}")
-        
-        # 提取其他數據
         extra_data = {}
         for key in ['epoch', 'train_loss', 'val_loss', 'metrics']:
             if key in checkpoint:
                 extra_data[key] = checkpoint[key]
-        
         logger.info(f"模型已從 {path} 載入")
-        
         return extra_data
     
     def plot_training_history(self, save_path=None):
@@ -1079,11 +824,7 @@ class Trainer:
         if not self.train_losses or not self.val_losses:
             logger.warning("訓練歷史記錄為空，無法繪製圖表")
             return None
-        
-        # 設置圖像
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-        
-        # 繪製損失曲線
         epochs = range(1, len(self.train_losses) + 1)
         ax1.plot(epochs, self.train_losses, 'b-', label='Training Loss')
         ax1.plot(epochs, self.val_losses, 'r-', label='Validation Loss')
@@ -1092,92 +833,39 @@ class Trainer:
         ax1.set_ylabel('Loss')
         ax1.legend()
         ax1.grid(True)
-        
-        # 繪製指標曲線（如果有）
         if self.val_metrics:
             for metric_name in ['rmse', 'r2', 'mae']:
                 if metric_name in self.val_metrics and len(self.val_metrics[metric_name]) > 0:
                     ax2.plot(epochs, self.val_metrics[metric_name], label=metric_name.upper())
-            
             ax2.set_title('Validation Metrics')
             ax2.set_xlabel('Epochs')
             ax2.set_ylabel('Value')
             ax2.legend()
             ax2.grid(True)
-        
         plt.tight_layout()
-        
-        # 保存圖像
         if save_path:
             try:
                 plt.savefig(save_path, dpi=300, bbox_inches='tight')
                 logger.info(f"訓練歷史圖像已保存至 {save_path}")
             except Exception as e:
                 logger.error(f"保存圖像失敗: {str(e)}")
-        
         return fig
-
-
-    
 def prepare_training_config(config, train_config, stage="all", start_epoch=0):
-        """
-        根據訓練階段準備訓練配置
+    """
+    根據訓練階段準備訓練配置
         
-        參數:
-            config (dict): 模型配置
-            train_config (dict): 訓練配置
-            stage (str): 訓練階段: all, warmup, main, finetune
-            start_epoch (int): 起始輪次
+    參數:
+        config (dict): 模型配置
+        train_config (dict): 訓練配置
+        stage (str): 訓練階段: all, warmup, main, finetune
+        start_epoch (int): 起始輪次
             
-        返回:
-            dict: 訓練配置
-        """
-        # 獲取分階段訓練配置
-        training_strategy = train_config.get("training_strategy", {})
-        stages = training_strategy.get("stages", [])
-        
-        # 如果沒有分階段配置或選擇了'all'，使用默認配置
-        if not stages or stage == "all":
-            return {
-                "epochs": config["training"]["epochs"],
-                "learning_rate": config["training"]["optimizer"]["learning_rate"],
-                "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
-                "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
-                "batch_size": config["training"]["batch_size"],
-                "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-                "description": "完整訓練"
-            }
-        
-        # 根據指定階段獲取配置
-        for stage_config in stages:
-            if stage_config["name"] == stage:
-                # 計算學習率
-                base_lr = config["training"]["optimizer"]["learning_rate"]
-                lr_factor = stage_config.get("learning_rate_factor", 1.0)
-                
-                # 獲取物理約束和一致性權重
-                if stage == "warmup":
-                    lambda_physics = stage_config.get("lambda_physics", 0.01)
-                    lambda_consistency = stage_config.get("lambda_consistency", 0.01)
-                elif stage == "main":
-                    lambda_physics = stage_config.get("lambda_physics_start", 0.05)
-                    lambda_consistency = stage_config.get("lambda_consistency_start", 0.05)
-                elif stage == "finetune":
-                    lambda_physics = stage_config.get("lambda_physics", 0.5)
-                    lambda_consistency = stage_config.get("lambda_consistency", 0.3)
-                
-                return {
-                    "epochs": stage_config["epochs"],
-                    "learning_rate": base_lr * lr_factor,
-                    "lambda_physics": lambda_physics,
-                    "lambda_consistency": lambda_consistency,
-                    "batch_size": config["training"]["batch_size"],
-                    "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-                    "description": stage_config.get("description", f"{stage}階段訓練")
-                }
-        
-        # 如果找不到指定階段，使用默認配置
-        logger.warning(f"找不到指定訓練階段: {stage}，使用默認配置")
+    返回:
+        dict: 訓練配置
+    """
+    training_strategy = train_config.get("training_strategy", {})
+    stages = training_strategy.get("stages", [])
+    if not stages or stage == "all":
         return {
             "epochs": config["training"]["epochs"],
             "learning_rate": config["training"]["optimizer"]["learning_rate"],
@@ -1185,104 +873,125 @@ def prepare_training_config(config, train_config, stage="all", start_epoch=0):
             "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
             "batch_size": config["training"]["batch_size"],
             "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
-            "description": "默認訓練"
+            "description": "完整訓練"
         }
+    for stage_config in stages:
+        if stage_config["name"] == stage:
+            base_lr = config["training"]["optimizer"]["learning_rate"]
+            lr_factor = stage_config.get("learning_rate_factor", 1.0)
+            if stage == "warmup":
+                lambda_physics = stage_config.get("lambda_physics", 0.01)
+                lambda_consistency = stage_config.get("lambda_consistency", 0.01)
+            elif stage == "main":
+                lambda_physics = stage_config.get("lambda_physics_start", 0.05)
+                lambda_consistency = stage_config.get("lambda_consistency_start", 0.05)
+            elif stage == "finetune":
+                lambda_physics = stage_config.get("lambda_physics", 0.5)
+                lambda_consistency = stage_config.get("lambda_consistency", 0.3)
+            return {
+                "epochs": stage_config["epochs"],
+                "learning_rate": base_lr * lr_factor,
+                "lambda_physics": lambda_physics,
+                "lambda_consistency": lambda_consistency,
+                "batch_size": config["training"]["batch_size"],
+                "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
+                "description": stage_config.get("description", f"{stage}階段訓練")
+            }
+    logger.warning(f"找不到指定訓練階段: {stage}，使用默認配置")
+    return {
+        "epochs": config["training"]["epochs"],
+        "learning_rate": config["training"]["optimizer"]["learning_rate"],
+        "lambda_physics": config["training"]["loss"].get("initial_lambda_physics", 0.1),
+        "lambda_consistency": config["training"]["loss"].get("initial_lambda_consistency", 0.1),
+        "batch_size": config["training"]["batch_size"],
+        "clip_grad_norm": config["training"].get("clip_grad_norm", 1.0),
+        "description": "默認訓練"
+    }
 
 def create_optimizer(model, config, stage_config=None):
-        """
-        創建優化器
+    """
+    創建優化器
         
-        參數:
-            model (torch.nn.Module): 模型
-            config (dict): 配置
-            stage_config (dict, optional): 階段配置
+    參數:
+        model (torch.nn.Module): 模型
+        config (dict): 配置
+        stage_config (dict, optional): 階段配置
             
-        返回:
-            torch.optim.Optimizer: 優化器
-        """
-        optimizer_config = config["training"]["optimizer"]
-        
-        # 使用階段配置中的學習率（如果有）
-        if stage_config and "learning_rate" in stage_config:
-            lr = stage_config["learning_rate"]
-        else:
-            lr = optimizer_config["learning_rate"]
-        
-        weight_decay = optimizer_config["weight_decay"]
-        
-        if optimizer_config["name"].lower() == "adam":
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        elif optimizer_config["name"].lower() == "adamw":
-            optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-        elif optimizer_config["name"].lower() == "sgd":
-            optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
-        else:
-            logger.warning(f"不支援的優化器類型: {optimizer_config['name']}，使用Adam")
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        
-        logger.info(f"創建{optimizer_config['name']}優化器，學習率: {lr}，權重衰減: {weight_decay}")
-        return optimizer
+    返回:
+        torch.optim.Optimizer: 優化器
+    """
+    optimizer_config = config["training"]["optimizer"]
+    if stage_config and "learning_rate" in stage_config:
+        lr = stage_config["learning_rate"]
+    else:
+        lr = optimizer_config["learning_rate"]
+    weight_decay = optimizer_config["weight_decay"]
+    if optimizer_config["name"].lower() == "adam":
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    elif optimizer_config["name"].lower() == "adamw":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    elif optimizer_config["name"].lower() == "sgd":
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
+    else:
+        logger.warning(f"不支援的優化器類型: {optimizer_config['name']}，使用Adam")
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    logger.info(f"創建{optimizer_config['name']}優化器，學習率: {lr}，權重衰減: {weight_decay}")
+    return optimizer
 
 def create_lr_scheduler(optimizer, config, stage_config=None, total_epochs=None):
-        """
-        創建學習率調度器
+    """
+    創建學習率調度器
         
-        參數:
-            optimizer (torch.optim.Optimizer): 優化器
-            config (dict): 配置
-            stage_config (dict, optional): 階段配置
-            total_epochs (int, optional): 總訓練輪數
+    參數:
+        optimizer (torch.optim.Optimizer): 優化器
+        config (dict): 配置
+        stage_config (dict, optional): 階段配置
+        total_epochs (int, optional): 總訓練輪數
             
-        返回:
-            LearningRateScheduler: 學習率調度器
-        """
-        scheduler_config = config["training"]["lr_scheduler"]
-        
-        if not scheduler_config:
-            return None
-        
-        # 使用階段特定的輪數（如果有）
-        if stage_config and "epochs" in stage_config:
-            epochs = stage_config["epochs"]
-        elif total_epochs:
-            epochs = total_epochs
-        else:
-            epochs = config["training"]["epochs"]
-        
-        scheduler_type = scheduler_config["name"]
-        
-        if scheduler_type == "step":
-            step_size = scheduler_config.get("step_size", 10)
-            gamma = scheduler_config.get("gamma", 0.1)
-            scheduler = LearningRateScheduler(optimizer, mode="step", step_size=step_size, gamma=gamma)
-            logger.info(f"創建步進式學習率調度器，步長: {step_size}，衰減因子: {gamma}")
-        elif scheduler_type == "exp":
-            gamma = scheduler_config.get("gamma", 0.95)
-            scheduler = LearningRateScheduler(optimizer, mode="exp", gamma=gamma)
-            logger.info(f"創建指數式學習率調度器，衰減因子: {gamma}")
-        elif scheduler_type == "cosine":
-            T_max = scheduler_config.get("T_max", epochs)
-            min_lr = scheduler_config.get("min_lr", 0)
-            scheduler = LearningRateScheduler(optimizer, mode="cosine", T_max=T_max, min_lr=min_lr)
-            logger.info(f"創建餘弦退火學習率調度器，週期: {T_max}，最小學習率: {min_lr}")
-        elif scheduler_type == "plateau":
-            factor = scheduler_config.get("factor", 0.1)
-            patience = scheduler_config.get("patience", 10)
-            min_lr = scheduler_config.get("min_lr", 0)
-            scheduler = LearningRateScheduler(optimizer, mode="plateau", factor=factor, 
-                                        patience=patience, min_lr=min_lr)
-            logger.info(f"創建平原式學習率調度器，衰減因子: {factor}，耐心值: {patience}，最小學習率: {min_lr}")
-        else:
-            logger.warning(f"不支援的學習率調度器類型: {scheduler_type}，不使用學習率調度")
-            scheduler = None
-        
-        return scheduler
+    返回:
+        LearningRateScheduler: 學習率調度器
+    """
+    scheduler_config = config["training"]["lr_scheduler"]
+    if not scheduler_config:
+        return None
+    if stage_config and "epochs" in stage_config:
+        epochs = stage_config["epochs"]
+    elif total_epochs:
+        epochs = total_epochs
+    else:
+        epochs = config["training"]["epochs"]
+    scheduler_type = scheduler_config["name"]
+    if scheduler_type == "step":
+        step_size = scheduler_config.get("step_size", 10)
+        gamma = scheduler_config.get("gamma", 0.1)
+        scheduler = LearningRateScheduler(optimizer, mode="step", step_size=step_size, gamma=gamma)
+        logger.info(f"創建步進式學習率調度器，步長: {step_size}，衰減因子: {gamma}")
+    elif scheduler_type == "exp":
+        gamma = scheduler_config.get("gamma", 0.95)
+        scheduler = LearningRateScheduler(optimizer, mode="exp", gamma=gamma)
+        logger.info(f"創建指數式學習率調度器，衰減因子: {gamma}")
+    elif scheduler_type == "cosine":
+        T_max = scheduler_config.get("T_max", epochs)
+        min_lr = scheduler_config.get("min_lr", 0)
+        scheduler = LearningRateScheduler(optimizer, mode="cosine", T_max=T_max, min_lr=min_lr)
+        logger.info(f"創建餘弦退火學習率調度器，週期: {T_max}，最小學習率: {min_lr}")
+    elif scheduler_type == "plateau":
+        factor = scheduler_config.get("factor", 0.1)
+        patience = scheduler_config.get("patience", 10)
+        min_lr = scheduler_config.get("min_lr", 0)
+        scheduler = LearningRateScheduler(optimizer, mode="plateau", factor=factor, 
+                                  patience=patience, min_lr=min_lr, verbose=True)
+        logger.info(f"創建平原式學習率調度器，衰減因子: {factor}，耐心值: {patience}，最小學習率: {min_lr}")
+    else:
+        logger.warning(f"不支援的學習率調度器類型: {scheduler_type}，不使用學習率調度")
+        scheduler = None
+    return scheduler
 
 def train_hybrid_model_with_stages(model, dataloaders, config, train_config, device, 
                                    output_dir, use_physics=True, stages=None):
     """
     使用分階段策略訓練混合模型 - 修改以支援delta_w專注模型
-    
+        
     參數:
         model (HybridPINNLSTMModel): 混合模型
         dataloaders (dict): 資料載入器
@@ -1296,45 +1005,34 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
     返回:
         dict: 訓練歷史記錄
     """
-    # 從src.models.hybrid_model模組導入PINNLSTMTrainer類
     try:
         from src.models.hybrid_model import PINNLSTMTrainer
     except ImportError:
         logger.error("無法導入PINNLSTMTrainer類，請確保hybrid_model模組可用")
         return {}
-    
-    # 導入回調函數
     try:
         from src.training.callbacks import AdaptiveCallbacks
     except ImportError:
         logger.warning("無法導入AdaptiveCallbacks類，將使用基本回調")
         AdaptiveCallbacks = None
-    
-    # 設定預設階段，如果沒有提供
     if stages is None:
         stages = ["warmup", "main", "finetune"]
-    
     all_history = {}
     best_val_loss_overall = float('inf')
     best_model_state = None
-    
-    # 定義階段訓練記錄檔案
     stage_log_file = os.path.join(output_dir, "stage_training_log.txt")
     with open(stage_log_file, "w") as f:
         f.write(f"分階段訓練日誌 - 開始時間: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"模型: {config['model']['name']}, 使用物理約束: {use_physics}\n")
         f.write("="*50 + "\n")
-    
     current_epoch = 0
-    
-    # stage_configs字典 - 修改以增強delta_w預測權重
     stage_configs = {
         "warmup": {
             "epochs": 40,
             "learning_rate_factor": 0.2, 
             "lambda_physics": 0.05 if use_physics else 0.0,
             "lambda_consistency": 0.01,
-            "delta_w_weight": 0.8,  # 預熱期delta_w權重適中
+            "delta_w_weight": 0.8,
             "description": "低學習率預熱，輕微物理約束，適中delta_w權重"
         },
         "main": {
@@ -1344,8 +1042,8 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
             "lambda_physics_max": 1.2 if use_physics else 0.0,
             "lambda_consistency": 0.2,
             "lambda_consistency_max": 0.4,
-            "delta_w_weight": 1.5,         # 主訓練階段delta_w權重較高
-            "delta_w_weight_max": 2.5,     # 逐漸增加delta_w權重
+            "delta_w_weight": 1.5,
+            "delta_w_weight_max": 2.5,
             "description": "主要訓練階段，強化物理約束，重點關注delta_w預測"
         },
         "finetune": {
@@ -1353,61 +1051,47 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
             "learning_rate_factor": 0.01,
             "lambda_physics": 1.0 if use_physics else 0.0,
             "lambda_consistency": 0.4,
-            "delta_w_weight": 3.0,         # 微調階段delta_w權重最高
+            "delta_w_weight": 3.0,
             "description": "低學習率微調，強化物理約束，最高delta_w預測權重"
         }
     }
-    
-    # 遍歷每個訓練階段
+    with open(stage_log_file, "a") as f:
+        f.write("\n開始分階段訓練...\n")
     for stage_idx, stage in enumerate(stages):
         logger.info("="*50)
         logger.info(f"開始 {stage} 階段訓練 ({stage_idx+1}/{len(stages)})")
-        
-        # 獲取階段配置
         stage_config = stage_configs.get(stage, {})
         if not stage_config:
             logger.warning(f"找不到階段 {stage} 的配置，使用預設配置")
             stage_config = prepare_training_config(config, train_config, stage=stage, start_epoch=current_epoch)
-        
         logger.info(f"階段描述: {stage_config['description']}")
         logger.info(f"訓練輪數: {stage_config['epochs']}")
         logger.info(f"學習率因子: {stage_config['learning_rate_factor']}")
         logger.info(f"物理約束權重: {stage_config.get('lambda_physics', 0.0)}")
         logger.info(f"一致性約束權重: {stage_config.get('lambda_consistency', 0.0)}")
-        logger.info(f"Delta_W預測權重: {stage_config.get('delta_w_weight', 1.0)}")  # 新增日誌
-        
-        # 創建階段特定的輸出目錄
+        logger.info(f"Delta_W預測權重: {stage_config.get('delta_w_weight', 1.0)}")
         stage_dir = os.path.join(output_dir, f"stage_{stage}")
         os.makedirs(stage_dir, exist_ok=True)
-        
-        # 調整基礎學習率
         if stage == "warmup":
             base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
         elif stage == "main":
-            # 從預熱階段學習率平滑過渡
             if "warmup" in stages and stages.index("warmup") < stages.index("main"):
                 warmup_lr = config["training"]["optimizer"]["learning_rate"] * stage_configs["warmup"]["learning_rate_factor"]
-                base_lr = warmup_lr * 5  # 預熱結束後放大學習率
+                base_lr = warmup_lr * 5
             else:
                 base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
-        else:  # finetune
-            # 從主訓練階段學習率平滑過渡
+        else:
             if "main" in stages and stages.index("main") < stages.index("finetune"):
                 main_lr = config["training"]["optimizer"]["learning_rate"] * stage_configs["main"]["learning_rate_factor"]
-                base_lr = main_lr * stage_config["learning_rate_factor"]  # 顯著降低學習率
+                base_lr = main_lr * stage_config["learning_rate_factor"]
             else:
                 base_lr = config["training"]["optimizer"]["learning_rate"] * stage_config["learning_rate_factor"]
-        
-        # 創建階段優化器
         optimizer = torch.optim.Adam(
             model.parameters(), 
             lr=base_lr,
             weight_decay=config["training"]["optimizer"]["weight_decay"]
         )
-        
-        # 修改學習率調度策略
         if stage == "warmup":   
-            # 預熱階段使用較溫和的學習率調度
             scheduler = LearningRateScheduler(
                 optimizer, 
                 mode='cosine',
@@ -1417,7 +1101,6 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
                 warmup_factor=0.5
             )
         elif stage == "main":
-            # 主訓練階段使用循環學習率
             scheduler = LearningRateScheduler(
                 optimizer, 
                 mode='one_cycle',
@@ -1425,8 +1108,7 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
                 min_lr=base_lr * 0.01,
                 cycle_momentum=True 
             )
-        else:  # finetune
-            # 微調階段使用平原式調度
+        else:
             scheduler = LearningRateScheduler(
                 optimizer, 
                 mode='plateau',
@@ -1434,8 +1116,6 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
                 patience=8,
                 min_lr=base_lr * 0.05
             )
-        
-        # 調整早停機制
         if stage == "warmup":
             early_stopping_patience = 30
             min_delta = 0.001
@@ -1444,7 +1124,7 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
             early_stopping_patience = 40
             min_delta = 0.0005
             min_epoch = 60
-        else:  # finetune
+        else:
             early_stopping_patience = 25
             min_delta = 0.0001
             min_epoch = 30
@@ -1457,26 +1137,16 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
             restart_threshold=early_stopping_patience // 3,
             min_epoch=min_epoch
         )
-        
-        # 創建專用訓練器 - 更新以包含delta_w權重
-        trainer = PINNLSTMTrainer(
-            model=model,
-            optimizer=optimizer,
-            device=device,
-            lambda_physics_init=stage_config.get("lambda_physics", 0.0),
-            lambda_physics_max=stage_config.get("lambda_physics_max", stage_config.get("lambda_physics", 0.0) * 2),
-            lambda_consistency_init=stage_config.get("lambda_consistency", 0.0),
-            lambda_consistency_max=stage_config.get("lambda_consistency_max", stage_config.get("lambda_consistency", 0.0) * 2),
-            # 添加delta_w相關參數
-            delta_w_weight_init=stage_config.get("delta_w_weight", 1.5),
-            delta_w_weight_max=stage_config.get("delta_w_weight_max", stage_config.get("delta_w_weight", 1.5) * 1.5),
-            lambda_ramp_epochs=stage_config.get("epochs") // 3,
-            clip_grad_norm=config["training"].get("clip_grad_norm", 1.0),
-            scheduler=scheduler,
-            log_interval=5
-        )
-        
-        # 調整回調函數
+        try:
+            from src.models.hybrid_model import PINNLSTMTrainer
+        except ImportError:
+            logger.error("無法導入PINNLSTMTrainer類，請確保hybrid_model模組可用")
+            return {}
+        try:
+            from src.training.callbacks import AdaptiveCallbacks
+        except ImportError:
+            logger.warning("無法導入AdaptiveCallbacks類，將使用基本回調")
+            AdaptiveCallbacks = None
         if AdaptiveCallbacks is not None:
             callbacks = AdaptiveCallbacks.create_callbacks(
                 model=model,
@@ -1485,20 +1155,30 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
                 output_dir=stage_dir,
                 use_tensorboard=True,
                 use_progress_bar=True,
-                use_early_stopping=False,  # 我們在trainer中使用自定義早停
+                use_early_stopping=False,
                 patience=early_stopping_patience,
                 monitor="val_loss",
                 mode="min",
                 save_freq=5
             )
         else:
-            # 使用基本回調
             callbacks = []
-        
-        # 訓練階段
         start_time = time.time()
-        
-        stage_history = trainer.train(
+        stage_history = PINNLSTMTrainer(
+            model=model,
+            optimizer=optimizer,
+            device=device,
+            lambda_physics_init=stage_config.get("lambda_physics", 0.0),
+            lambda_physics_max=stage_config.get("lambda_physics_max", stage_config.get("lambda_physics", 0.0) * 2),
+            lambda_consistency_init=stage_config.get("lambda_consistency", 0.0),
+            lambda_consistency_max=stage_config.get("lambda_consistency_max", stage_config.get("lambda_consistency", 0.0) * 2),
+            delta_w_weight_init=stage_config.get("delta_w_weight", 1.5),
+            delta_w_weight_max=stage_config.get("delta_w_weight_max", stage_config.get("delta_w_weight", 1.5) * 1.5),
+            lambda_ramp_epochs=stage_config.get("epochs") // 3,
+            clip_grad_norm=config["training"].get("clip_grad_norm", 1.0),
+            scheduler=scheduler,
+            log_interval=5
+        ).train(
             train_loader=dataloaders["train_loader"],
             val_loader=dataloaders["val_loader"],
             epochs=stage_config["epochs"],
@@ -1506,10 +1186,7 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
             save_path=os.path.join(stage_dir, "models", "best_model.pt"),
             callbacks=callbacks
         )
-        
         train_time = time.time() - start_time
-        
-        # 記錄階段訓練結果
         stage_val_loss = stage_history.get('best_val_loss', float('inf'))
         with open(stage_log_file, "a") as f:
             f.write(f"\n階段: {stage}\n")
@@ -1518,21 +1195,15 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
             f.write(f"實際訓練輪數: {stage_history.get('epochs_trained', 0)}\n")
             f.write(f"訓練時間: {train_time:.2f}秒\n")
             f.write(f"最佳驗證損失: {stage_val_loss:.6f}\n")
-            
-            # 記錄關鍵指標
             if 'val_metrics' in stage_history:
                 metrics = stage_history['val_metrics']
-                for metric_name in ['rmse', 'r2', 'mean_rel_error', 'delta_w_log_mse', 'delta_w_mean_rel_error']:  # 添加delta_w相關指標
+                for metric_name in ['rmse', 'r2', 'mean_rel_error', 'delta_w_log_mse', 'delta_w_mean_rel_error']:
                     if metric_name in metrics and metrics[metric_name]:
                         f.write(f"{metric_name}: {metrics[metric_name][-1]:.4f}\n")
-            
             f.write("-"*40 + "\n")
-        
-        # 保存全局最佳模型
         if stage_val_loss < best_val_loss_overall:
             best_val_loss_overall = stage_val_loss
             best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
-            # 保存全局最佳模型
             torch.save({
                 'model_state_dict': model.state_dict(),
                 'stage': stage,
@@ -1541,49 +1212,30 @@ def train_hybrid_model_with_stages(model, dataloaders, config, train_config, dev
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
             }, os.path.join(output_dir, "models", "best_model_overall.pt"))
             logger.info(f"更新全局最佳模型，階段: {stage}, 驗證損失: {stage_val_loss:.6f}")
-        
-        # 將階段歷史添加到總歷史
         all_history[stage] = stage_history
-        
-        # 更新當前輪次
         current_epoch += stage_config["epochs"]
-        
         logger.info(f"{stage} 階段訓練完成 - 耗時: {train_time:.2f}秒, 最佳驗證損失: {stage_val_loss:.6f}")
-    
-    # 最終模型保存
     os.makedirs(os.path.join(output_dir, "models"), exist_ok=True)
     final_model_path = os.path.join(output_dir, "models", "final_model.pt")
-    
-    # 恢復全局最佳模型
     if best_model_state is not None:
         model.load_state_dict(best_model_state)
         logger.info(f"已恢復全局最佳模型，驗證損失: {best_val_loss_overall:.6f}")
-    
-    # 保存最終模型（即全局最佳模型）
     torch.save({
         'model_state_dict': model.state_dict(),
         'training_history': all_history,
         'final_epoch': current_epoch,
         'best_val_loss': best_val_loss_overall
     }, final_model_path)
-    
     logger.info(f"分階段訓練完成，最終模型已保存至: {final_model_path}")
-    
     return all_history
-
-
-
 if __name__ == "__main__":
-    # 設定日誌
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    # 測試代碼
     logger.info("測試Trainer模組")
     
-    # 創建簡單模型
     class SimpleModel(nn.Module):
         def __init__(self):
             super(SimpleModel, self).__init__()
@@ -1592,13 +1244,11 @@ if __name__ == "__main__":
         def forward(self, x):
             return self.fc(x)
     
-    # 初始化模型和訓練器
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = SimpleModel().to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     
-    # 創建訓練器
     trainer = Trainer(
         model=model,
         criterion=criterion,

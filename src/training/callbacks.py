@@ -19,12 +19,13 @@ from pathlib import Path
 import logging
 import json
 from datetime import datetime
+
 try:
     from torch.utils.tensorboard import SummaryWriter
     tensorboard_available = True
 except ImportError:
     tensorboard_available = False
-    
+
 try:
     from tqdm import tqdm
     tqdm_available = True
@@ -32,8 +33,6 @@ except ImportError:
     tqdm_available = False
 
 logger = logging.getLogger(__name__)
-
-
 class Callback:
     """
     回調函數基類
@@ -79,11 +78,8 @@ class ModelCheckpoint(Callback):
         self.mode = mode
         self.max_save = max_save
         self.verbose = verbose
-        
-        # 確保保存目錄存在
+
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 初始化監控指標比較函數和最佳值
         if mode == 'min':
             self.is_better = lambda current, best: current < best
             self.best_value = float('inf')
@@ -93,51 +89,38 @@ class ModelCheckpoint(Callback):
         else:
             raise ValueError(f"不支援的模式: {mode}，應為 'min' 或 'max'")
         
-        # 保存的檢查點列表
         self.saved_checkpoints = []
-        
         logger.info(f"初始化ModelCheckpoint: 保存目錄={checkpoint_dir}, "
-                  f"保存頻率={save_freq}, 只保存最佳={save_best_only}, "
-                  f"監控指標={monitor}, 模式={mode}")
-    
+                    f"保存頻率={save_freq}, 只保存最佳={save_best_only}, "
+                    f"監控指標={monitor}, 模式={mode}")
+
     def __call__(self, epoch, state):
         """執行回調"""
-        if epoch % self.save_freq != 0 and epoch != -1:  # epoch=-1 表示訓練結束
+        if epoch % self.save_freq != 0 and epoch != -1:
             return
-        
-        # 獲取當前監控指標值
         current_value = None
         if self.monitor == 'val_loss' and state.get('val_loss') is not None:
             current_value = state['val_loss']
         elif state.get('metrics') is not None and self.monitor in state['metrics']:
             current_value = state['metrics'][self.monitor]
-        
-        # 判斷是否需要保存檢查點
         save_checkpoint = False
         if self.save_best_only:
             if current_value is not None and self.is_better(current_value, self.best_value):
                 if self.verbose:
                     logger.info(f"輪次 {epoch+1}: {self.monitor} 改善 "
-                              f"({self.best_value:.6f} -> {current_value:.6f})，保存模型")
+                                f"({self.best_value:.6f} -> {current_value:.6f})，保存模型")
                 self.best_value = current_value
                 save_checkpoint = True
         else:
             save_checkpoint = True
-        
         if save_checkpoint:
-            # 生成檢查點文件名
             if 'epoch' in self.filename_template:
                 filename = self.filename_template.format(epoch=epoch+1)
             else:
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename = f"{self.filename_template}_{timestamp}.pt"
-            
             checkpoint_path = self.checkpoint_dir / filename
-            
-            # 保存檢查點
             self._save_checkpoint(checkpoint_path, state)
-            
-            # 管理檢查點數量
             self.saved_checkpoints.append(checkpoint_path)
             if self.max_save > 0 and len(self.saved_checkpoints) > self.max_save:
                 oldest_checkpoint = self.saved_checkpoints.pop(0)
@@ -145,41 +128,27 @@ class ModelCheckpoint(Callback):
                     oldest_checkpoint.unlink()
                     if self.verbose:
                         logger.debug(f"移除舊檢查點: {oldest_checkpoint}")
-    
+
     def _save_checkpoint(self, path, state):
         """保存檢查點"""
-        # 獲取模型和優化器
         model = state.get('model')
         optimizer = state.get('optimizer')
-        
         if model is None:
             logger.warning("無法保存檢查點：模型不存在")
             return
-        
-        # 構建檢查點內容
         checkpoint = {
             'model_state_dict': model.state_dict(),
         }
-        
         if optimizer is not None:
             checkpoint['optimizer_state_dict'] = optimizer.state_dict()
-        
-        # 保存訓練狀態
         for key in ['train_loss', 'val_loss', 'metrics']:
             if key in state and state[key] is not None:
                 checkpoint[key] = state[key]
-        
-        # 保存其他額外信息
         checkpoint['epoch'] = state.get('epoch', 0)
         checkpoint['timestamp'] = datetime.now().isoformat()
-        
-        # 保存檢查點
         torch.save(checkpoint, path)
-        
         if self.verbose:
             logger.info(f"模型檢查點已保存至 {path}")
-
-
 class TensorBoardLogger(Callback):
     """
     TensorBoard日誌記錄回調
@@ -201,31 +170,20 @@ class TensorBoardLogger(Callback):
         
         log_dir = Path(log_dir)
         log_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 創建SummaryWriter
         self.writer = SummaryWriter(log_dir=str(log_dir), comment=comment, flush_secs=flush_secs)
-        
         logger.info(f"初始化TensorBoardLogger: 日誌目錄={log_dir}")
     
     def __call__(self, epoch, state):
         """執行回調"""
         if self.writer is None:
             return
-        
-        # 記錄訓練損失
         if 'train_loss' in state and state['train_loss'] is not None:
             self.writer.add_scalar('Loss/train', state['train_loss'], epoch)
-        
-        # 記錄驗證損失
         if 'val_loss' in state and state['val_loss'] is not None:
             self.writer.add_scalar('Loss/validation', state['val_loss'], epoch)
-        
-        # 記錄指標
         if 'metrics' in state and state['metrics'] is not None:
             for metric_name, metric_value in state['metrics'].items():
                 self.writer.add_scalar(f'Metrics/{metric_name}', metric_value, epoch)
-        
-        # 記錄學習率
         if 'optimizer' in state and state['optimizer'] is not None:
             for i, param_group in enumerate(state['optimizer'].param_groups):
                 self.writer.add_scalar(f'LearningRate/group{i}', param_group['lr'], epoch)
@@ -259,8 +217,6 @@ class ProgressBar(Callback):
         self.total_epochs = total_epochs
         self.update_freq = update_freq
         self.ascii = ascii
-        
-        # 初始化進度條
         self.progress_bar = tqdm(
             total=total_epochs, 
             desc="Training", 
@@ -268,23 +224,15 @@ class ProgressBar(Callback):
             ncols=100,
             bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]'
         )
-        
         self.last_epoch = -1
     
     def __call__(self, epoch, state):
         """執行回調"""
         if self.progress_bar is None:
             return
-        
-        # 更新進度條
         if epoch > self.last_epoch:
-            # 計算需要更新的步數
             steps = epoch - self.last_epoch
-            
-            # 更新進度條
             self.progress_bar.update(steps)
-            
-            # 更新描述信息
             desc_items = []
             if 'train_loss' in state and state['train_loss'] is not None:
                 desc_items.append(f"loss: {state['train_loss']:.4f}")
@@ -294,10 +242,8 @@ class ProgressBar(Callback):
                 for metric_name, metric_value in state['metrics'].items():
                     if metric_name in ['rmse', 'r2_score', 'mae']:
                         desc_items.append(f"{metric_name}: {metric_value:.4f}")
-            
             if desc_items:
                 self.progress_bar.set_description(f"Epoch {epoch+1}/{self.total_epochs} - " + " - ".join(desc_items))
-            
             self.last_epoch = epoch
     
     def close(self):
@@ -321,46 +267,32 @@ class LossHistory(Callback):
         """
         self.save_path = save_path
         self.save_freq = save_freq
-        
-        # 初始化歷史記錄
         self.history = {
             'train_loss': [],
             'val_loss': [],
             'metrics': {},
             'epoch': []
         }
-        
         if save_path is not None:
-            # 確保保存目錄存在
             Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-            
         logger.info(f"初始化LossHistory: 保存路徑={save_path}, 保存頻率={save_freq}")
     
     def __call__(self, epoch, state):
         """執行回調"""
-        # 記錄訓練損失
         if 'train_loss' in state and state['train_loss'] is not None:
             self.history['train_loss'].append(float(state['train_loss']))
         else:
             self.history['train_loss'].append(None)
-        
-        # 記錄驗證損失
         if 'val_loss' in state and state['val_loss'] is not None:
             self.history['val_loss'].append(float(state['val_loss']))
         else:
             self.history['val_loss'].append(None)
-        
-        # 記錄指標
         if 'metrics' in state and state['metrics'] is not None:
             for metric_name, metric_value in state['metrics'].items():
                 if metric_name not in self.history['metrics']:
                     self.history['metrics'][metric_name] = []
                 self.history['metrics'][metric_name].append(float(metric_value))
-        
-        # 記錄輪次
         self.history['epoch'].append(epoch)
-        
-        # 定期保存歷史記錄
         if self.save_path is not None and (epoch % self.save_freq == 0 or epoch == -1):
             self.save()
     
@@ -368,8 +300,6 @@ class LossHistory(Callback):
         """保存歷史記錄"""
         if self.save_path is None:
             return
-        
-        # 轉換為JSON可序列化格式
         json_history = {}
         for key, value in self.history.items():
             if isinstance(value, dict):
@@ -378,14 +308,9 @@ class LossHistory(Callback):
                     json_history[key][sub_key] = [float(v) if v is not None else None for v in sub_value]
             else:
                 json_history[key] = [float(v) if v is not None else None for v in value]
-        
-        # 保存為JSON文件
         with open(self.save_path, 'w', encoding='utf-8') as f:
             json.dump(json_history, f, indent=2)
-            
         logger.debug(f"訓練歷史記錄已保存至 {self.save_path}")
-
-
 class AdaptiveCallbacks:
     """
     自適應回調工廠類
@@ -422,23 +347,15 @@ class AdaptiveCallbacks:
             mode (str): 監控模式
             save_freq (int): 保存頻率
             verbose (bool): 是否輸出詳細日誌
-            
         返回:
             list: 回調函數列表
         """
         callbacks = []
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        
-        # 創建輸出目錄
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 模型名稱
         model_name = model.__class__.__name__
-        
-        # 1. 添加模型檢查點回調
-        if dataset_size < 100:  # 小數據集
-            # 小數據集容易過擬合，只保存最佳模型
+        if dataset_size < 100:
             checkpoint_dir = output_dir / f"{model_name}_{timestamp}" / "checkpoints"
             checkpoint_callback = ModelCheckpoint(
                 checkpoint_dir=checkpoint_dir,
@@ -449,7 +366,6 @@ class AdaptiveCallbacks:
                 verbose=verbose
             )
         else:
-            # 大數據集定期保存檢查點
             checkpoint_dir = output_dir / f"{model_name}_{timestamp}" / "checkpoints"
             checkpoint_callback = ModelCheckpoint(
                 checkpoint_dir=checkpoint_dir,
@@ -459,18 +375,13 @@ class AdaptiveCallbacks:
                 max_save=min(5, epochs // save_freq + 1),
                 verbose=verbose
             )
-        
         callbacks.append(checkpoint_callback)
-        
-        # 2. 添加損失歷史記錄回調
         history_path = output_dir / f"{model_name}_{timestamp}" / "history.json"
         history_callback = LossHistory(
             save_path=history_path,
             save_freq=1
         )
         callbacks.append(history_callback)
-        
-        # 3. 添加TensorBoard回調
         if use_tensorboard and tensorboard_available:
             tensorboard_dir = output_dir / f"{model_name}_{timestamp}" / "tensorboard"
             tensorboard_callback = TensorBoardLogger(
@@ -478,20 +389,16 @@ class AdaptiveCallbacks:
                 comment=f"_{model_name}_{dataset_size}_samples"
             )
             callbacks.append(tensorboard_callback)
-        
-        # 4. 添加進度條回調
         if use_progress_bar and tqdm_available:
             progress_bar = ProgressBar(
                 total_epochs=epochs,
                 update_freq=1,
-                ascii=True  # 在某些環境中可能更兼容
+                ascii=True
             )
             callbacks.append(progress_bar)
-        
         return callbacks
 
 
-# 輔助函數
 def create_default_callbacks(model_name, output_dir='./outputs', epochs=100):
     """
     創建默認回調函數集合
@@ -500,21 +407,15 @@ def create_default_callbacks(model_name, output_dir='./outputs', epochs=100):
         model_name (str): 模型名稱
         output_dir (str): 輸出目錄
         epochs (int): 訓練輪數
-        
     返回:
         list: 回調函數列表
     """
     callbacks = []
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
-    # 創建輸出目錄
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
     model_dir = output_dir / f"{model_name}_{timestamp}"
     model_dir.mkdir(parents=True, exist_ok=True)
-    
-    # 1. 模型檢查點回調
     checkpoint_dir = model_dir / "checkpoints"
     checkpoint_callback = ModelCheckpoint(
         checkpoint_dir=checkpoint_dir,
@@ -527,16 +428,12 @@ def create_default_callbacks(model_name, output_dir='./outputs', epochs=100):
         verbose=True
     )
     callbacks.append(checkpoint_callback)
-    
-    # 2. 損失歷史記錄回調
     history_path = model_dir / "history.json"
     history_callback = LossHistory(
         save_path=history_path,
         save_freq=1
     )
     callbacks.append(history_callback)
-    
-    # 3. TensorBoard回調 (如果可用)
     if tensorboard_available:
         tensorboard_dir = model_dir / "tensorboard"
         tensorboard_callback = TensorBoardLogger(
@@ -544,8 +441,6 @@ def create_default_callbacks(model_name, output_dir='./outputs', epochs=100):
             comment=f"_{model_name}"
         )
         callbacks.append(tensorboard_callback)
-    
-    # 4. 進度條回調 (如果可用)
     if tqdm_available:
         progress_bar = ProgressBar(
             total_epochs=epochs,
@@ -553,45 +448,39 @@ def create_default_callbacks(model_name, output_dir='./outputs', epochs=100):
             ascii=True
         )
         callbacks.append(progress_bar)
-    
     return callbacks
 
 
 if __name__ == "__main__":
-    # 簡單的測試代碼
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
+    logger.info("測試回調函數模組")
     
-    # 測試默認回調函數
+    # 測試默認回調函數集合
     logger.info("測試默認回調函數集合:")
     callbacks = create_default_callbacks(
         model_name="HybridPINNLSTM",
         output_dir="./test_outputs",
         epochs=50
     )
-    
     logger.info(f"創建了 {len(callbacks)} 個回調函數:")
     for i, callback in enumerate(callbacks):
         logger.info(f"  {i+1}. {callback.__class__.__name__}")
     
     # 測試自適應回調函數
     logger.info("\n測試自適應回調函數:")
-    
-    # 模擬模型
     class DummyModel(torch.nn.Module):
         def __init__(self):
             super(DummyModel, self).__init__()
             self.linear = torch.nn.Linear(10, 1)
-        
         def forward(self, x):
             return self.linear(x)
-    
     model = DummyModel()
     adaptive_callbacks = AdaptiveCallbacks.create_callbacks(
         model=model,
-        dataset_size=81,  # 小樣本數據集
+        dataset_size=81,
         epochs=100,
         output_dir="./test_outputs",
         use_tensorboard=True,
@@ -601,12 +490,11 @@ if __name__ == "__main__":
         monitor='val_loss',
         mode='min'
     )
-    
     logger.info(f"為小樣本數據集創建了 {len(adaptive_callbacks)} 個回調函數:")
     for i, callback in enumerate(adaptive_callbacks):
         logger.info(f"  {i+1}. {callback.__class__.__name__}")
     
-    # 清理測試目錄
+    # 清理測試輸出目錄 (如需要)
     import shutil
     if os.path.exists("./test_outputs"):
         shutil.rmtree("./test_outputs")

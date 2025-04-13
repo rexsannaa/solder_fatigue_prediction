@@ -49,7 +49,11 @@ from src.training.trainer import (
 )
 from src.training.callbacks import AdaptiveCallbacks
 from src.utils.metrics import evaluate_model, compare_models
-from src.utils.visualization import plot_prediction_vs_true, visualize_model_results
+from src.utils.visualization import (
+    plot_prediction_vs_true, 
+    plot_delta_w_prediction_vs_theory,
+    plot_physical_constraint_validation
+)
 from src.utils.physics import validate_physical_constraints
 
 # 設定日誌
@@ -548,8 +552,41 @@ def evaluate_trained_model(model, data_dict, device, output_dir):
     logger.info("生成視覺化結果...")
     vis_dir = os.path.join(eval_dir, "visualizations")
     os.makedirs(vis_dir, exist_ok=True)
-    
-    visualize_model_results(all_outputs, output_dir=vis_dir)
+
+    # 使用已有的視覺化函數
+    fig = plot_prediction_vs_true(
+        all_outputs["targets"], 
+        all_outputs["predictions"],
+        model_name=type(model).__name__,
+        save_path=os.path.join(vis_dir, "prediction_vs_true.png")
+    )
+    plt.close(fig)
+
+    # 如果有delta_w，則繪製物理關係圖
+    if "delta_w" in all_outputs:
+        # 計算理論delta_w
+        a_coefficient = getattr(model, "a_coefficient", 55.83)
+        b_coefficient = getattr(model, "b_coefficient", -2.259)
+        delta_w_theory = np.power(all_outputs["targets"] / a_coefficient, 1 / b_coefficient)
+        
+        # 繪製delta_w對比圖
+        fig = plot_delta_w_prediction_vs_theory(
+            all_outputs["delta_w"],
+            delta_w_theory,
+            model_name=type(model).__name__,
+            save_path=os.path.join(vis_dir, "delta_w_prediction.png")
+        )
+        plt.close(fig)
+        
+        # 繪製物理約束驗證圖
+        fig = plot_physical_constraint_validation(
+            all_outputs["delta_w"],
+            all_outputs["predictions"],
+            a=a_coefficient,
+            b=b_coefficient,
+            save_path=os.path.join(vis_dir, "physical_constraint.png")
+        )
+        plt.close(fig)
     
     logger.info(f"評估完成，結果已保存至: {eval_dir}")
     

@@ -22,10 +22,9 @@ from src.utils.metrics import (
 
 from src.utils.visualization import (
     plot_prediction_vs_true,
-    plot_training_history,
-    plot_feature_importance,
-    plot_attention_weights,
-    create_error_histogram
+    plot_parameter_impact,
+    plot_physical_constraint_validation,
+    plot_delta_w_prediction_vs_theory
 )
 
 from src.utils.physics import (

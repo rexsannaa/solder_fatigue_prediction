@@ -393,7 +393,11 @@ class Trainer:
                 predictions = outputs
                 loss = self.criterion(predictions, targets)
         else:
-            outputs = self.model(inputs)
+            if isinstance(inputs, tuple) and len(inputs) == 2 and hasattr(self.model, 'forward') and 'time_series_input' in self.model.forward.__code__.co_varnames:
+                static_features, time_series = inputs
+                outputs = self.model(static_features, time_series)
+            else:
+                outputs = self.model(inputs)
             if isinstance(outputs, dict):
                 if 'nf_pred' in outputs:
                     predictions = outputs['nf_pred']

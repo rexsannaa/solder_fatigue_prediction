@@ -492,8 +492,26 @@ def evaluate_trained_model(model, data_dict, device, output_dir):
                     outputs = model(static_features)
                     predictions = outputs["nf_pred"]
                 else:  # LSTM模型
-                    outputs = model(time_series)
-                    predictions = outputs["output"]
+                    # 檢查模型是否需要兩個輸入參數
+                    if hasattr(model, 'forward') and 'time_series_input' in model.forward.__code__.co_varnames:
+                        # 如果是混合模型，同時提供靜態特徵和時間序列
+                        outputs = model(static_features, time_series)
+                    else:
+                        # 對於單一模型 (PINN或LSTM)
+                        outputs = model(time_series)
+                    # 檢查輸出字典中有哪些鍵
+                    if "nf_pred" in outputs:
+                        predictions = outputs["nf_pred"]
+                    elif "output" in outputs:
+                        predictions = outputs["output"]
+                    else:
+                        # 嘗試找到可能的預測值鍵
+                        for key, value in outputs.items():
+                            if isinstance(value, torch.Tensor) and value.dim() <= 2:
+                                predictions = value
+                                break
+                        else:
+                            raise KeyError("在模型輸出中找不到預測值")
                 
                 # 收集輸出
                 for key, value in outputs.items():

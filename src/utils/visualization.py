@@ -22,6 +22,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import logging
 from pathlib import Path
 import os
+import torch
 
 # 設定中文字體支援（保留原註解）
 try:
@@ -179,8 +180,17 @@ def plot_physical_constraint_validation(delta_w_values, nf_values, figsize=(10, 
     返回:
         matplotlib.figure.Figure: 圖像對象
     """
+    # 將輸入轉換為標準 numpy 數組
+    if 'torch' in globals() or 'torch' in locals():
+        import torch
+        if isinstance(delta_w_values, torch.Tensor):
+            delta_w_values = delta_w_values.detach().cpu().numpy()
+        if isinstance(nf_values, torch.Tensor):
+            nf_values = nf_values.detach().cpu().numpy()
+    
     delta_w_values = np.asarray(delta_w_values)
     nf_values = np.asarray(nf_values)
+    
     fig, ax = plt.subplots(figsize=figsize)
     ax.set_xscale('log')
     ax.set_yscale('log')
@@ -190,7 +200,21 @@ def plot_physical_constraint_validation(delta_w_values, nf_values, figsize=(10, 
     y_theory = a * np.power(x_range, b)
     ax.plot(x_range, y_theory, 'r-', label=f'物理模型: Nf={a}*(ΔW)^{b}')
     
+    # 計算理論值並確保它是 numpy 數組
     y_theory_at_x = a * np.power(delta_w_values, b)
+    
+    # 防止任何類型不匹配
+    if 'torch' in globals() or 'torch' in locals():
+        import torch
+        if isinstance(y_theory_at_x, torch.Tensor):
+            y_theory_at_x = y_theory_at_x.detach().cpu().numpy()
+        if isinstance(nf_values, torch.Tensor):
+            nf_values = nf_values.detach().cpu().numpy()
+    
+    # 確保都是 numpy 數組
+    y_theory_at_x = np.asarray(y_theory_at_x)
+    nf_values = np.asarray(nf_values)
+    
     relative_error = np.abs((nf_values - y_theory_at_x) / y_theory_at_x) * 100
     stats_text = (f"與物理模型偏差統計:\n平均相對誤差: {np.mean(relative_error):.2f}%\n"
                   f"中位數相對誤差: {np.median(relative_error):.2f}%\n"

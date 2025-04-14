@@ -62,14 +62,20 @@ class PhysicsLayer(nn.Module):
         返回:
             torch.Tensor: 預測的疲勞壽命
         """
+        # 確保輸入為正值
         delta_w = delta_w.clamp(min=1e-8)
+        
         if self.trainable:
             a = torch.exp(self.log_a)
             b = -torch.exp(self.log_neg_b)
-            nf = a * delta_w.pow(b) + self.bias
-            nf = F.softplus(nf)  # 確保輸出為正值
+            # 移除偏置項，嚴格遵循物理公式
+            nf = a * delta_w.pow(b)
         else:
+            # 修改：確保嚴格遵循物理公式，不做額外調整
             nf = self.a * delta_w.pow(self.b)
+        
+        # 移除上限限制，允許預測更大的壽命值
+        # 只保留下限約束，確保壽命為正值
         nf = nf.clamp(min=10.0)  # 疲勞壽命下限為10週期
         return nf
 
@@ -186,7 +192,8 @@ class PINNBranch(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
                 if m.bias is not None:
                     if m == self.delta_w_layer:  # delta_w輸出層
-                        nn.init.constant_(m.bias, -3.0)  # 初始偏置使輸出在正常範圍內
+                        # 修改：調整初始偏置，使delta_w初始輸出更合理
+                        nn.init.constant_(m.bias, -5.0)  # 初始delta_w值約為0.007
                     else:
                         nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm1d):
@@ -213,6 +220,7 @@ class PINNBranch(nn.Module):
         
         # 使用物理公式計算Nf
         nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
+        # 修改：移除上限限制，只保留合理下限
         nf_pred = nf_pred.clamp(min=10.0)  # 確保Nf為正值
         
         # 計算L2正則化懲罰
@@ -310,7 +318,8 @@ class LSTMBranch(nn.Module):
             elif 'attention_weights' in name:
                 nn.init.xavier_uniform_(param.data)
             elif 'delta_w_layer' in name and 'bias' in name:
-                nn.init.constant_(param.data, -3.0)  # 初始偏置使輸出在正常範圍內
+                # 修改：調整初始偏置，使delta_w初始輸出更合理
+                nn.init.constant_(param.data, -5.0)  # 初始delta_w值約為0.007
             elif 'linear' in name and 'weight' in name:
                 nn.init.xavier_uniform_(param.data)
             elif 'linear' in name and 'bias' in name:
@@ -354,6 +363,7 @@ class LSTMBranch(nn.Module):
         
         # 使用物理公式計算Nf
         nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
+        # 修改：移除上限限制，只保留合理下限
         nf_pred = nf_pred.clamp(min=10.0)  # 確保Nf為正值
         
         # 計算L2正則化懲罰
@@ -553,6 +563,9 @@ class HybridPINNLSTMModel(nn.Module):
             
             # 融合後的delta_w預測層
             self.fused_delta_w_layer = nn.Linear(fusion_dim, 1)
+            # 修改：初始化delta_w預測層的偏置，使輸出在合理範圍
+            with torch.no_grad():
+                nn.init.constant_(self.fused_delta_w_layer.bias, -5.0)  # 初始delta_w值約為0.007
         
         # 物理約束層 (用於確保正確的物理關係)
         if use_physics_layer:
@@ -601,7 +614,8 @@ class HybridPINNLSTMModel(nn.Module):
             )
             
             # 從融合特徵預測delta_w
-            delta_w = torch.exp(self.fused_delta_w_layer(fused_features)).squeeze(-1)
+            log_delta_w = self.fused_delta_w_layer(fused_features)
+            delta_w = torch.exp(log_delta_w).squeeze(-1)
             delta_w = delta_w.clamp(min=1e-8)
             
         else:
@@ -612,11 +626,10 @@ class HybridPINNLSTMModel(nn.Module):
         if self.use_physics_layer:
             nf_pred = self.physics_layer(delta_w)
         else:
-            # 直接使用物理公式
+            # 修改：直接使用物理公式，確保無任何調整或上限限制
             nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
-        
-        # 確保預測值在合理範圍內
-        nf_pred = nf_pred.clamp(min=10.0)  # 疲勞壽命下限為10週期
+            # 只保留下限約束
+            nf_pred = nf_pred.clamp(min=10.0)
         
         # 4. 準備返回結果
         # L2正則化懲罰

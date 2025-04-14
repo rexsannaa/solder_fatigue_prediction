@@ -33,7 +33,8 @@ class PhysicsLayer(nn.Module):
             # 若允許訓練則把 a、b 設為可學習參數
             self.log_a = nn.Parameter(torch.tensor(np.log(a), dtype=torch.float32))
             self.log_neg_b = nn.Parameter(torch.tensor(np.log(-b), dtype=torch.float32))
-            self.bias = nn.Parameter(torch.zeros(1, dtype=torch.float32))
+            # 移除偏置項
+            # self.bias = nn.Parameter(torch.zeros(1, dtype=torch.float32))
         else:
             # 否則以 register_buffer 方式儲存成固定參數
             self.register_buffer('a', torch.tensor(a, dtype=torch.float32))
@@ -55,12 +56,13 @@ class PhysicsLayer(nn.Module):
         if hasattr(self, 'trainable') and self.trainable:
             a = torch.exp(self.log_a)
             b = -torch.exp(self.log_neg_b)
-            nf = a * torch.pow(delta_w, b) + self.bias
-            nf = F.softplus(nf)  # 確保輸出為正值
+            # 修改：移除偏置項和軟正數激活，嚴格遵循物理公式
+            nf = a * torch.pow(delta_w, b)
         else:
             # 應用物理模型: Nf = a * (ΔW)^b
             nf = self.a * torch.pow(delta_w, self.b)
         
+        # 修改：只保留下限約束，移除上限限制
         return nf.clamp(min=10.0)  # 疲勞壽命下限為10週期
 
 
@@ -155,7 +157,8 @@ class PINNModel(nn.Module):
                 if m.bias is not None:
                     # 對於最終的delta_w輸出層，設置特殊初始化
                     if m == list(self.delta_w_layer.modules())[-1]:
-                        nn.init.constant_(m.bias, -3.0)  # exp(-3) ≈ 0.05，合理的delta_w初始值
+                        # 修改：調整初始偏置，使delta_w初始輸出更合理（初始值較小）
+                        nn.init.constant_(m.bias, -5.0)  # exp(-5) ≈ 0.007
                     else:
                         nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm1d):
@@ -190,6 +193,7 @@ class PINNModel(nn.Module):
         else:
             # 使用物理公式: Nf = a * (ΔW)^b
             nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
+            # 修改：移除上限限制，只保留合理下限
             nf_pred = nf_pred.clamp(min=10.0)  # 確保nf_pred為正值
         
         # 計算L2正則化懲罰

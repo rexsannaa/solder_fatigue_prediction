@@ -3,13 +3,13 @@
 """
 lstm.py - 長短期記憶網絡模型
 本模組實現了長短期記憶網絡(LSTM)，專門用於處理銲錫接點非線性塑性應變功的時間序列資料，
-捕捉其中的時序特徵和動態變化模式，為疲勞壽命預測提供時序資訊。
+捕捉其中的時序特徵和動態變化模式，專注於預測非線性塑性應變能密度變化量(delta_w)。
 
 主要特點:
 1. 雙向LSTM層提取時間序列特徵
-2. 注意力機制突出關鍵時間步的重要性
-3. 適應小樣本資料集的時序特徵萃取
-4. 提供多種時序特徵輸出模式
+2. 專注於預測非線性塑性應變能密度變化量(delta_w)
+3. 注意力機制突出關鍵時間步的重要性
+4. 適應小樣本資料集的時序特徵萃取
 """
 
 import torch
@@ -73,11 +73,11 @@ class AttentionLayer(nn.Module):
 
 class LSTMModel(nn.Module):
     """
-    長短期記憶網絡模型 - 修改版
-    專門用於處理銲錫接點的非線性塑性應變功時間序列資料，預測delta_w
+    長短期記憶網絡模型 - 專注於預測delta_w
+    專門用於處理銲錫接點的非線性塑性應變功時間序列資料
     """
-    def __init__(self, input_dim=2, hidden_size=32, num_layers=1, output_dim=1,
-                 bidirectional=True, dropout_rate=0.2, use_attention=True,
+    def __init__(self, input_dim=2, hidden_size=64, num_layers=2, output_dim=1,
+                 bidirectional=True, dropout_rate=0.1, use_attention=True,
                  l2_reg=0.001, a_coefficient=55.83, b_coefficient=-2.259):
         """
         初始化LSTM模型
@@ -86,11 +86,11 @@ class LSTMModel(nn.Module):
             input_dim (int): 輸入特徵維度，預設為2 (上下界面非線性塑性應變功)
             hidden_size (int): LSTM隱藏層大小
             num_layers (int): LSTM層數
-            output_dim (int): 輸出維度，預設為1 (疲勞壽命)
+            output_dim (int): 輸出維度，預設為1
             bidirectional (bool): 是否使用雙向LSTM
             dropout_rate (float): Dropout比率
             use_attention (bool): 是否使用注意力機制
-            l2_reg (float): L2正則化系數
+            l2_reg (float): L2正則化係數
             a_coefficient (float): 物理模型係數a
             b_coefficient (float): 物理模型係數b
         """
@@ -103,7 +103,7 @@ class LSTMModel(nn.Module):
         self.use_attention = use_attention
         self.l2_reg = l2_reg
         
-        # 儲存物理模型係數
+        # 註冊物理係數
         self.register_buffer('a_coefficient', torch.tensor(a_coefficient, dtype=torch.float32))
         self.register_buffer('b_coefficient', torch.tensor(b_coefficient, dtype=torch.float32))
         
@@ -139,29 +139,47 @@ class LSTMModel(nn.Module):
         
         self.fc_layers = nn.Sequential(*fc_layers)
         
-        # 修改：添加專門用於預測delta_w的輸出層
+        # 非線性塑性應變能密度變化量(delta_w)預測層
+        # 使用對數空間預測，確保輸出為正值
         self.delta_w_layer = nn.Linear(fc_input_dim, 1)
-        
-        # 保留原來預測壽命的層，以保持向後兼容性
-        self.output_layer = nn.Linear(fc_input_dim, output_dim)
         
         # 初始化權重
         self._initialize_weights()
     
+    def _initialize_weights(self):
+        """初始化網絡權重"""
+        for name, param in self.named_parameters():
+            if 'lstm' in name:
+                if 'weight_ih' in name:
+                    nn.init.xavier_uniform_(param.data) if param.dim() >= 2 else nn.init.uniform_(param.data, -0.1, 0.1)
+                elif 'weight_hh' in name:
+                    nn.init.orthogonal_(param.data) if param.dim() >= 2 else nn.init.uniform_(param.data, -0.1, 0.1)
+                elif 'bias' in name:
+                    nn.init.zeros_(param.data)
+            elif 'attention_weights' in name:
+                nn.init.xavier_uniform_(param.data) if param.dim() >= 2 else nn.init.uniform_(param.data, -0.1, 0.1)
+            elif 'delta_w_layer' in name and 'bias' in name:
+                nn.init.constant_(param.data, -3.0)  # 初始偏置值為對數空間中的-3，exp(-3)≈0.05
+            elif 'linear' in name and 'weight' in name:
+                nn.init.xavier_uniform_(param.data) if param.dim() >= 2 else nn.init.uniform_(param.data, -0.1, 0.1)
+            elif 'linear' in name and 'bias' in name:
+                nn.init.zeros_(param.data)
+    
     def forward(self, x, return_attention=False):
         """
-        前向傳播 - 修改版：專注於預測delta_w
-
+        前向傳播 - 專注於預測delta_w，再通過物理公式計算nf_pred
+        
         參數:
             x (torch.Tensor): 輸入時間序列，形狀為 (batch_size, seq_len, input_dim)
             return_attention (bool): 是否返回注意力權重
         
         返回:
             dict: 包含預測結果的字典:
-                    - 'delta_w': 預測的非線性塑性應變能密度變化量
-                    - 'output': 預測的疲勞壽命 (向後兼容性)
-                    - 'features': 提取的時序特徵
-                    - 'attention_weights': 注意力權重 (如果使用注意力機制且return_attention=True)
+                - 'delta_w': 預測的非線性塑性應變能密度變化量 (主要預測目標)
+                - 'nf_pred': 根據delta_w計算的疲勞壽命
+                - 'features': 提取的時序特徵
+                - 'l2_penalty': L2正則化懲罰
+                - 'attention_weights': 注意力權重 (如果使用注意力機制且return_attention=True)
         """
         # LSTM前向傳播
         lstm_output, (hidden, cell) = self.lstm(x)
@@ -186,20 +204,15 @@ class LSTMModel(nn.Module):
         fc_output = self.fc_layers(context_vector)
         
         # 預測delta_w - 使用對數空間確保輸出為正值
-        delta_w = torch.exp(self.delta_w_layer(fc_output))
+        log_delta_w = self.delta_w_layer(fc_output)
+        delta_w = torch.exp(log_delta_w).squeeze(-1)
+        delta_w = delta_w.clamp(min=1e-8)  # 確保delta_w為正值
         
-        # 使用物理公式計算壽命（為了向後兼容）
+        # 使用物理公式計算疲勞壽命Nf
         nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
-        
-        # 向後兼容的輸出層
-        output = torch.exp(self.output_layer(fc_output))
+        nf_pred = nf_pred.clamp(min=10.0)  # 確保疲勞壽命不會太小
 
-        # 確保預測值是正數
-        delta_w = torch.clamp(delta_w, min=1e-6)
-        output = torch.clamp(output, min=10.0)
-        nf_pred = torch.clamp(nf_pred, min=10.0)
-
-        # 應用L2正則化
+        # 計算L2正則化懲罰
         l2_penalty = 0.0
         if self.l2_reg > 0:
             for param in self.parameters():
@@ -212,14 +225,15 @@ class LSTMModel(nn.Module):
             # 乘以正則化系數
             l2_penalty = l2_penalty * self.l2_reg
 
+        # 準備輸出結果
         result = {
-            'delta_w': delta_w.squeeze(-1),        # 新增：明確輸出delta_w
-            'nf_pred': nf_pred.squeeze(-1),        # 使用物理公式計算的壽命
-            'output': output.squeeze(-1),          # 舊版輸出，保持向後兼容
-            'features': context_vector,
-            'l2_penalty': l2_penalty
+            'delta_w': delta_w,  # 主要預測目標 - 非線性塑性應變能密度變化量
+            'nf_pred': nf_pred,  # 根據delta_w計算的疲勞壽命
+            'features': context_vector,  # 提取的時序特徵
+            'l2_penalty': l2_penalty  # L2正則化懲罰
         }
 
+        # 如果需要返回注意力權重
         if return_attention and attention_weights is not None:
             result['attention_weights'] = attention_weights
 
@@ -236,8 +250,19 @@ class LSTMModel(nn.Module):
             torch.Tensor: 時間特徵向量
         """
         with torch.no_grad():
-            result = self.forward(x)
-            return result['last_hidden']
+            lstm_output, (hidden, cell) = self.lstm(x)
+            
+            if self.use_attention:
+                context_vector, _ = self.attention(lstm_output)
+            else:
+                if self.bidirectional:
+                    last_forward = hidden[-2, :, :]
+                    last_backward = hidden[-1, :, :]
+                    context_vector = torch.cat((last_forward, last_backward), dim=1)
+                else:
+                    context_vector = hidden[-1, :, :]
+            
+            return context_vector
 
 
 if __name__ == "__main__":
@@ -248,7 +273,13 @@ if __name__ == "__main__":
     )
     
     # 創建一個小型LSTM模型進行測試
-    model = LSTMModel(input_dim=2, hidden_size=32, num_layers=1, use_attention=True)
+    model = LSTMModel(
+        input_dim=2, 
+        hidden_size=64, 
+        num_layers=2, 
+        bidirectional=True,
+        use_attention=True
+    )
     
     # 創建隨機輸入資料，模擬4個時間步的上下界面非線性塑性應變功
     batch_size = 8
@@ -260,9 +291,11 @@ if __name__ == "__main__":
     output = model(x, return_attention=True)
     
     logger.info(f"模型輸出:")
-    logger.info(f"  預測疲勞壽命形狀: {output['output'].shape}")
-    logger.info(f"  隱藏層特徵形狀: {output['last_hidden'].shape}")
+    logger.info(f"  預測delta_w形狀: {output['delta_w'].shape}")
+    logger.info(f"  預測疲勞壽命形狀: {output['nf_pred'].shape}")
+    logger.info(f"  特徵向量形狀: {output['features'].shape}")
     if 'attention_weights' in output:
         logger.info(f"  注意力權重形狀: {output['attention_weights'].shape}")
         logger.info(f"  注意力權重總和: {output['attention_weights'].sum(dim=1)}")  # 應為每個樣本總和為1
-    logger.info(f"  預測疲勞壽命範圍: [{output['output'].min().item()}, {output['output'].max().item()}]")
+    logger.info(f"  預測delta_w範圍: [{output['delta_w'].min().item()}, {output['delta_w'].max().item()}]")
+    logger.info(f"  預測疲勞壽命範圍: [{output['nf_pred'].min().item()}, {output['nf_pred'].max().item()}]")

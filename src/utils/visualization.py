@@ -232,6 +232,7 @@ def plot_physical_constraint_validation(delta_w_values, nf_values, figsize=(10, 
     plt.tight_layout()
     _save_figure(fig, save_path)
     return fig
+
 def _process_fusion_weights(fusion_weights):
     """
     處理不同形式的融合權重數據，返回一個長度至少為2的平均權重陣列

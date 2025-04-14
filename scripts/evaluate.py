@@ -242,15 +242,80 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
                 # 根據模型類型進行預測
                 if model_type == "hybrid":
                     outputs = model(X_batch, time_series_batch, return_features=True)
-                    predictions = outputs["nf_pred"]
+                    
+                    # 添加調試輸出
+                    print("="*50)
+                    print("混合模型輸出檢查:")
+                    print(f"輸出字典鍵: {list(outputs.keys())}")
+                    
+                    if "delta_w" in outputs:
+                        delta_w_sample = outputs["delta_w"][:5].cpu().numpy()
+                        print(f"delta_w 樣本值: {delta_w_sample}")
+                    
+                    if "nf_pred" in outputs:
+                        nf_pred_sample = outputs["nf_pred"][:5].cpu().numpy()
+                        print(f"nf_pred 樣本值: {nf_pred_sample}")
+                        
+                        # 手動計算幾個樣本做驗證
+                        a_coef = 55.83
+                        b_coef = -2.259
+                        if "delta_w" in outputs:
+                            delta_w = outputs["delta_w"][:5].cpu().numpy()
+                            manual_nf = a_coef * np.power(delta_w, b_coef)
+                            print(f"手動計算的 nf 值: {manual_nf}")
+                            print(f"與模型輸出的 nf_pred 比較: {nf_pred_sample}")
+                    
+                    # 確保正確獲取預測值
+                    if "nf_pred" in outputs:
+                        predictions = outputs["nf_pred"]
+                        print(f"使用 nf_pred 作為預測值")
+                    elif "delta_w" in outputs:
+                        # 如果沒有 nf_pred，用物理公式從 delta_w 計算
+                        delta_w = outputs["delta_w"]
+                        a_coefficient = 55.83
+                        b_coefficient = -2.259
+                        predictions = a_coefficient * torch.pow(delta_w, b_coefficient)
+                        print(f"從 delta_w 計算 nf_pred: 範圍 {predictions.min().item()} - {predictions.max().item()}")
+                    else:
+                        # 如果都沒有，則報錯
+                        raise KeyError("模型輸出中沒有找到 nf_pred 或 delta_w")
+                    
                     # 收集其他輸出
                     for key in outputs:
                         if key not in model_outputs:
                             model_outputs[key] = []
-                        model_outputs[key].append(outputs[key].cpu().numpy())
+                        if isinstance(outputs[key], torch.Tensor):
+                            model_outputs[key].append(outputs[key].cpu().numpy())
+                        else:
+                            model_outputs[key].append(outputs[key])
+                    
                 elif model_type == "pinn":
                     outputs = model(X_batch)
-                    predictions = outputs["nf_pred"]
+                    
+                    # 添加調試輸出
+                    print("="*50)
+                    print("PINN模型輸出檢查:")
+                    print(f"輸出字典鍵: {list(outputs.keys())}")
+                    
+                    if "delta_w" in outputs:
+                        print(f"delta_w 樣本值: {outputs['delta_w'][:5].cpu().numpy()}")
+                    
+                    if "nf_pred" in outputs:
+                        print(f"nf_pred 樣本值: {outputs['nf_pred'][:5].cpu().numpy()}")
+                    
+                    # 確保正確獲取預測值
+                    if "nf_pred" in outputs:
+                        predictions = outputs["nf_pred"]
+                    elif "delta_w" in outputs:
+                        # 從 delta_w 計算 nf_pred
+                        delta_w = outputs["delta_w"]
+                        a_coefficient = 55.83
+                        b_coefficient = -2.259
+                        predictions = a_coefficient * torch.pow(delta_w, b_coefficient)
+                        print(f"從 delta_w 計算 nf_pred: 範圍 {predictions.min().item()} - {predictions.max().item()}")
+                    else:
+                        raise KeyError("PINN模型輸出中沒有找到 nf_pred 或 delta_w")
+                    
                     # 收集其他輸出
                     for key in outputs:
                         if key not in model_outputs:
@@ -260,9 +325,34 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
                             model_outputs[key].append(outputs[key].cpu().numpy())
                         else:
                             model_outputs[key].append(outputs[key])
+                            
                 elif model_type == "lstm":
                     outputs = model(time_series_batch)
-                    predictions = outputs["output"]
+                    
+                    # 添加調試輸出
+                    print("="*50)
+                    print("LSTM模型輸出檢查:")
+                    print(f"輸出字典鍵: {list(outputs.keys())}")
+                    
+                    if "delta_w" in outputs:
+                        print(f"delta_w 樣本值: {outputs['delta_w'][:5].cpu().numpy()}")
+                    
+                    # 確保正確獲取預測值
+                    if "nf_pred" in outputs:
+                        predictions = outputs["nf_pred"]
+                    elif "output" in outputs:
+                        predictions = outputs["output"]
+                        print(f"使用 'output' 鍵作為預測值")
+                    elif "delta_w" in outputs:
+                        # 從 delta_w 計算 nf_pred
+                        delta_w = outputs["delta_w"]
+                        a_coefficient = 55.83
+                        b_coefficient = -2.259
+                        predictions = a_coefficient * torch.pow(delta_w, b_coefficient)
+                        print(f"從 delta_w 計算 nf_pred: 範圍 {predictions.min().item()} - {predictions.max().item()}")
+                    else:
+                        raise KeyError("LSTM模型輸出中沒有找到可用的預測值")
+                    
                     # 收集其他輸出
                     for key in outputs:
                         if key not in model_outputs:
@@ -270,6 +360,13 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
                         model_outputs[key].append(outputs[key].cpu().numpy())
                 else:
                     raise ValueError(f"不支援的模型類型: {model_type}")
+                
+                # 在第一個批次檢查預測值
+                if batch_idx == 0:
+                    pred_sample = predictions.cpu().numpy()
+                    print(f"批次 {batch_idx} 預測值範圍: {np.min(pred_sample)} - {np.max(pred_sample)}")
+                    print(f"批次 {batch_idx} 預測值樣本: {pred_sample[:5]}")
+                    print(f"批次 {batch_idx} 目標值樣本: {y_batch.cpu().numpy()[:5]}")
                 
                 # 收集預測和目標
                 all_predictions.append(predictions.cpu().numpy())
@@ -279,10 +376,22 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
         all_predictions = np.concatenate(all_predictions)
         all_targets = np.concatenate(all_targets)
         
+        # 檢查最終結果
+        print("="*50)
+        print("最終預測結果檢查:")
+        print(f"預測值範圍: {np.min(all_predictions)} - {np.max(all_predictions)}")
+        print(f"目標值範圍: {np.min(all_targets)} - {np.max(all_targets)}")
+        print(f"預測值樣本: {all_predictions[:5]}")
+        print(f"目標值樣本: {all_targets[:5]}")
+        
         # 合併模型輸出
         for key in model_outputs:
             if isinstance(model_outputs[key][0], np.ndarray):
-                model_outputs[key] = np.concatenate(model_outputs[key])
+                try:
+                    model_outputs[key] = np.concatenate(model_outputs[key])
+                except ValueError as e:
+                    print(f"無法合併輸出 '{key}': {str(e)}")
+                    # 如果不能合併，保留為列表
         
         # 添加預測和目標到模型輸出
         model_outputs["predictions"] = all_predictions

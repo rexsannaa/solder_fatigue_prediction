@@ -20,6 +20,8 @@ import numpy as np
 import logging
 import math
 import traceback
+import os
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -62,20 +64,18 @@ class PhysicsLayer(nn.Module):
         返回:
             torch.Tensor: 預測的疲勞壽命
         """
-        # 確保輸入為正值
-        delta_w = delta_w.clamp(min=1e-8)
+        # 確保輸入為正值 (物理上合理)
+        delta_w = torch.clamp(delta_w, min=1e-8)
         
         if self.trainable:
             a = torch.exp(self.log_a)
             b = -torch.exp(self.log_neg_b)
-            # 移除偏置項，嚴格遵循物理公式
-            nf = a * delta_w.pow(b)
+            nf = a * torch.pow(delta_w, b) + self.bias
+            nf = F.softplus(nf)  # 確保輸出為正值
         else:
-            # 修改：確保嚴格遵循物理公式，不做額外調整
-            nf = self.a * delta_w.pow(self.b)
+            # 應用物理模型: Nf = a * (ΔW)^b
+            nf = self.a * torch.pow(delta_w, self.b)
         
-        # 移除上限限制，允許預測更大的壽命值
-        # 只保留下限約束，確保壽命為正值
         nf = nf.clamp(min=10.0)  # 疲勞壽命下限為10週期
         return nf
 
@@ -192,8 +192,7 @@ class PINNBranch(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
                 if m.bias is not None:
                     if m == self.delta_w_layer:  # delta_w輸出層
-                        # 修改：調整初始偏置，使delta_w初始輸出更合理
-                        nn.init.constant_(m.bias, -5.0)  # 初始delta_w值約為0.007
+                        nn.init.constant_(m.bias, -3.0)  # 初始偏置使輸出在正常範圍內
                     else:
                         nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm1d):
@@ -220,7 +219,6 @@ class PINNBranch(nn.Module):
         
         # 使用物理公式計算Nf
         nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
-        # 修改：移除上限限制，只保留合理下限
         nf_pred = nf_pred.clamp(min=10.0)  # 確保Nf為正值
         
         # 計算L2正則化懲罰
@@ -318,8 +316,7 @@ class LSTMBranch(nn.Module):
             elif 'attention_weights' in name:
                 nn.init.xavier_uniform_(param.data)
             elif 'delta_w_layer' in name and 'bias' in name:
-                # 修改：調整初始偏置，使delta_w初始輸出更合理
-                nn.init.constant_(param.data, -5.0)  # 初始delta_w值約為0.007
+                nn.init.constant_(param.data, -3.0)  # 初始偏置使輸出在正常範圍內
             elif 'linear' in name and 'weight' in name:
                 nn.init.xavier_uniform_(param.data)
             elif 'linear' in name and 'bias' in name:
@@ -363,7 +360,6 @@ class LSTMBranch(nn.Module):
         
         # 使用物理公式計算Nf
         nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
-        # 修改：移除上限限制，只保留合理下限
         nf_pred = nf_pred.clamp(min=10.0)  # 確保Nf為正值
         
         # 計算L2正則化懲罰
@@ -378,282 +374,6 @@ class LSTMBranch(nn.Module):
         
         if return_attention and self.use_attention:
             result['attention_weights'] = attention_weights
-        
-        return result
-
-class FeatureFusionLayer(nn.Module):
-    """
-    特徵融合層
-    融合PINN和LSTM分支提取的特徵，實現更準確的delta_w預測
-    """
-    def __init__(self, pinn_feature_dim, lstm_feature_dim, fusion_dim=32, 
-                 dropout_rate=0.1, use_batch_norm=True):
-        """
-        初始化特徵融合層
-        
-        參數:
-            pinn_feature_dim (int): PINN分支特徵維度
-            lstm_feature_dim (int): LSTM分支特徵維度
-            fusion_dim (int): 融合後的特徵維度
-            dropout_rate (float): Dropout率
-            use_batch_norm (bool): 是否使用批次正規化
-        """
-        super(FeatureFusionLayer, self).__init__()
-        self.pinn_feature_dim = pinn_feature_dim
-        self.lstm_feature_dim = lstm_feature_dim
-        self.fusion_dim = fusion_dim
-        
-        # 門控機制用於動態調整兩個分支的重要性
-        self.gate_network = nn.Sequential(
-            nn.Linear(pinn_feature_dim + lstm_feature_dim, 2),
-            nn.Softmax(dim=1)
-        )
-        
-        # 特徵投影層
-        self.pinn_projection = nn.Linear(pinn_feature_dim, fusion_dim)
-        self.lstm_projection = nn.Linear(lstm_feature_dim, fusion_dim)
-        
-        # 融合後進一步處理層
-        layers = []
-        layers.append(nn.Linear(fusion_dim, fusion_dim))
-        if use_batch_norm:
-            layers.append(nn.BatchNorm1d(fusion_dim))
-        layers.append(nn.LeakyReLU(0.1))
-        if dropout_rate > 0:
-            layers.append(nn.Dropout(dropout_rate))
-        
-        self.fusion_layers = nn.Sequential(*layers)
-    
-    def forward(self, pinn_features, lstm_features):
-        """
-        前向傳播
-        
-        參數:
-            pinn_features (torch.Tensor): PINN分支特徵
-            lstm_features (torch.Tensor): LSTM分支特徵
-            
-        返回:
-            tuple: (融合後的特徵, 門控權重)
-        """
-        # 合併特徵以計算門控權重
-        combined = torch.cat([pinn_features, lstm_features], dim=1)
-        gate = self.gate_network(combined)  # (batch_size, 2)
-        
-        # 投影特徵至共同空間
-        pinn_proj = self.pinn_projection(pinn_features)  # (batch_size, fusion_dim)
-        lstm_proj = self.lstm_projection(lstm_features)  # (batch_size, fusion_dim)
-        
-        # 應用門控機制
-        fused = gate[:, 0].unsqueeze(1) * pinn_proj + gate[:, 1].unsqueeze(1) * lstm_proj
-        
-        # 進一步處理融合特徵
-        output = self.fusion_layers(fused)
-        
-        return output, gate
-
-class HybridPINNLSTMModel(nn.Module):
-    """
-    混合PINN-LSTM模型
-    結合物理信息神經網絡和長短期記憶網絡的優勢
-    明確專注於預測delta_w，再使用物理公式計算疲勞壽命
-    """
-    def __init__(self, 
-                static_input_dim=5,
-                time_input_dim=2,
-                time_steps=4,
-                pinn_hidden_dims=[64, 32, 16],
-                lstm_hidden_size=64,
-                lstm_num_layers=2,
-                fusion_dim=32,
-                dropout_rate=0.1,
-                bidirectional=True,
-                use_attention=True,
-                use_physics_layer=True,
-                physics_layer_trainable=False,
-                use_batch_norm=True,
-                pinn_weight_init=0.7,
-                lstm_weight_init=0.3,
-                a_coefficient=55.83,
-                b_coefficient=-2.259,
-                use_log_transform=True,
-                ensemble_method='weighted',
-                l2_reg=0.0005):
-        """
-        初始化混合PINN-LSTM模型
-        
-        參數:
-            static_input_dim (int): 靜態特徵維度
-            time_input_dim (int): 時間序列特徵維度
-            time_steps (int): 時間步數
-            pinn_hidden_dims (list): PINN分支隱藏層維度列表
-            lstm_hidden_size (int): LSTM分支隱藏層大小
-            lstm_num_layers (int): LSTM分支層數
-            fusion_dim (int): 特徵融合維度
-            dropout_rate (float): Dropout率
-            bidirectional (bool): 是否使用雙向LSTM
-            use_attention (bool): 是否使用注意力機制
-            use_physics_layer (bool): 是否使用物理約束層
-            physics_layer_trainable (bool): 物理約束層參數是否可訓練
-            use_batch_norm (bool): 是否使用批次正規化
-            pinn_weight_init (float): PINN分支初始權重
-            lstm_weight_init (float): LSTM分支初始權重
-            a_coefficient (float): 物理模型係數a
-            b_coefficient (float): 物理模型係數b
-            use_log_transform (bool): 是否使用對數變換
-            ensemble_method (str): 融合方法 'weighted', 'gate', 'deep_fusion'
-            l2_reg (float): L2正則化係數
-        """
-        super(HybridPINNLSTMModel, self).__init__()
-        
-        self.static_input_dim = static_input_dim
-        self.time_input_dim = time_input_dim
-        self.time_steps = time_steps
-        self.use_physics_layer = use_physics_layer
-        self.use_log_transform = use_log_transform
-        self.ensemble_method = ensemble_method
-        self.l2_reg = l2_reg
-        
-        # 註冊物理係數
-        self.register_buffer('a_coefficient', torch.tensor(a_coefficient, dtype=torch.float32))
-        self.register_buffer('b_coefficient', torch.tensor(b_coefficient, dtype=torch.float32))
-        
-        # PINN分支 - 專注於從靜態特徵預測delta_w
-        self.pinn_branch = PINNBranch(
-            input_dim=static_input_dim,
-            hidden_dims=pinn_hidden_dims,
-            dropout_rate=dropout_rate,
-            use_batch_norm=use_batch_norm,
-            activation='leaky_relu',
-            l2_reg=l2_reg,
-            a_coefficient=a_coefficient,
-            b_coefficient=b_coefficient
-        )
-        
-        # LSTM分支 - 專注於從時間序列預測delta_w
-        self.lstm_branch = LSTMBranch(
-            input_dim=time_input_dim,
-            hidden_size=lstm_hidden_size,
-            num_layers=lstm_num_layers,
-            bidirectional=bidirectional,
-            dropout_rate=dropout_rate,
-            use_attention=use_attention,
-            l2_reg=l2_reg,
-            a_coefficient=a_coefficient,
-            b_coefficient=b_coefficient
-        )
-        
-        # 分支權重 (加權融合)
-        if ensemble_method == 'weighted':
-            # 使用logit參數化權重以確保0-1範圍內
-            weight_param = torch.tensor([math.log(pinn_weight_init / (1 - pinn_weight_init))], dtype=torch.float32)
-            self.branch_weight_param = nn.Parameter(weight_param)
-        
-        # 特徵融合層
-        if ensemble_method in ['gate', 'deep_fusion']:
-            pinn_feat_dim = pinn_hidden_dims[-1]
-            lstm_feat_dim = lstm_hidden_size * 2 if bidirectional else lstm_hidden_size
-            
-            self.fusion_layer = FeatureFusionLayer(
-                pinn_feature_dim=pinn_feat_dim,
-                lstm_feature_dim=lstm_feat_dim,
-                fusion_dim=fusion_dim,
-                dropout_rate=dropout_rate,
-                use_batch_norm=use_batch_norm
-            )
-            
-            # 融合後的delta_w預測層
-            self.fused_delta_w_layer = nn.Linear(fusion_dim, 1)
-            # 修改：初始化delta_w預測層的偏置，使輸出在合理範圍
-            with torch.no_grad():
-                nn.init.constant_(self.fused_delta_w_layer.bias, -5.0)  # 初始delta_w值約為0.007
-        
-        # 物理約束層 (用於確保正確的物理關係)
-        if use_physics_layer:
-            self.physics_layer = PhysicsLayer(
-                a=a_coefficient, 
-                b=b_coefficient, 
-                trainable=physics_layer_trainable
-            )
-    
-    def get_branch_weights(self):
-        """獲取PINN和LSTM分支的權重"""
-        if self.ensemble_method == 'weighted':
-            pinn_w = torch.sigmoid(self.branch_weight_param)
-            lstm_w = 1 - pinn_w
-            return torch.tensor([pinn_w.item(), lstm_w.item()], device=pinn_w.device)
-        
-        # 默認權重
-        return torch.tensor([0.5, 0.5], device=next(self.parameters()).device)
-    
-    def forward(self, static_input, time_series_input, return_features=False):
-        """
-        前向傳播 - 兩階段方法：先預測delta_w，再計算Nf
-        
-        參數:
-            static_input (torch.Tensor): 靜態特徵輸入，形狀為 (batch_size, static_input_dim)
-            time_series_input (torch.Tensor): 時間序列輸入，形狀為 (batch_size, time_steps, time_input_dim)
-            return_features (bool): 是否返回內部特徵
-            
-        返回:
-            dict: 包含預測結果的字典
-        """
-        # 1. 分支預測
-        pinn_out = self.pinn_branch(static_input)
-        lstm_out = self.lstm_branch(time_series_input)
-        
-        # 2. Delta_W融合預測 (核心預測目標)
-        if self.ensemble_method == 'weighted':
-            # 加權平均融合
-            weights = self.get_branch_weights()
-            delta_w = weights[0] * pinn_out['delta_w'] + weights[1] * lstm_out['delta_w']
-            
-        elif self.ensemble_method in ['gate', 'deep_fusion']:
-            # 使用特徵級融合
-            fused_features, gate_weights = self.fusion_layer(
-                pinn_out['features'], lstm_out['features']
-            )
-            
-            # 從融合特徵預測delta_w
-            log_delta_w = self.fused_delta_w_layer(fused_features)
-            delta_w = torch.exp(log_delta_w).squeeze(-1)
-            delta_w = delta_w.clamp(min=1e-8)
-            
-        else:
-            # 簡單平均融合
-            delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
-        
-        # 3. 使用物理公式/層計算Nf (第二階段)
-        if self.use_physics_layer:
-            nf_pred = self.physics_layer(delta_w)
-        else:
-            # 修改：直接使用物理公式，確保無任何調整或上限限制
-            nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
-            # 只保留下限約束
-            nf_pred = nf_pred.clamp(min=10.0)
-        
-        # 4. 準備返回結果
-        # L2正則化懲罰
-        l2_penalty = self.l2_reg * (_l2_penalty(self.parameters()))
-        
-        # 基本輸出
-        result = {
-            'delta_w': delta_w,            # 主要預測目標 - 物理量
-            'nf_pred': nf_pred,            # 基於物理公式計算的疲勞壽命
-            'pinn_delta_w': pinn_out['delta_w'],  # PINN分支預測的delta_w
-            'lstm_delta_w': lstm_out['delta_w'],  # LSTM分支預測的delta_w
-            'l2_penalty': l2_penalty
-        }
-        
-        # 可選輸出
-        if return_features:
-            result['pinn_features'] = pinn_out['features']  
-            result['lstm_features'] = lstm_out['features']
-            
-            if self.ensemble_method == 'weighted':
-                result['branch_weights'] = self.get_branch_weights()
-            elif self.ensemble_method in ['gate', 'deep_fusion']:
-                result['gate_weights'] = gate_weights
-                result['fused_features'] = fused_features
         
         return result
 
@@ -1132,3 +852,276 @@ class PINNLSTMTrainer:
         logger.info(f"訓練完成，最佳輪次: {best_epoch+1}，最佳驗證損失: {best_val_loss:.6f}")
         
         return self.history
+
+class FeatureFusionLayer(nn.Module):
+    """
+    特徵融合層
+    融合PINN和LSTM分支提取的特徵，實現更準確的delta_w預測
+    """
+    def __init__(self, pinn_feature_dim, lstm_feature_dim, fusion_dim=32, 
+                 dropout_rate=0.1, use_batch_norm=True):
+        """
+        初始化特徵融合層
+        
+        參數:
+            pinn_feature_dim (int): PINN分支特徵維度
+            lstm_feature_dim (int): LSTM分支特徵維度
+            fusion_dim (int): 融合後的特徵維度
+            dropout_rate (float): Dropout率
+            use_batch_norm (bool): 是否使用批次正規化
+        """
+        super(FeatureFusionLayer, self).__init__()
+        self.pinn_feature_dim = pinn_feature_dim
+        self.lstm_feature_dim = lstm_feature_dim
+        self.fusion_dim = fusion_dim
+        
+        # 門控機制用於動態調整兩個分支的重要性
+        self.gate_network = nn.Sequential(
+            nn.Linear(pinn_feature_dim + lstm_feature_dim, 2),
+            nn.Softmax(dim=1)
+        )
+        
+        # 特徵投影層
+        self.pinn_projection = nn.Linear(pinn_feature_dim, fusion_dim)
+        self.lstm_projection = nn.Linear(lstm_feature_dim, fusion_dim)
+        
+        # 融合後進一步處理層
+        layers = []
+        layers.append(nn.Linear(fusion_dim, fusion_dim))
+        if use_batch_norm:
+            layers.append(nn.BatchNorm1d(fusion_dim))
+        layers.append(nn.LeakyReLU(0.1))
+        if dropout_rate > 0:
+            layers.append(nn.Dropout(dropout_rate))
+        
+        self.fusion_layers = nn.Sequential(*layers)
+    
+    def forward(self, pinn_features, lstm_features):
+        """
+        前向傳播
+        
+        參數:
+            pinn_features (torch.Tensor): PINN分支特徵
+            lstm_features (torch.Tensor): LSTM分支特徵
+            
+        返回:
+            tuple: (融合後的特徵, 門控權重)
+        """
+        # 合併特徵以計算門控權重
+        combined = torch.cat([pinn_features, lstm_features], dim=1)
+        gate = self.gate_network(combined)  # (batch_size, 2)
+        
+        # 投影特徵至共同空間
+        pinn_proj = self.pinn_projection(pinn_features)  # (batch_size, fusion_dim)
+        lstm_proj = self.lstm_projection(lstm_features)  # (batch_size, fusion_dim)
+        
+        # 應用門控機制
+        fused = gate[:, 0].unsqueeze(1) * pinn_proj + gate[:, 1].unsqueeze(1) * lstm_proj
+        
+        # 進一步處理融合特徵
+        output = self.fusion_layers(fused)
+        
+        return output, gate
+
+class HybridPINNLSTMModel(nn.Module):
+    """
+    混合PINN-LSTM模型
+    結合物理信息神經網絡和長短期記憶網絡的優勢
+    明確專注於預測delta_w，再使用物理公式計算疲勞壽命
+    """
+    def __init__(self, 
+                static_input_dim=5,
+                time_input_dim=2,
+                time_steps=4,
+                pinn_hidden_dims=[64, 32, 16],
+                lstm_hidden_size=64,
+                lstm_num_layers=2,
+                fusion_dim=32,
+                dropout_rate=0.1,
+                bidirectional=True,
+                use_attention=True,
+                use_physics_layer=True,
+                physics_layer_trainable=False,
+                use_batch_norm=True,
+                pinn_weight_init=0.7,
+                lstm_weight_init=0.3,
+                a_coefficient=55.83,
+                b_coefficient=-2.259,
+                use_log_transform=True,
+                ensemble_method='weighted',
+                l2_reg=0.0005):
+        """
+        初始化混合PINN-LSTM模型
+        
+        參數:
+            static_input_dim (int): 靜態特徵維度
+            time_input_dim (int): 時間序列特徵維度
+            time_steps (int): 時間步數
+            pinn_hidden_dims (list): PINN分支隱藏層維度列表
+            lstm_hidden_size (int): LSTM分支隱藏層大小
+            lstm_num_layers (int): LSTM分支層數
+            fusion_dim (int): 特徵融合維度
+            dropout_rate (float): Dropout率
+            bidirectional (bool): 是否使用雙向LSTM
+            use_attention (bool): 是否使用注意力機制
+            use_physics_layer (bool): 是否使用物理約束層
+            physics_layer_trainable (bool): 物理約束層參數是否可訓練
+            use_batch_norm (bool): 是否使用批次正規化
+            pinn_weight_init (float): PINN分支初始權重
+            lstm_weight_init (float): LSTM分支初始權重
+            a_coefficient (float): 物理模型係數a
+            b_coefficient (float): 物理模型係數b
+            use_log_transform (bool): 是否使用對數變換
+            ensemble_method (str): 融合方法 'weighted', 'gate', 'deep_fusion'
+            l2_reg (float): L2正則化係數
+        """
+        super(HybridPINNLSTMModel, self).__init__()
+        
+        self.static_input_dim = static_input_dim
+        self.time_input_dim = time_input_dim
+        self.time_steps = time_steps
+        self.use_physics_layer = use_physics_layer
+        self.use_log_transform = use_log_transform
+        self.ensemble_method = ensemble_method
+        self.l2_reg = l2_reg
+        
+        # 註冊物理係數
+        self.register_buffer('a_coefficient', torch.tensor(a_coefficient, dtype=torch.float32))
+        self.register_buffer('b_coefficient', torch.tensor(b_coefficient, dtype=torch.float32))
+        
+        # PINN分支 - 專注於從靜態特徵預測delta_w
+        self.pinn_branch = PINNBranch(
+            input_dim=static_input_dim,
+            hidden_dims=pinn_hidden_dims,
+            dropout_rate=dropout_rate,
+            use_batch_norm=use_batch_norm,
+            activation='leaky_relu',
+            l2_reg=l2_reg,
+            a_coefficient=a_coefficient,
+            b_coefficient=b_coefficient
+        )
+        
+        # LSTM分支 - 專注於從時間序列預測delta_w
+        self.lstm_branch = LSTMBranch(
+            input_dim=time_input_dim,
+            hidden_size=lstm_hidden_size,
+            num_layers=lstm_num_layers,
+            bidirectional=bidirectional,
+            dropout_rate=dropout_rate,
+            use_attention=use_attention,
+            l2_reg=l2_reg,
+            a_coefficient=a_coefficient,
+            b_coefficient=b_coefficient
+        )
+        
+        # 分支權重 (加權融合)
+        if ensemble_method == 'weighted':
+            # 使用logit參數化權重以確保0-1範圍內
+            weight_param = torch.tensor([math.log(pinn_weight_init / (1 - pinn_weight_init))], dtype=torch.float32)
+            self.branch_weight_param = nn.Parameter(weight_param)
+        
+        # 特徵融合層
+        if ensemble_method in ['gate', 'deep_fusion']:
+            pinn_feat_dim = pinn_hidden_dims[-1]
+            lstm_feat_dim = lstm_hidden_size * 2 if bidirectional else lstm_hidden_size
+            
+            self.fusion_layer = FeatureFusionLayer(
+                pinn_feature_dim=pinn_feat_dim,
+                lstm_feature_dim=lstm_feat_dim,
+                fusion_dim=fusion_dim,
+                dropout_rate=dropout_rate,
+                use_batch_norm=use_batch_norm
+            )
+            
+            # 融合後的delta_w預測層
+            self.fused_delta_w_layer = nn.Linear(fusion_dim, 1)
+        
+        # 物理約束層 (用於確保正確的物理關係)
+        if use_physics_layer:
+            self.physics_layer = PhysicsLayer(
+                a=a_coefficient, 
+                b=b_coefficient, 
+                trainable=physics_layer_trainable
+            )
+    
+    def get_branch_weights(self):
+        """獲取PINN和LSTM分支的權重"""
+        if self.ensemble_method == 'weighted':
+            pinn_w = torch.sigmoid(self.branch_weight_param)
+            lstm_w = 1 - pinn_w
+            return torch.tensor([pinn_w.item(), lstm_w.item()], device=pinn_w.device)
+        
+        # 默認權重
+        return torch.tensor([0.5, 0.5], device=next(self.parameters()).device)
+    
+    def forward(self, static_input, time_series_input, return_features=False):
+        """
+        前向傳播 - 兩階段方法：先預測delta_w，再計算Nf
+        
+        參數:
+            static_input (torch.Tensor): 靜態特徵輸入，形狀為 (batch_size, static_input_dim)
+            time_series_input (torch.Tensor): 時間序列輸入，形狀為 (batch_size, time_steps, time_input_dim)
+            return_features (bool): 是否返回內部特徵
+            
+        返回:
+            dict: 包含預測結果的字典
+        """
+        # 1. 分支預測
+        pinn_out = self.pinn_branch(static_input)
+        lstm_out = self.lstm_branch(time_series_input)
+        
+        # 2. Delta_W融合預測 (核心預測目標)
+        if self.ensemble_method == 'weighted':
+            # 加權平均融合
+            weights = self.get_branch_weights()
+            delta_w = weights[0] * pinn_out['delta_w'] + weights[1] * lstm_out['delta_w']
+            
+        elif self.ensemble_method in ['gate', 'deep_fusion']:
+            # 使用特徵級融合
+            fused_features, gate_weights = self.fusion_layer(
+                pinn_out['features'], lstm_out['features']
+            )
+            
+            # 從融合特徵預測delta_w
+            delta_w = torch.exp(self.fused_delta_w_layer(fused_features)).squeeze(-1)
+            delta_w = delta_w.clamp(min=1e-8)
+            
+        else:
+            # 簡單平均融合
+            delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
+        
+        # 3. 使用物理公式/層計算Nf (第二階段)
+        if self.use_physics_layer:
+            nf_pred = self.physics_layer(delta_w)
+        else:
+            # 直接使用物理公式
+            nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
+        
+        # 確保預測值在合理範圍內
+        nf_pred = nf_pred.clamp(min=10.0)  # 疲勞壽命下限為10週期
+        
+        # 4. 準備返回結果
+        # L2正則化懲罰
+        l2_penalty = self.l2_reg * (_l2_penalty(self.parameters()))
+        
+        # 基本輸出
+        result = {
+            'delta_w': delta_w,            # 主要預測目標 - 物理量
+            'nf_pred': nf_pred,            # 基於物理公式計算的疲勞壽命
+            'pinn_delta_w': pinn_out['delta_w'],  # PINN分支預測的delta_w
+            'lstm_delta_w': lstm_out['delta_w'],  # LSTM分支預測的delta_w
+            'l2_penalty': l2_penalty
+        }
+        
+        # 可選輸出
+        if return_features:
+            result['pinn_features'] = pinn_out['features']  
+            result['lstm_features'] = lstm_out['features']
+            
+            if self.ensemble_method == 'weighted':
+                result['branch_weights'] = self.get_branch_weights()
+            elif self.ensemble_method in ['gate', 'deep_fusion']:
+                result['gate_weights'] = gate_weights
+                result['fused_features'] = fused_features
+        
+        return result

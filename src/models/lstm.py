@@ -159,8 +159,7 @@ class LSTMModel(nn.Module):
             elif 'attention_weights' in name:
                 nn.init.xavier_uniform_(param.data) if param.dim() >= 2 else nn.init.uniform_(param.data, -0.1, 0.1)
             elif 'delta_w_layer' in name and 'bias' in name:
-                # 修改：調整初始偏置，使delta_w初始輸出更合理
-                nn.init.constant_(param.data, -5.0)  # 初始對數值為-5.0，exp(-5)≈0.007
+                nn.init.constant_(param.data, -3.0)  # 初始偏置值為對數空間中的-3，exp(-3)≈0.05
             elif 'linear' in name and 'weight' in name:
                 nn.init.xavier_uniform_(param.data) if param.dim() >= 2 else nn.init.uniform_(param.data, -0.1, 0.1)
             elif 'linear' in name and 'bias' in name:
@@ -211,7 +210,6 @@ class LSTMModel(nn.Module):
         
         # 使用物理公式計算疲勞壽命Nf
         nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
-        # 修改：移除上限限制，只保留正數約束
         nf_pred = nf_pred.clamp(min=10.0)  # 確保疲勞壽命不會太小
 
         # 計算L2正則化懲罰

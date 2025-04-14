@@ -200,7 +200,7 @@ class SolderFatigueDataset(Dataset):
         else:
             return static, time_series
 
-def augment_training_data(X_train, time_series_train, y_train, synthetic_samples=20, 
+def augment_training_data(X_train, time_series_train, y_train, synthetic_samples=500, 
                        noise_level=0.05, physics_guided=True, a_coefficient=55.83, 
                        b_coefficient=-2.259):
     """
@@ -210,7 +210,7 @@ def augment_training_data(X_train, time_series_train, y_train, synthetic_samples
         X_train (numpy.ndarray): 靜態特徵訓練集
         time_series_train (numpy.ndarray): 時間序列特徵訓練集
         y_train (numpy.ndarray): 目標訓練集
-        synthetic_samples (int): 生成的合成樣本數量
+        synthetic_samples (int): 生成的合成樣本數量 - 已增加為500
         noise_level (float): 噪聲水平
         physics_guided (bool): 是否使用物理知識引導增強
         a_coefficient (float): 物理模型係數a
@@ -231,14 +231,16 @@ def augment_training_data(X_train, time_series_train, y_train, synthetic_samples
         augmented_time_series = []
         augmented_y = []
         
-        # 1. 添加原始數據
-        augmented_X.append(X_train)
-        augmented_time_series.append(time_series_train)
-        augmented_y.append(y_train)
+        # 1. 添加原始數據 (複製多次以增加基礎樣本數)
+        repeats = 5  # 將原始數據複製5次
+        for _ in range(repeats):
+            augmented_X.append(X_train)
+            augmented_time_series.append(time_series_train)
+            augmented_y.append(y_train)
         
-        # 2. 添加小噪聲擾動樣本
+        # 2. 添加小噪聲擾動樣本 (增加迭代次數)
         n_samples = len(X_train)
-        for _ in range(min(10, synthetic_samples // 2)):
+        for _ in range(min(200, synthetic_samples // 2)):  # 增加迭代次數到200
             # 複製原始樣本
             X_noise = X_train.copy()
             ts_noise = time_series_train.copy()
@@ -275,32 +277,33 @@ def augment_training_data(X_train, time_series_train, y_train, synthetic_samples
             augmented_time_series.append(ts_noise)
             augmented_y.append(y_noise)
         
-        # 3. 插值/混合樣本（僅在樣本數足夠時使用）
+        # 3. 插值/混合樣本 (大幅增加生成數量)
         if n_samples >= 5:
-            for _ in range(min(10, synthetic_samples // 2)):
+            for _ in range(min(300, synthetic_samples)):  # 增加到300次迭代
                 # 隨機選擇兩個樣本進行混合
                 idx1, idx2 = np.random.choice(n_samples, 2, replace=False)
-                alpha = np.random.uniform(0.3, 0.7)  # 混合比例
                 
-                # 線性插值
-                X_mix = alpha * X_train[idx1] + (1 - alpha) * X_train[idx2]
-                ts_mix = alpha * time_series_train[idx1] + (1 - alpha) * time_series_train[idx2]
-                
-                # 使用物理模型計算目標值
-                if physics_guided:
-                    # 對混合後的時間序列計算delta_w
-                    delta_w_mix = np.mean(ts_mix[-1, :] - ts_mix[0, :])
+                # 使用多個混合比例生成多個樣本
+                for alpha in [0.2, 0.35, 0.5, 0.65, 0.8]:  # 為每對樣本生成5個不同混合比例的樣本
+                    # 線性插值
+                    X_mix = alpha * X_train[idx1] + (1 - alpha) * X_train[idx2]
+                    ts_mix = alpha * time_series_train[idx1] + (1 - alpha) * time_series_train[idx2]
                     
-                    # 使用物理模型計算新的目標值
-                    y_mix = a_coefficient * np.power(max(delta_w_mix, 1e-10), b_coefficient)
-                else:
-                    # 線性插值目標值
-                    y_mix = alpha * y_train[idx1] + (1 - alpha) * y_train[idx2]
-                
-                # 添加單個樣本
-                augmented_X.append(np.expand_dims(X_mix, axis=0))
-                augmented_time_series.append(np.expand_dims(ts_mix, axis=0))
-                augmented_y.append(np.array([y_mix]))
+                    # 使用物理模型計算目標值
+                    if physics_guided:
+                        # 對混合後的時間序列計算delta_w
+                        delta_w_mix = np.mean(ts_mix[-1, :] - ts_mix[0, :])
+                        
+                        # 使用物理模型計算新的目標值
+                        y_mix = a_coefficient * np.power(max(delta_w_mix, 1e-10), b_coefficient)
+                    else:
+                        # 線性插值目標值
+                        y_mix = alpha * y_train[idx1] + (1 - alpha) * y_train[idx2]
+                    
+                    # 添加單個樣本
+                    augmented_X.append(np.expand_dims(X_mix, axis=0))
+                    augmented_time_series.append(np.expand_dims(ts_mix, axis=0))
+                    augmented_y.append(np.array([y_mix]))
         
         # 合併所有增強樣本
         X_augmented = np.vstack(augmented_X)

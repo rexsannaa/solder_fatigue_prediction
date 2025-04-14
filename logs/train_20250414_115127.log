@@ -1,0 +1,116 @@
+2025-04-14 11:51:27,245 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-14 11:51:27,277 - __main__ - INFO - 成功載入配置文件: configs/train_config.yaml
+2025-04-14 11:51:27,281 - __main__ - INFO - 已設定隨機種子: 42
+2025-04-14 11:51:27,281 - __main__ - INFO - 使用計算設備: cpu
+2025-04-14 11:51:27,281 - __main__ - INFO - 輸出目錄: outputs/hybrid_model
+2025-04-14 11:51:27,281 - __main__ - INFO - 載入資料: data/raw/Training_data_warpage_final_20250321_v1.2.csv
+2025-04-14 11:51:27,285 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-14 11:51:27,289 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-14 11:51:27,289 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-14 11:51:27,291 - src.data.preprocess - INFO - 資料分割完成 - 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-14 11:51:27,291 - src.data.preprocess - INFO - 完整資料處理流程完成
+2025-04-14 11:51:27,291 - __main__ - INFO - 資料分割完成, 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-14 11:51:27,291 - __main__ - INFO - 應用資料增強...
+2025-04-14 11:51:27,291 - src.data.dataset - INFO - 進行資料增強，原始訓練集大小: 56 樣本
+2025-04-14 11:51:27,435 - src.data.dataset - INFO - 資料增強完成，增強後的訓練集大小: 626 樣本
+2025-04-14 11:51:27,435 - __main__ - INFO - 資料增強完成，增強後的訓練集大小: 626 樣本
+2025-04-14 11:51:27,457 - __main__ - INFO - 創建混合PINN-LSTM模型，使用物理約束: True，融合方法: weighted
+2025-04-14 11:51:27,459 - src.data.dataset - INFO - 已創建資料載入器 - 訓練: 626 樣本, 驗證: 12 樣本, 測試: 13 樣本, 批次大小: 8
+2025-04-14 11:51:29,054 - src.training.trainer - INFO - 創建adamw優化器，學習率: 0.002，權重衰減: 0.0005
+2025-04-14 11:51:29,056 - src.training.losses - INFO - 初始化HybridLoss: lambda_physics=0.1, lambda_consistency=0.1, delta_w_weight=1.5
+2025-04-14 11:51:29,056 - src.training.losses - INFO - 初始化AdaptiveHybridLoss: physics權重從0.1增加到1.0, consistency權重從0.1增加到0.5, delta_w權重從1.5增加到3.0, 在40個輪次內達到最大值, 預熱輪次: 5, 調整方案: linear
+2025-04-14 11:51:29,056 - src.training.trainer - WARNING - 不支援的學習率調度器類型: one_cycle，不使用學習率調度
+2025-04-14 11:51:29,056 - src.training.callbacks - INFO - 初始化ModelCheckpoint: 保存目錄=outputs\hybrid_model\HybridPINNLSTMModel_20250414_115129\checkpoints, 保存頻率=5, 只保存最佳=False, 監控指標=val_loss, 模式=min
+2025-04-14 11:51:29,058 - src.training.callbacks - INFO - 初始化LossHistory: 保存路徑=outputs\hybrid_model\HybridPINNLSTMModel_20250414_115129\history.json, 保存頻率=1
+2025-04-14 11:51:29,060 - src.training.trainer - INFO - 初始化訓練器完成，模型: HybridPINNLSTMModel, 優化器: AdamW, 設備: cpu
+2025-04-14 11:51:29,060 - __main__ - INFO - 開始訓練，總輪數: 600
+2025-04-14 11:51:29,060 - src.training.trainer - INFO - 開始訓練，總輪數: 600
+2025-04-14 11:51:31,607 - src.training.trainer - INFO - 輪次 1/600 - 訓練損失: 14827518566.958719 - 驗證損失: 5529.118530 - rmse: 83830.375000 - r2: -12726.648438 - mae: 39154.449219 - 學習率: 0.002000 - 時間: 2.55秒
+2025-04-14 11:51:31,629 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250414_115129\checkpoints\HybridPINNLSTMModel_epoch_001.pt
+2025-04-14 11:51:31,641 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:51:34,061 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:51:36,324 - src.training.trainer - INFO - 輪次 3/600 - 訓練損失: 25.049457 - 驗證損失: 25.893735 - rmse: 1386.794556 - r2: -2.483130 - mae: 1170.919312 - 學習率: 0.002000 - 時間: 2.26秒
+2025-04-14 11:51:36,334 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:51:39,052 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:51:41,962 - src.training.trainer - INFO - 輪次 5/600 - 訓練損失: 5.107300 - 驗證損失: 5.553593 - rmse: 1379.006714 - r2: -2.444119 - mae: 1161.137085 - 學習率: 0.002000 - 時間: 2.91秒
+2025-04-14 11:51:41,972 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:51:44,834 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250414_115129\checkpoints\HybridPINNLSTMModel_epoch_006.pt
+2025-04-14 11:51:44,842 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:51:47,433 - src.training.trainer - INFO - 輪次 7/600 - 訓練損失: 3.554831 - 驗證損失: 4.158099 - rmse: 1367.676636 - r2: -2.387757 - mae: 1149.047974 - 學習率: 0.002000 - 時間: 2.59秒
+2025-04-14 11:51:47,441 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:51:50,140 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:51:52,700 - src.training.trainer - INFO - 輪次 9/600 - 訓練損失: 2.461467 - 驗證損失: 2.250004 - rmse: 1253.829834 - r2: -1.847230 - mae: 975.288574 - 學習率: 0.002000 - 時間: 2.56秒
+2025-04-14 11:51:52,708 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:51:55,135 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:51:57,809 - src.training.trainer - INFO - 輪次 11/600 - 訓練損失: 1.993756 - 驗證損失: 1.993045 - rmse: 1262.024902 - r2: -1.884571 - mae: 1026.922119 - 學習率: 0.002000 - 時間: 2.67秒
+2025-04-14 11:51:57,830 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250414_115129\checkpoints\HybridPINNLSTMModel_epoch_011.pt
+2025-04-14 11:51:57,841 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:00,523 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:03,036 - src.training.trainer - INFO - 輪次 13/600 - 訓練損失: 1.639390 - 驗證損失: 2.824282 - rmse: 1354.750854 - r2: -2.324025 - mae: 1128.984497 - 學習率: 0.002000 - 時間: 2.51秒
+2025-04-14 11:52:03,052 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:05,572 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:08,503 - src.training.trainer - INFO - 輪次 15/600 - 訓練損失: 1.416912 - 驗證損失: 3.291603 - rmse: 1365.045044 - r2: -2.374732 - mae: 1145.876587 - 學習率: 0.002000 - 時間: 2.93秒
+2025-04-14 11:52:08,517 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:11,780 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250414_115129\checkpoints\HybridPINNLSTMModel_epoch_016.pt
+2025-04-14 11:52:11,793 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:14,374 - src.training.trainer - INFO - 輪次 17/600 - 訓練損失: 1.208261 - 驗證損失: 2.978833 - rmse: 1361.495117 - r2: -2.357203 - mae: 1141.637329 - 學習率: 0.002000 - 時間: 2.58秒
+2025-04-14 11:52:14,388 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:16,883 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:19,274 - src.training.trainer - INFO - 輪次 19/600 - 訓練損失: 1.097910 - 驗證損失: 2.206770 - rmse: 1341.700928 - r2: -2.260294 - mae: 1116.305664 - 學習率: 0.002000 - 時間: 2.39秒
+2025-04-14 11:52:19,286 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:21,986 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:24,678 - src.training.trainer - INFO - 輪次 21/600 - 訓練損失: 0.968448 - 驗證損失: 1.504317 - rmse: 1296.332886 - r2: -2.043536 - mae: 1063.850952 - 學習率: 0.002000 - 時間: 2.69秒
+2025-04-14 11:52:24,702 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250414_115129\checkpoints\HybridPINNLSTMModel_epoch_021.pt
+2025-04-14 11:52:24,716 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:27,860 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:30,488 - src.training.trainer - INFO - 輪次 23/600 - 訓練損失: 0.901715 - 驗證損失: 1.482392 - rmse: 1306.566895 - r2: -2.091781 - mae: 1077.705933 - 學習率: 0.002000 - 時間: 2.63秒
+2025-04-14 11:52:30,501 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:32,930 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:35,500 - src.training.trainer - INFO - 輪次 25/600 - 訓練損失: 0.809245 - 驗證損失: 2.217342 - rmse: 1346.789062 - r2: -2.285069 - mae: 1122.704834 - 學習率: 0.002000 - 時間: 2.57秒
+2025-04-14 11:52:35,508 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:38,079 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250414_115129\checkpoints\HybridPINNLSTMModel_epoch_026.pt
+2025-04-14 11:52:38,095 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:40,664 - src.training.trainer - INFO - 輪次 27/600 - 訓練損失: 0.756148 - 驗證損失: 1.359727 - rmse: 1302.709961 - r2: -2.073554 - mae: 1071.456421 - 學習率: 0.002000 - 時間: 2.57秒
+2025-04-14 11:52:40,674 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-14 11:52:43,174 - __main__ - ERROR - 執行過程中發生錯誤: File outputs/hybrid_model\models\best_model.pt cannot be opened.
+Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 724, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 714, in main
+    train_model(model, data_dict, config, train_config, args, device, output_dir)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 406, in train_model
+    history = trainer.train(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 668, in train
+    if early_stopping(val_loss, self.model, save_path, epoch):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 69, in __call__
+    self._save_checkpoint(model, score, save_path)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 122, in _save_checkpoint
+    torch.save(model.state_dict(), save_path)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 943, in save
+    with _open_zipfile_writer(f) as opened_zipfile:
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 810, in _open_zipfile_writer
+    return container(name_or_buffer)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 781, in __init__
+    super().__init__(torch._C.PyTorchFileWriter(self.name, _compute_crc32))
+RuntimeError: File outputs/hybrid_model\models\best_model.pt cannot be opened.
+2025-04-14 11:52:43,178 - __main__ - ERROR - 詳細錯誤追蹤: Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 724, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 714, in main
+    train_model(model, data_dict, config, train_config, args, device, output_dir)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 406, in train_model
+    history = trainer.train(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 668, in train
+    if early_stopping(val_loss, self.model, save_path, epoch):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 69, in __call__
+    self._save_checkpoint(model, score, save_path)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 122, in _save_checkpoint
+    torch.save(model.state_dict(), save_path)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 943, in save
+    with _open_zipfile_writer(f) as opened_zipfile:
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 810, in _open_zipfile_writer
+    return container(name_or_buffer)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\serialization.py", line 781, in __init__
+    super().__init__(torch._C.PyTorchFileWriter(self.name, _compute_crc32))
+RuntimeError: File outputs/hybrid_model\models\best_model.pt cannot be opened.
+

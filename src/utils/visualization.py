@@ -53,39 +53,40 @@ def _save_figure(fig, save_path):
             logger.info(f"圖像已保存至: {save_path}")
         except Exception as e:
             logger.error(f"保存圖像失敗: {str(e)}")
-def plot_prediction_vs_true(y_true, y_pred, model_name=None, figsize=(10, 6), 
-                            save_path=None, show_metrics=True, log_scale=False):
+
+def plot_delta_w_prediction_vs_theory(delta_w_pred, delta_w_theory, model_name=None, figsize=(10, 6), 
+                                      save_path=None, show_metrics=True, log_scale=True):
     """
-    繪製預測值與真實值的對比圖
+    繪製預測的 delta_w 與理論 delta_w 的對比圖
     
     參數:
-        y_true (array-like): 真實值
-        y_pred (array-like): 預測值
+        delta_w_pred (array-like): 預測的 delta_w 值
+        delta_w_theory (array-like): 理論的 delta_w 值
         model_name (str, optional): 模型名稱，用於標題
         figsize (tuple): 圖像尺寸
         save_path (str, optional): 保存圖像的路徑
-        show_metrics (bool): 是否在圖上顯示評估指標
+        show_metrics (bool): 是否顯示評估指標
         log_scale (bool): 是否使用對數刻度
         
     返回:
         matplotlib.figure.Figure: 圖像對象
     """
-    y_true = np.asarray(y_true)
-    y_pred = np.asarray(y_pred)
+    delta_w_pred = np.asarray(delta_w_pred)
+    delta_w_theory = np.asarray(delta_w_theory)
     fig, ax = plt.subplots(figsize=figsize)
     
-    if log_scale and np.all(y_true > 0) and np.all(y_pred > 0):
+    if log_scale and np.all(delta_w_pred > 0) and np.all(delta_w_theory > 0):
         ax.set_xscale('log')
         ax.set_yscale('log')
         
-    scatter = ax.scatter(y_true, y_pred, alpha=0.6, edgecolor='k', s=50)
-    min_val = min(np.min(y_true), np.min(y_pred))
-    max_val = max(np.max(y_true), np.max(y_pred))
+    scatter = ax.scatter(delta_w_theory, delta_w_pred, alpha=0.6, edgecolor='k', s=50)
+    min_val = min(np.min(delta_w_theory), np.min(delta_w_pred))
+    max_val = max(np.max(delta_w_theory), np.max(delta_w_pred))
     range_val = max_val - min_val
     min_val = max(0, min_val - range_val * 0.05)
     max_val = max_val + range_val * 0.05
     
-    ax.plot([min_val, max_val], [min_val, max_val], 'r--', label='Ideal (True = Predicted)')
+    ax.plot([min_val, max_val], [min_val, max_val], 'r--', label='理想線 (Theory = Predicted)')
     
     if not log_scale:
         x_range = np.linspace(min_val, max_val, 100)
@@ -94,30 +95,37 @@ def plot_prediction_vs_true(y_true, y_pred, model_name=None, figsize=(10, 6),
         ax.plot(x_range, x_range * 1.1, 'y--', alpha=0.5, label='+10%')
         ax.plot(x_range, x_range * 0.9, 'y--', alpha=0.5, label='-10%')
     
-    ax.set_xlabel('True Values')
-    ax.set_ylabel('Predicted Values')
-    title = f'{model_name}: Prediction vs True Values' if model_name else 'Prediction vs True Values'
+    ax.set_xlabel('理論 ΔW 值')
+    ax.set_ylabel('預測 ΔW 值')
+    title = f'{model_name}: ΔW Prediction vs Theory' if model_name else 'ΔW Prediction vs Theory'
     ax.set_title(title)
     
     if show_metrics:
-        from src.utils.metrics import calculate_rmse, calculate_r2, calculate_mae
-        rmse = calculate_rmse(y_true, y_pred)
-        r2 = calculate_r2(y_true, y_pred)
-        mae = calculate_mae(y_true, y_pred)
-        rel_error = np.abs((y_true - y_pred) / np.maximum(y_true, 1e-8)) * 100
-        metrics_text = (f"RMSE: {rmse:.4f}\nR²: {r2:.4f}\nMAE: {mae:.4f}\n"
+        # 計算評估指標
+        log_delta_w_pred = np.log10(delta_w_pred)
+        log_delta_w_theory = np.log10(delta_w_theory)
+        
+        mse = np.mean((delta_w_theory - delta_w_pred) ** 2)
+        log_mse = np.mean((log_delta_w_theory - log_delta_w_pred) ** 2)
+        
+        rel_error = np.abs((delta_w_theory - delta_w_pred) / delta_w_theory) * 100
+        metrics_text = (f"MSE: {mse:.6f}\nLog-MSE: {log_mse:.6f}\n"
                         f"Mean Rel. Error: {np.mean(rel_error):.2f}%\n"
                         f"Median Rel. Error: {np.median(rel_error):.2f}%")
+        
         props = dict(boxstyle='round', facecolor='white', alpha=0.8)
         ax.text(0.05, 0.95, metrics_text, transform=ax.transAxes,
                 verticalalignment='top', bbox=props, fontsize=9)
     
     ax.grid(True, linestyle='--', alpha=0.7)
     ax.legend()
-    plt.figtext(0.5, 0.01, f"Data Range: [{min_val:.2e}, {max_val:.2e}]", ha='center', fontsize=9)
     plt.tight_layout()
+    
     _save_figure(fig, save_path)
+    
     return fig
+
+
 def plot_parameter_impact(parameters, predictions, parameter_name="結構參數", 
                           figsize=(10, 6), save_path=None):
     """
@@ -163,8 +171,9 @@ def plot_parameter_impact(parameters, predictions, parameter_name="結構參數"
     plt.tight_layout(rect=[0, 0.03, 1, 0.97])
     _save_figure(fig, save_path)
     return fig
-def plot_physical_constraint_validation(delta_w_values, nf_values, figsize=(10, 6), 
-                                        a=55.83, b=-2.259, save_path=None):
+
+def plot_physical_constraint_validation(delta_w_values, nf_values, a=55.83, b=-2.259, 
+                                        figsize=(10, 6), save_path=None):
     """
     繪製物理約束驗證圖
     驗證預測結果是否符合 Nf = a * (ΔW)^b 的物理關係
@@ -172,9 +181,9 @@ def plot_physical_constraint_validation(delta_w_values, nf_values, figsize=(10, 
     參數:
         delta_w_values (array-like): 非線性塑性應變能密度變化量
         nf_values (array-like): 疲勞壽命值
-        figsize (tuple): 圖像尺寸
         a (float): 物理模型係數a
         b (float): 物理模型係數b
+        figsize (tuple): 圖像尺寸
         save_path (str, optional): 保存圖像的路徑
         
     返回:
@@ -194,6 +203,7 @@ def plot_physical_constraint_validation(delta_w_values, nf_values, figsize=(10, 
     fig, ax = plt.subplots(figsize=figsize)
     ax.set_xscale('log')
     ax.set_yscale('log')
+    
     scatter = ax.scatter(delta_w_values, nf_values, alpha=0.7, edgecolor='k', label='預測值')
     
     x_range = np.logspace(np.log10(np.min(delta_w_values)*0.5), np.log10(np.max(delta_w_values)*2), 100)
@@ -220,17 +230,22 @@ def plot_physical_constraint_validation(delta_w_values, nf_values, figsize=(10, 
                   f"中位數相對誤差: {np.median(relative_error):.2f}%\n"
                   f"最大相對誤差: {np.max(relative_error):.2f}%\n"
                   f"最小相對誤差: {np.min(relative_error):.2f}%")
+                  
     ax.set_xlabel('非線性塑性應變能密度變化量 (ΔW)')
     ax.set_ylabel('疲勞壽命 (Nf)')
     ax.set_title('物理約束驗證: Nf vs ΔW')
     ax.grid(True, linestyle='--', alpha=0.7)
     ax.legend()
+    
     ax.text(0.05, 0.95, stats_text, transform=ax.transAxes,
             verticalalignment='top',
             bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
             fontsize=9)
+            
     plt.tight_layout()
+    
     _save_figure(fig, save_path)
+    
     return fig
 
 def _process_fusion_weights(fusion_weights):
@@ -353,3 +368,115 @@ def plot_delta_w_prediction_vs_theory(delta_w_pred, delta_w_theory, model_name=N
     plt.tight_layout()
     _save_figure(fig, save_path)
     return fig
+def visualize_model_results(results, output_dir="visualization", prefix="", 
+                           a_coefficient=55.83, b_coefficient=-2.259):
+    """
+    生成模型預測結果的全面視覺化，包括delta_w預測評估
+    
+    參數:
+        results (dict): 模型預測結果，包含targets, predictions, delta_w等
+        output_dir (str): 輸出目錄
+        prefix (str): 文件名前綴
+        a_coefficient (float): 物理模型係數a
+        b_coefficient (float): 物理模型係數b
+        
+    返回:
+        dict: 包含各圖像路徑的字典
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    paths = {}
+    
+    # 1. 預測vs真實值圖
+    if 'targets' in results and 'predictions' in results:
+        path = os.path.join(output_dir, f"{prefix}prediction_vs_true.png")
+        from src.utils.visualization import plot_prediction_vs_true
+        fig = plot_prediction_vs_true(
+            results['targets'], 
+            results['predictions'],
+            save_path=path
+        )
+        plt.close(fig)
+        paths['prediction_vs_true'] = path
+    
+    # 2. delta_w預測vs理論值圖
+    if 'delta_w' in results and 'targets' in results:
+        # 從目標計算理論delta_w
+        delta_w_theory = np.power(results['targets'] / a_coefficient, 1.0 / b_coefficient)
+        path = os.path.join(output_dir, f"{prefix}delta_w_vs_theory.png")
+        fig = plot_delta_w_prediction_vs_theory(
+            results['delta_w'],
+            delta_w_theory,
+            save_path=path
+        )
+        plt.close(fig)
+        paths['delta_w_vs_theory'] = path
+    
+    # 3. 物理約束驗證圖
+    if 'delta_w' in results and 'predictions' in results:
+        path = os.path.join(output_dir, f"{prefix}physical_constraint.png")
+        fig = plot_physical_constraint_validation(
+            results['delta_w'],
+            results['predictions'],
+            a=a_coefficient,
+            b=b_coefficient,
+            save_path=path
+        )
+        plt.close(fig)
+        paths['physical_constraint'] = path
+    
+    # 4. PINN和LSTM分支delta_w對比圖（如果有）
+    if 'pinn_delta_w' in results and 'lstm_delta_w' in results and 'delta_w' in results:
+        path = os.path.join(output_dir, f"{prefix}branch_delta_w_comparison.png")
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        
+        if 'targets' in results:
+            delta_w_theory = np.power(results['targets'] / a_coefficient, 1.0 / b_coefficient)
+            ax.scatter(delta_w_theory, results['delta_w'], alpha=0.7, label='融合預測', s=50)
+            ax.scatter(delta_w_theory, results['pinn_delta_w'], alpha=0.5, label='PINN分支', s=30)
+            ax.scatter(delta_w_theory, results['lstm_delta_w'], alpha=0.5, label='LSTM分支', s=30)
+            
+            min_val = min(np.min(delta_w_theory), np.min(results['delta_w']))
+            max_val = max(np.max(delta_w_theory), np.max(results['delta_w']))
+            ax.plot([min_val, max_val], [min_val, max_val], 'r--', label='理想線')
+            
+            ax.set_xlabel('理論 ΔW 值')
+        else:
+            ax.scatter(range(len(results['delta_w'])), results['delta_w'], alpha=0.7, label='融合預測')
+            ax.scatter(range(len(results['pinn_delta_w'])), results['pinn_delta_w'], alpha=0.5, label='PINN分支')
+            ax.scatter(range(len(results['lstm_delta_w'])), results['lstm_delta_w'], alpha=0.5, label='LSTM分支')
+            
+            ax.set_xlabel('樣本索引')
+        
+        ax.set_ylabel('預測 ΔW 值')
+        ax.set_title('分支預測對比: PINN vs LSTM vs 融合')
+        ax.grid(True, linestyle='--', alpha=0.7)
+        ax.legend()
+        
+        plt.tight_layout()
+        _save_figure(fig, path)
+        plt.close(fig)
+        
+        paths['branch_comparison'] = path
+    
+    # 5. 注意力權重視覺化（如果有）
+    if 'attention_weights' in results:
+        path = os.path.join(output_dir, f"{prefix}attention_weights.png")
+        
+        attention_weights = results['attention_weights']
+        if isinstance(attention_weights, np.ndarray) and attention_weights.ndim == 2:
+            fig, ax = plt.subplots(figsize=(8, 6))
+            im = ax.imshow(attention_weights, aspect='auto', cmap='viridis')
+            ax.set_xlabel('時間步')
+            ax.set_ylabel('樣本')
+            ax.set_title('注意力權重分布')
+            plt.colorbar(im, ax=ax, label='權重值')
+            
+            _save_figure(fig, path)
+            plt.close(fig)
+            
+            paths['attention_weights'] = path
+    
+    return paths

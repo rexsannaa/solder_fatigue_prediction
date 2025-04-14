@@ -417,15 +417,15 @@ def create_mixed_sample(df, mix_factor=0.5):
     
     return mixed_df
 
-def perform_comprehensive_augmentation(original_df, synthetic_samples=50, perturbation_variations=1, 
+def perform_comprehensive_augmentation(original_df, synthetic_samples=50, perturbation_variations=10, 
                                         mix_factor=0.3, noise_level=0.1, validate_samples=True):
     """
     執行綜合資料增強
     
     參數:
         original_df (pd.DataFrame): 原始數據
-        synthetic_samples (int): 生成的合成樣本數量
-        perturbation_variations (int): 每個原始樣本生成的變體數量
+        synthetic_samples (int): 生成的合成樣本數量 - 增加到1000
+        perturbation_variations (int): 每個原始樣本生成的變體數量 - 增加到10
         mix_factor (float): 混合因子
         noise_level (float): 噪聲水平
         validate_samples (bool): 是否驗證生成的樣本

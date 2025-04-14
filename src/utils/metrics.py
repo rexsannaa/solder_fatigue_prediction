@@ -183,18 +183,17 @@ def evaluate_model(y_true, y_pred, model_name=None, verbose=True, return_datafra
     if verbose:
         output_str = []
         if model_name:
-            output_str.append(f"模型: {model_name}")
+            output_str.append(f"Model: {model_name}")
         output_str.append(f"RMSE: {metrics['rmse']:.4f}")
-        output_str.append(f"R²: {metrics['r2']:.4f}")
+        output_str.append(f"R2: {metrics['r2']:.4f}")
         output_str.append(f"MAE: {metrics['mae']:.4f}")
         output_str.append(f"MAPE: {metrics['mape']:.2f}%")
-        output_str.append(f"相對誤差 (平均): {metrics['rel_error_mean']:.2f}%")
-        output_str.append(f"相對誤差 (中位數): {metrics['rel_error_median']:.2f}%")
-        output_str.append(f"相對誤差 (90百分位): {metrics['rel_error_p90']:.2f}%")
-        output_str.append(f"對數RMSE: {metrics['log_rmse']:.4f}")
+        output_str.append(f"Relative Error (Mean): {metrics['rel_error_mean']:.2f}%")
+        output_str.append(f"Relative Error (Median): {metrics['rel_error_median']:.2f}%")
+        output_str.append(f"Relative Error (90th percentile): {metrics['rel_error_p90']:.2f}%")
+        output_str.append(f"Log RMSE: {metrics['log_rmse']:.4f}")
         logger.info('\n'.join(output_str))
     return pd.DataFrame([metrics]) if return_dataframe else metrics
-
 
 def compare_models(models_results, sort_by='rmse', ascending=True):
     """

@@ -146,3 +146,51 @@ Log RMSE: 0.8287
 2025-04-15 17:11:02,773 - __main__ - INFO - 評估指標保存到: outputs/hybrid_model/evaluation\metrics.csv
 2025-04-15 17:11:02,779 - __main__ - INFO - 違反物理約束的樣本保存到: outputs/hybrid_model/evaluation\violated_samples.csv
 2025-04-15 17:11:02,779 - __main__ - INFO - === 評估完成，耗時: 1.31秒 ===
+2025-04-15 18:41:57,899 - __main__ - INFO - === 開始模型評估 ===
+2025-04-15 18:41:57,901 - __main__ - INFO - 命令行參數: Namespace(model_path='outputs/hybrid_model/models/best_model.pt', config='configs/model_config.yaml', data='data/raw/Training_data_warpage_final_20250321_v1.2.csv', output_dir='outputs/hybrid_model/evaluation', model_type='hybrid', device=None, batch_size=16, visualize=False, debug=False)
+2025-04-15 18:41:57,916 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-15 18:41:57,916 - __main__ - INFO - 使用計算設備: cpu
+2025-04-15 18:41:57,920 - __main__ - INFO - 創建混合PINN-LSTM模型
+2025-04-15 18:41:57,938 - __main__ - INFO - 從 outputs/hybrid_model/models/best_model.pt 載入模型權重
+2025-04-15 18:41:57,972 - __main__ - INFO - 直接從檢查點載入模型權重
+2025-04-15 18:41:57,974 - __main__ - INFO - 模型載入成功，移至 cpu 設備
+2025-04-15 18:41:58,826 - __main__ - INFO - 從 data/raw/Training_data_warpage_final_20250321_v1.2.csv 載入數據
+2025-04-15 18:41:58,830 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-15 18:41:58,831 - __main__ - INFO - 標準化特徵: ['Die', 'stud', 'mold', 'PCB', 'Unit_warpage']
+2025-04-15 18:41:58,834 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-15 18:41:58,834 - __main__ - INFO - 準備時間序列數據
+2025-04-15 18:41:58,835 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-15 18:41:58,835 - __main__ - INFO - 數據載入完成: 81 個樣本
+2025-04-15 18:41:58,836 - __main__ - INFO - 創建數據載入器成功: 81 個樣本，批次大小 16
+2025-04-15 18:41:58,836 - __main__ - INFO - 開始評估模型性能
+2025-04-15 18:41:58,894 - __main__ - INFO - 評估完成: 81 個預測
+2025-04-15 18:41:58,894 - __main__ - INFO - 計算評估指標
+2025-04-15 18:41:58,981 - src.utils.metrics - INFO - Model: Model
+RMSE: 1454.1514
+R2: -2.2418
+MAE: 1195.7443
+MAPE: 75.80%
+Relative Error (Mean): 75.80%
+Relative Error (Median): 88.54%
+Relative Error (90th percentile): 91.38%
+Log RMSE: 0.8349
+2025-04-15 18:41:58,983 - __main__ - INFO - 驗證物理約束
+2025-04-15 18:41:58,983 - src.utils.physics - WARNING - 物理約束驗證失敗! 有 57 個樣本違反約束
+2025-04-15 18:41:58,984 - src.utils.physics - WARNING - 違反約束的樣本索引: [ 0  1  3  4  6  7  8  9 10 12 13 15 16 17 18 19 21 22 24 25 26 27 28 30
+ 31 33 34 36 37 39 40 42 43 45 46 48 49 51 52 54 55 57 58 60 61 63 64 66
+ 67 69 70 72 73 75 76 78 79]
+2025-04-15 18:41:58,985 - src.utils.physics - WARNING - 違反約束的樣本相對殘差: [47.718784 30.265295 47.987286 30.479002 48.291275 30.336576 20.331034
+ 48.638584 31.362885 48.792736 31.523418 48.50346  31.058615 20.52142
+ 49.0575   32.26703  48.772957 32.082165 48.79444  32.17641  20.969296
+ 39.84877  27.952627 42.20342  27.528921 42.56226  27.411133 42.90874
+ 20.445147 42.52353  28.011946 42.105354 27.876318 43.25827  28.857693
+ 42.959133 28.87897  42.47306  28.188892 36.41539  25.301758 35.365887
+ 25.013742 35.521294 24.982174 36.11745  25.171936 35.62351  25.135534
+ 35.079964 25.064295 36.43883  25.681057 35.914597 25.613684 35.283836
+ 25.421215]
+2025-04-15 18:41:58,985 - __main__ - WARNING - 物理約束驗證失敗, 有 57 個樣本違反約束
+2025-04-15 18:41:58,986 - __main__ - INFO - 輸出目錄: outputs/hybrid_model/evaluation
+2025-04-15 18:41:59,001 - __main__ - INFO - 預測結果保存到: outputs/hybrid_model/evaluation\predictions.csv
+2025-04-15 18:41:59,003 - __main__ - INFO - 評估指標保存到: outputs/hybrid_model/evaluation\metrics.csv
+2025-04-15 18:41:59,007 - __main__ - INFO - 違反物理約束的樣本保存到: outputs/hybrid_model/evaluation\violated_samples.csv
+2025-04-15 18:41:59,007 - __main__ - INFO - === 評估完成，耗時: 1.11秒 ===

@@ -477,7 +477,7 @@ def plot_physical_constraint_validation(delta_w_values, nf_values, a=55.83, b=-2
     y_theory = a * np.power(x_range, b)
     ax.plot(x_range, y_theory, 'r-', label=f'Physical Model: Nf={a}*(ΔW)^{b}')
     
-    # 計算理論值
+    # 計算理論值 - 確保使用numpy運算
     y_theory_at_x = a * np.power(delta_w_values, b)
     
     # 計算相對誤差
@@ -523,10 +523,18 @@ def visualize_model_results(results, output_dir=None):
     
     # 預測vs真實值
     if 'predictions' in results and 'targets' in results:
+        # 確保數據是 numpy 數組
+        predictions = results['predictions']
+        targets = results['targets']
+        if isinstance(predictions, torch.Tensor):
+            predictions = predictions.detach().cpu().numpy()
+        if isinstance(targets, torch.Tensor):
+            targets = targets.detach().cpu().numpy()
+            
         plot_path = os.path.join(output_dir, "prediction_vs_true.png") if output_dir else None
         fig = plot_prediction_vs_true(
-            results['targets'], 
-            results['predictions'],
+            targets, 
+            predictions,
             save_path=plot_path
         )
         plt.close(fig)
@@ -539,13 +547,18 @@ def visualize_model_results(results, output_dir=None):
             # 從目標值計算理論delta_w
             # 確保是numpy數組
             targets = results['targets']
+            delta_w = results['delta_w']
+            
             if isinstance(targets, torch.Tensor):
                 targets = targets.detach().cpu().numpy()
+            if isinstance(delta_w, torch.Tensor):
+                delta_w = delta_w.detach().cpu().numpy()
+                
             targets = np.asarray(targets)
             
             delta_w_theory = np.power(targets / 55.83, 1 / -2.259)
             fig = plot_delta_w_prediction_vs_theory(
-                results['delta_w'],
+                delta_w,
                 delta_w_theory,
                 save_path=plot_path
             )
@@ -558,9 +571,19 @@ def visualize_model_results(results, output_dir=None):
     if 'delta_w' in results and 'predictions' in results:
         try:
             plot_path = os.path.join(output_dir, "physical_constraint.png") if output_dir else None
+            
+            # 確保數據是 numpy 數組
+            delta_w = results['delta_w']
+            predictions = results['predictions']
+            
+            if isinstance(delta_w, torch.Tensor):
+                delta_w = delta_w.detach().cpu().numpy()
+            if isinstance(predictions, torch.Tensor):
+                predictions = predictions.detach().cpu().numpy()
+                
             fig = plot_physical_constraint_validation(
-                results['delta_w'],
-                results['predictions'],
+                delta_w,
+                predictions,
                 save_path=plot_path
             )
             plt.close(fig)
@@ -572,9 +595,19 @@ def visualize_model_results(results, output_dir=None):
     if 'predictions' in results and 'targets' in results:
         try:
             plot_path = os.path.join(output_dir, "error_distribution.png") if output_dir else None
+            
+            # 確保數據是 numpy 數組
+            predictions = results['predictions']
+            targets = results['targets']
+            
+            if isinstance(predictions, torch.Tensor):
+                predictions = predictions.detach().cpu().numpy()
+            if isinstance(targets, torch.Tensor):
+                targets = targets.detach().cpu().numpy()
+                
             fig = create_error_histogram(
-                results['targets'],
-                results['predictions'],
+                targets,
+                predictions,
                 save_path=plot_path
             )
             plt.close(fig)
@@ -586,8 +619,14 @@ def visualize_model_results(results, output_dir=None):
     if 'attention_weights' in results:
         try:
             plot_path = os.path.join(output_dir, "attention_weights.png") if output_dir else None
+            
+            # 確保數據是 numpy 數組
+            attention_weights = results['attention_weights']
+            if isinstance(attention_weights, torch.Tensor):
+                attention_weights = attention_weights.detach().cpu().numpy()
+                
             fig = plot_attention_weights(
-                results['attention_weights'],
+                attention_weights,
                 save_path=plot_path
             )
             plt.close(fig)

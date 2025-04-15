@@ -264,3 +264,22 @@ Log RMSE: 0.9505
 2025-04-15 20:53:23,319 - __main__ - INFO - 預測結果保存到: outputs/hybrid_model/evaluation\predictions.csv
 2025-04-15 20:53:23,321 - __main__ - INFO - 評估指標保存到: outputs/hybrid_model/evaluation\metrics.csv
 2025-04-15 20:53:23,322 - __main__ - INFO - === 評估完成，耗時: 1.10秒 ===
+2025-04-15 23:33:16,294 - __main__ - INFO - === 開始模型評估 ===
+2025-04-15 23:33:16,297 - __main__ - INFO - 命令行參數: Namespace(model_path='outputs/hybrid_model/models/best_model.pt', config='configs/model_config.yaml', data='data/raw/Training_data_warpage_final_20250321_v1.2.csv', output_dir='outputs/hybrid_model/evaluation', model_type='hybrid', device=None, batch_size=16, visualize=False, debug=False)
+2025-04-15 23:33:16,314 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-15 23:33:16,314 - __main__ - INFO - 使用計算設備: cpu
+2025-04-15 23:33:16,329 - __main__ - INFO - 創建混合PINN-LSTM模型
+2025-04-15 23:33:16,341 - __main__ - INFO - 從 outputs/hybrid_model/models/best_model.pt 載入模型權重
+2025-04-15 23:33:16,367 - __main__ - INFO - 直接從檢查點載入模型權重
+2025-04-15 23:33:16,368 - __main__ - INFO - 模型載入成功，移至 cpu 設備
+2025-04-15 23:33:17,293 - __main__ - INFO - 從 data/raw/Training_data_warpage_final_20250321_v1.2.csv 載入數據
+2025-04-15 23:33:17,298 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-15 23:33:17,298 - __main__ - INFO - 標準化特徵: ['Die', 'stud', 'mold', 'PCB', 'Unit_warpage']
+2025-04-15 23:33:17,299 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-15 23:33:17,300 - __main__ - INFO - 準備時間序列數據
+2025-04-15 23:33:17,302 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-15 23:33:17,305 - __main__ - INFO - 數據載入完成: 81 個樣本
+2025-04-15 23:33:17,305 - __main__ - INFO - 創建數據載入器成功: 81 個樣本，批次大小 16
+2025-04-15 23:33:17,305 - __main__ - INFO - 開始評估模型性能
+2025-04-15 23:33:17,360 - __main__ - ERROR - 評估模型性能失敗: name 'results' is not defined
+2025-04-15 23:33:17,364 - __main__ - ERROR - 評估過程中發生錯誤: name 'results' is not defined

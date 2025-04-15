@@ -372,16 +372,40 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
                 all_predictions.append(predictions.cpu().numpy())
                 all_targets.append(y_batch.cpu().numpy())
         
-        # 合併批次結果
+        # 合併結果
         all_predictions = np.concatenate(all_predictions)
         all_targets = np.concatenate(all_targets)
-        
+
+        # 合併所有輸出
+        for key in all_outputs:
+            if isinstance(all_outputs[key][0], np.ndarray):
+                try:
+                    all_outputs[key] = np.concatenate(all_outputs[key])
+                except ValueError as e:
+                    logger.warning(f"合併輸出 {key} 時出錯: {str(e)}")
+                    # 如果不能合併，保留為列表
+                    pass
+
+        # 添加預測和目標到輸出
+        all_outputs["predictions"] = all_predictions
+        all_outputs["targets"] = all_targets
+
+        # 計算理論 delta_w 並與模型預測的 delta_w 比較
         delta_w_theory = calculate_theoretical_delta_w(all_targets)
-        print(f"[DEBUG] 预测的 delta_w 统计:")
-        print(f"[DEBUG] 范围: {np.min(results['delta_w']):.6e} - {np.max(results['delta_w']):.6e}")
-        print(f"[DEBUG] 平均值: {np.mean(results['delta_w']):.6e}")
-        print(f"[DEBUG] 样本: {results['delta_w'][:5]}")
-        print(f"[DEBUG] delta_w 相对误差: {np.mean(np.abs((delta_w_theory - results['delta_w']) / delta_w_theory)) * 100:.2f}%")
+        if "delta_w" in all_outputs:
+            print(f"[DEBUG] 預測的 delta_w 統計:")
+            print(f"[DEBUG] 範圍: {np.min(all_outputs['delta_w']):.6e} - {np.max(all_outputs['delta_w']):.6e}")
+            print(f"[DEBUG] 平均值: {np.mean(all_outputs['delta_w']):.6e}")
+            print(f"[DEBUG] 樣本: {all_outputs['delta_w'][:5]}")
+            print(f"[DEBUG] delta_w 相對誤差: {np.mean(np.abs((delta_w_theory - all_outputs['delta_w']) / delta_w_theory)) * 100:.2f}%")
+
+        # 形狀檢查與處理
+        if len(all_predictions) != len(all_targets):
+            # 如果長度不同，取兩者中較短的長度
+            min_len = min(len(all_predictions), len(all_targets))
+            all_predictions = all_predictions[:min_len]
+            all_targets = all_targets[:min_len]
+            logger.warning(f"目標值和預測值的長度不同，已截斷至共同長度 {min_len}")
 
         # 檢查最終結果
         print("="*50)

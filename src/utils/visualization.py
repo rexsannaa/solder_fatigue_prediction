@@ -437,6 +437,7 @@ def plot_delta_w_prediction_vs_theory(delta_w_pred, delta_w_theory, model_name=N
     _save_figure(fig, save_path)
     return fig
 
+# 修改 src/utils/visualization.py 中的 plot_physical_constraint_validation 函數
 def plot_physical_constraint_validation(delta_w_values, nf_values, a=55.83, b=-2.259, 
                                        figsize=(10, 6), save_path=None):
     """
@@ -477,7 +478,7 @@ def plot_physical_constraint_validation(delta_w_values, nf_values, a=55.83, b=-2
     y_theory = a * np.power(x_range, b)
     ax.plot(x_range, y_theory, 'r-', label=f'Physical Model: Nf={a}*(ΔW)^{b}')
     
-    # 計算理論值 (確保使用numpy運算)
+    # 計算理論值
     y_theory_at_x = a * np.power(delta_w_values, b)
     
     # 計算相對誤差

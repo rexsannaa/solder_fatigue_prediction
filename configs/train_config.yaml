@@ -24,9 +24,10 @@ training_strategy:
     - name: "warmup"                               # 預熱階段
       epochs: 20                                   # 預熱輪次
       learning_rate_factor: 0.1                    # 學習率因子
-      lambda_physics: 0.01                         # 物理約束權重
+      lambda_physics: 0.05                         # 物理約束權重
       lambda_consistency: 0.01                     # 一致性損失權重
-      description: "低學習率預熱，輕微物理約束"
+      delta_w_weight: 2.0                          # 增加delta_w權重
+      description: "低學習率預熱，加強物理約束和delta_w權重"
     
     - name: "main_training"                        # 主要訓練階段
       epochs: 500                                  # 訓練輪次

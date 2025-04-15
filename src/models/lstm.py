@@ -209,7 +209,7 @@ class LSTMModel(nn.Module):
         delta_w = delta_w.clamp(min=1e-8)  # 確保delta_w為正值
 
         # 添加縮放因子校正
-        scale_factor = 0.5  # 與混合模型使用相同的縮放因子
+        scale_factor = 0.25  # 與混合模型使用相同的縮放因子
         delta_w = delta_w * scale_factor
         
         # 使用物理公式計算疲勞壽命Nf

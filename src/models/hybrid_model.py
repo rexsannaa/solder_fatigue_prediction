@@ -549,13 +549,13 @@ class PINNLSTMTrainer:
             log_direct_delta_w = torch.log10(direct_delta_w.clamp(min=1e-8))
             log_delta_w = torch.log10(delta_w.clamp(min=1e-8))
             direct_delta_w_loss = F.mse_loss(log_delta_w, log_direct_delta_w)
-        # 6. 總損失 - 添加直接delta_w引導，平衡預測權重
+        # 6. 總損失 - 加大delta_w預測權重和物理約束權重
         total_loss = (
-            0.4 * nf_loss +  # 增加疲勞壽命預測損失權重
-            delta_w_weight * 0.6 * delta_w_combined_loss +  # 適度降低delta_w預測權重
-            lambda_consistency * delta_w_consistency +  # 分支一致性損失
-            lambda_physics * physics_loss +  # 物理約束損失
-            0.3 * direct_delta_w_loss +  # 添加直接delta_w引導損失
+            0.1 * nf_loss +  # 大幅降低疲勞壽命預測損失權重  
+            delta_w_weight * 1.5 * delta_w_combined_loss +  # 強化delta_w預測權重
+            lambda_consistency * 0.8 * delta_w_consistency +  # 加強分支一致性損失
+            lambda_physics * 2.0 * physics_loss +  # 極大增強物理約束損失
+            1.0 * direct_delta_w_loss +  # 極大增強直接delta_w引導損失
             reg_loss  # 正則化損失
         )
         
@@ -1132,7 +1132,7 @@ class HybridPINNLSTMModel(nn.Module):
             delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
         
         # 添加縮放因子校正 delta_w (根據觀察到的差距，理論值約為預測值的1/3)
-        scale_factor = 0.5  # 縮放因子，使預測值接近理論值
+        scale_factor = 0.25  # 縮放因子，使預測值接近理論值
         scaled_delta_w = delta_w * scale_factor
         
         # 3. 使用物理公式計算Nf (第二階段)
@@ -1198,6 +1198,11 @@ class HybridPINNLSTMModel(nn.Module):
             
             # 加權平均（可根據實際物理意義調整權重）
             direct_delta_w = (delta_w_up + delta_w_down) / 2.0
+
+            # 添加縮放因子校正
+            direct_scale_factor = 0.25  # 與其他部分使用相同的縮放因子
+            direct_delta_w = direct_delta_w * direct_scale_factor
+
         else:
             # 如果只有一個特徵，直接計算差值
             direct_delta_w = time_series_input[:, -1, 0] - time_series_input[:, 0, 0]

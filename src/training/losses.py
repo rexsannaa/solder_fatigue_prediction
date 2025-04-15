@@ -323,10 +323,10 @@ class HybridLoss(nn.Module):
     混合損失函數
     結合MSE損失、物理約束損失和一致性損失，特別強調delta_w的預測準確性
     """
-    def __init__(self, lambda_physics=0.5, lambda_consistency=0.3, 
-                 a=A_COEFFICIENT, b=B_COEFFICIENT, reduction='mean', log_space=True,
-                 relative_error_weight=0.3, delta_w_weight=2.0, nf_weight=0.5,
-                 correlation_weight=0.3, l1_reg=0.0, l2_reg=0.0):
+    def __init__(self, lambda_physics=1.0, lambda_consistency=0.3, 
+                a=A_COEFFICIENT, b=B_COEFFICIENT, reduction='mean', log_space=True,
+                relative_error_weight=0.5, delta_w_weight=3.0, nf_weight=0.3,
+                correlation_weight=0.3, l1_reg=0.0, l2_reg=0.0):
         """
         初始化混合損失
         
@@ -344,12 +344,29 @@ class HybridLoss(nn.Module):
             l1_reg (float): L1正則化係數
             l2_reg (float): L2正則化係數
         """
+        # 必須先調用父類的__init__()
         super(HybridLoss, self).__init__()
+        
+        # 設置實例變數
         self.lambda_physics = lambda_physics
         self.lambda_consistency = lambda_consistency
         self.delta_w_weight = delta_w_weight
+        self.nf_weight = nf_weight
+        self.correlation_weight = correlation_weight
         self.l1_reg = l1_reg
         self.l2_reg = l2_reg
+        self.reduction = reduction
+        self.log_space = log_space
+        self.a = a
+        self.b = b
+        self.relative_error_weight = relative_error_weight
+        
+        # 然後定義子模組
+        self.mse_loss = MSELoss(
+            reduction=reduction, 
+            log_space=log_space, 
+            relative_error_weight=relative_error_weight
+        )
         
         # 基礎MSE損失
         self.mse_loss = MSELoss(
@@ -462,13 +479,14 @@ class HybridLoss(nn.Module):
             if isinstance(reg_loss, torch.Tensor) and reg_loss.dim() > 0:
                 reg_loss = reg_loss.mean()
         
-        # 6. 總損失 - 注意delta_w_direct_loss的高權重
+        # 6. 總損失 - 徹底重新平衡損失權重
         total_loss = (
-            nf_loss + 
-            self.delta_w_weight * delta_w_direct_loss +  # 直接delta_w預測損失
-            self.lambda_physics * physics_total_loss + 
-            self.lambda_consistency * consistency_total_loss +
-            reg_loss
+            0.1 * nf_loss +  # 大幅降低疲勞壽命預測損失權重
+            self.delta_w_weight * 1.5 * delta_w_combined_loss +  # 強化delta_w預測權重
+            self.lambda_consistency * 0.8 * delta_w_consistency +  # 加強分支一致性損失
+            self.lambda_physics * 2.0 * physics_loss +  # 極大增強物理約束損失
+            1.0 * direct_delta_w_loss +  # 極大增強直接delta_w引導損失
+            reg_loss  # 正則化損失
         )
     
         # 7. 收集所有損失結果
@@ -519,12 +537,12 @@ class AdaptiveHybridLoss(HybridLoss):
     根據訓練進度自動調整損失權重
     """
     def __init__(self, initial_lambda_physics=0.1, max_lambda_physics=1.0,
-             initial_lambda_consistency=0.1, max_lambda_consistency=0.5,
-             initial_delta_w_weight=1.5, max_delta_w_weight=3.0,
-             epochs_to_max=50, warmup_epochs=5, 
-             a=A_COEFFICIENT, b=B_COEFFICIENT, reduction='mean', log_space=True,
-             relative_error_weight=0.3, micro_weight=1.0, macro_weight=0.5,
-             correlation_weight=0.3, l1_reg=0.0, l2_reg=0.0, adaptive_scheme='linear'):
+                initial_lambda_consistency=0.1, max_lambda_consistency=0.5,
+                initial_delta_w_weight=1.5, max_delta_w_weight=3.0,
+                epochs_to_max=50, warmup_epochs=5, 
+                a=A_COEFFICIENT, b=B_COEFFICIENT, reduction='mean', log_space=True,
+                relative_error_weight=0.3, micro_weight=1.0, macro_weight=0.5,
+                correlation_weight=0.3, l1_reg=0.0, l2_reg=0.0, adaptive_scheme='linear'):
         """
         初始化自適應混合損失
         
@@ -539,17 +557,19 @@ class AdaptiveHybridLoss(HybridLoss):
             warmup_epochs (int): 預熱輪數，權重保持較低
             adaptive_scheme (str): 調整方案，'linear', 'exp', 'step', 'cosine'
         """
+        # 必須先調用父類的__init__()
         super(AdaptiveHybridLoss, self).__init__(
             lambda_physics=initial_lambda_physics,
             lambda_consistency=initial_lambda_consistency,
             delta_w_weight=initial_delta_w_weight,
             a=a, b=b, reduction=reduction, log_space=log_space,
             relative_error_weight=relative_error_weight,
-            nf_weight=0.5,  # 沒有傳遞 delta_w_weight 兩次
+            nf_weight=macro_weight,  # 使用macro_weight作為nf_weight
             correlation_weight=correlation_weight, 
             l1_reg=l1_reg, l2_reg=l2_reg
         )
         
+        # 設置自適應特有的實例變數
         self.initial_lambda_physics = initial_lambda_physics
         self.max_lambda_physics = max_lambda_physics
         self.initial_lambda_consistency = initial_lambda_consistency

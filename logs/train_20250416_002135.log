@@ -1,0 +1,69 @@
+2025-04-16 00:21:35,475 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-16 00:21:35,501 - __main__ - INFO - 成功載入配置文件: configs/train_config.yaml
+2025-04-16 00:21:35,505 - __main__ - INFO - 已設定隨機種子: 42
+2025-04-16 00:21:35,505 - __main__ - INFO - 使用計算設備: cpu
+2025-04-16 00:21:35,507 - __main__ - INFO - 輸出目錄: outputs/hybrid_model
+2025-04-16 00:21:35,507 - __main__ - INFO - 載入資料: data/raw/Training_data_warpage_final_20250321_v1.2.csv
+2025-04-16 00:21:35,511 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-16 00:21:35,515 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-16 00:21:35,517 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-16 00:21:35,521 - src.data.preprocess - INFO - 資料分割完成 - 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-16 00:21:35,521 - src.data.preprocess - INFO - 完整資料處理流程完成
+2025-04-16 00:21:35,521 - __main__ - INFO - 資料分割完成, 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-16 00:21:35,521 - __main__ - INFO - 應用資料增強...
+2025-04-16 00:21:35,521 - src.data.dataset - INFO - 進行資料增強，原始訓練集大小: 56 樣本
+2025-04-16 00:21:35,711 - src.data.dataset - INFO - 資料增強完成，增強後的訓練集大小: 940 樣本
+2025-04-16 00:21:35,711 - __main__ - INFO - 資料增強完成，增強後的訓練集大小: 940 樣本
+2025-04-16 00:21:35,723 - __main__ - INFO - 創建混合PINN-LSTM模型，使用物理約束: True，融合方法: weighted
+2025-04-16 00:21:35,725 - src.data.dataset - INFO - 已創建資料載入器 - 訓練: 940 樣本, 驗證: 12 樣本, 測試: 13 樣本, 批次大小: 8
+2025-04-16 00:21:37,409 - src.training.trainer - INFO - 創建adam優化器，學習率: 0.0005，權重衰減: 0.001
+2025-04-16 00:21:37,411 - src.training.losses - INFO - 初始化HybridLoss: lambda_physics=0.5, lambda_consistency=0.2, delta_w_weight=1.5
+2025-04-16 00:21:37,411 - src.training.losses - INFO - 初始化AdaptiveHybridLoss: physics權重從0.5增加到2.0, consistency權重從0.2增加到0.5, delta_w權重從1.5增加到3.0, 在50個輪次內達到最大值, 預熱輪次: 5, 調整方案: linear
+2025-04-16 00:21:37,411 - src.training.trainer - INFO - 創建餘弦退火學習率調度器，週期: 150，最小學習率: 1e-05
+2025-04-16 00:21:37,413 - src.training.callbacks - INFO - 初始化ModelCheckpoint: 保存目錄=outputs\hybrid_model\HybridPINNLSTMModel_20250416_002137\checkpoints, 保存頻率=5, 只保存最佳=False, 監控指標=val_loss, 模式=min
+2025-04-16 00:21:37,415 - src.training.callbacks - INFO - 初始化LossHistory: 保存路徑=outputs\hybrid_model\HybridPINNLSTMModel_20250416_002137\history.json, 保存頻率=1
+2025-04-16 00:21:37,421 - src.training.trainer - INFO - 初始化訓練器完成，模型: HybridPINNLSTMModel, 優化器: Adam, 設備: cpu
+2025-04-16 00:21:37,421 - __main__ - INFO - 開始訓練，總輪數: 300
+2025-04-16 00:21:37,421 - src.training.trainer - INFO - 開始訓練，總輪數: 300
+2025-04-16 00:21:37,483 - __main__ - ERROR - 執行過程中發生錯誤: name 'delta_w_weight' is not defined
+Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 724, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 714, in main
+    train_model(model, data_dict, config, train_config, args, device, output_dir)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 406, in train_model
+    history = trainer.train(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 626, in train
+    train_results = self.train_epoch(train_loader)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 352, in train_epoch
+    outputs, predictions, loss = self._forward_pass(inputs, targets)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 414, in _forward_pass
+    losses = self.criterion(outputs, targets, self.model)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\losses.py", line 468, in forward
+    delta_w_weight * 1.5 * delta_w_combined_loss +  # 強化delta_w預測權重
+NameError: name 'delta_w_weight' is not defined
+2025-04-16 00:21:37,487 - __main__ - ERROR - 詳細錯誤追蹤: Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 724, in <module>
+    main()
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 714, in main
+    train_model(model, data_dict, config, train_config, args, device, output_dir)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\train.py", line 406, in train_model
+    history = trainer.train(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 626, in train
+    train_results = self.train_epoch(train_loader)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 352, in train_epoch
+    outputs, predictions, loss = self._forward_pass(inputs, targets)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\trainer.py", line 414, in _forward_pass
+    losses = self.criterion(outputs, targets, self.model)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\training\losses.py", line 468, in forward
+    delta_w_weight * 1.5 * delta_w_combined_loss +  # 強化delta_w預測權重
+NameError: name 'delta_w_weight' is not defined
+

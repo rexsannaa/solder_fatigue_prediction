@@ -55,27 +55,21 @@ class PhysicsLayer(nn.Module):
             self.register_buffer('b', torch.tensor(b, dtype=torch.float32))
     
     def forward(self, delta_w):
-        """
-        應用物理模型計算疲勞壽命
-        
-        參數:
-            delta_w (torch.Tensor): 非線性塑性應變能密度變化量
-        
-        返回:
-            torch.Tensor: 預測的疲勞壽命
-        """
         # 確保輸入為正值 (物理上合理)
         delta_w = torch.clamp(delta_w, min=1e-8)
         
         if self.trainable:
             a = torch.exp(self.log_a)
             b = -torch.exp(self.log_neg_b)
+            # 輸出精確係數值以供調試
+            if torch.rand(1).item() < 0.01:  # 每100次前向傳播約輸出一次
+                print(f"Physics Layer (trainable): a={a.item()}, b={b.item()}")
             nf = a * torch.pow(delta_w, b)
-            # 移除可能造成物理上不一致的偏置項
-            # nf = nf + self.bias
-            # nf = F.softplus(nf)  # 確保輸出為正值
         else:
             # 應用物理模型: Nf = a * (ΔW)^b
+            # 輸出精確係數值以供調試
+            if torch.rand(1).item() < 0.01:  # 每100次前向傳播約輸出一次
+                print(f"Physics Layer (fixed): a={self.a.item()}, b={self.b.item()}")
             nf = self.a * torch.pow(delta_w, self.b)
         
         nf = torch.clamp(nf, min=10.0)  # 疲勞壽命下限為10週期
@@ -519,8 +513,18 @@ class PINNLSTMTrainer:
         
         # 4. 物理約束損失
         # 從delta_w計算疲勞壽命，使用明確的物理公式
-        nf_from_delta_w = a_coef * torch.pow(delta_w, b_coef)
+        # 確保係數是浮點數
+        a_coef = float(a_coef)
+        b_coef = float(b_coef)
+        nf_from_delta_w = a_coef * torch.pow(delta_w.clamp(min=1e-8), b_coef)
         nf_from_delta_w = nf_from_delta_w.clamp(min=10.0)
+
+        # 添加調試輸出
+        if torch.rand(1).item() < 0.05:  # 每20次計算約輸出一次
+            print(f"Loss calculation - Physical coefficients: a={a_coef}, b={b_coef}")
+            print(f"Sample delta_w: {delta_w[:3].detach().cpu().numpy()}")
+            print(f"Sample nf_from_physics: {nf_from_delta_w[:3].detach().cpu().numpy()}")
+            print(f"Sample predictions: {predictions[:3].detach().cpu().numpy()}")
         
         # 物理約束損失 - 比較物理計算的nf與直接預測的nf
         # 使用對數空間計算
@@ -1109,25 +1113,26 @@ class HybridPINNLSTMModel(nn.Module):
             delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
         
         # 3. 使用物理公式/層計算Nf (第二階段)
-        # 關鍵修改：確保使用物理公式正確計算疲勞壽命
+        # 確保一致且正確的物理計算
+        # 提取標量係數值
+        a_coef = float(self.a_coefficient.item() if hasattr(self.a_coefficient, 'item') else self.a_coefficient)
+        b_coef = float(self.b_coefficient.item() if hasattr(self.b_coefficient, 'item') else self.b_coefficient)
+
+        # 使用clamp確保delta_w不為零，避免計算錯誤
+        safe_delta_w = torch.clamp(delta_w, min=1e-8)
+
         if self.use_physics_layer:
-            # 使用物理層
-            nf_pred = self.physics_layer(delta_w)
+            # 使用物理層 - 但確保係數一致
+            self.physics_layer.a = torch.tensor(a_coef, device=safe_delta_w.device)
+            self.physics_layer.b = torch.tensor(b_coef, device=safe_delta_w.device)
+            nf_pred = self.physics_layer(safe_delta_w)
         else:
-            # 使用物理公式 - 修正部分
-            # 注意：因為self.a_coefficient和self.b_coefficient是張量，
-            # 所以必須確保它們是浮點數或者使用正確的張量操作
-            a_coef = self.a_coefficient.item() if hasattr(self.a_coefficient, 'item') else self.a_coefficient
-            b_coef = self.b_coefficient.item() if hasattr(self.b_coefficient, 'item') else self.b_coefficient
-            
-            # 使用clamp確保delta_w不為零，避免計算錯誤
-            safe_delta_w = torch.clamp(delta_w, min=1e-8)
-            
-            # 計算疲勞壽命
+            # 直接使用物理公式計算
             nf_pred = a_coef * torch.pow(safe_delta_w, b_coef)
-        
+
         # 確保預測值在合理範圍內
-        nf_pred = torch.clamp(nf_pred, min=10.0)  # 疲勞壽命下限為10週期
+        nf_pred = torch.clamp(nf_pred, min=10.0)
+        
         
         # 4. 準備返回結果
         # L2正則化懲罰
@@ -1154,3 +1159,45 @@ class HybridPINNLSTMModel(nn.Module):
                 result['fused_features'] = fused_features
         
         return result
+
+if __name__ == "__main__":
+    # 簡單的測試代碼
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # 創建模型
+    model = HybridPINNLSTMModel(
+        static_input_dim=5,
+        time_input_dim=2,
+        time_steps=4,
+        use_physics_layer=True
+    )
+    
+    # 創建測試輸入
+    batch_size = 10
+    static_input = torch.rand(batch_size, 5)
+    time_series = torch.rand(batch_size, 4, 2)
+    
+    # 前向傳播
+    outputs = model(static_input, time_series, return_features=True)
+    
+    # 測試物理關係
+    delta_w = outputs['delta_w']
+    nf_pred = outputs['nf_pred']
+    
+    # 手動計算Nf
+    a_coef = model.a_coefficient.item()
+    b_coef = model.b_coefficient.item()
+    manual_nf = a_coef * torch.pow(delta_w, b_coef)
+    
+    # 比較兩個結果
+    print(f"物理係數: a={a_coef}, b={b_coef}")
+    print(f"delta_w樣本: {delta_w[:5].detach().numpy()}")
+    print(f"模型預測Nf: {nf_pred[:5].detach().numpy()}")
+    print(f"手動計算Nf: {manual_nf[:5].detach().numpy()}")
+    print(f"相對誤差: {torch.abs((nf_pred - manual_nf) / manual_nf * 100)[:5].detach().numpy()}%")
+    
+    assert torch.allclose(nf_pred, manual_nf, rtol=1e-3), "物理計算不一致!"
+    print("測試通過: 物理計算一致性確認")

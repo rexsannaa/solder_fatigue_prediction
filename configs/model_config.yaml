@@ -45,7 +45,7 @@ model:
   
   # 輸出參數
   use_log_transform: true                                             # 是否使用對數變換
-  output_scale_init: 2.5                                              # 修改: 設置初始輸出尺度因子
+  output_scale_init: 1.0                                              # 修改: 設置初始輸出尺度因子
 
 # 訓練參數
 training:
@@ -72,15 +72,15 @@ training:
   
   # 損失函數
   loss:
-    type: "adaptive"                                                  # 損失函數類型: hybrid, adaptive
-    initial_lambda_physics: 0.3                                       # 修改: 增加初始物理約束損失權重
-    max_lambda_physics: 1.0                                           # 修改: 大幅增加最大物理約束損失權重
-    initial_lambda_consistency: 0.2                                   # 修改: 增加初始一致性損失權重
+    type: "hybrid"                                                 # 損失函數類型: hybrid, adaptive
+    initial_lambda_physics: 1.0                                    # 增加物理約束損失權重
+    max_lambda_physics: 2.0                                        # 增加最大物理約束損失權重
+    initial_lambda_consistency: 0.3                                # 增加初始一致性損失權重
     max_lambda_consistency: 0.5
-    initial_delta_w_weight: 2.0
-    max_delta_w_weight: 3.5                                       # 修改: 增加最大一致性損失權重
-    epochs_to_max: 40                                                 # 修改: 減少達到最大權重的訓練輪數
-    log_space_weight: 0.98                                            # 修改: 增加對數空間損失權重
+    initial_delta_w_weight: 2.5                                    # 增加delta_w預測權重
+    max_delta_w_weight: 4.0                                        # 增加最大delta_w預測權重
+    epochs_to_max: 30                                              # 減少達到最大權重的訓練輪數
+    log_space_weight: 0.95   
   
   # 訓練控制
   epochs: 200                                                         # 修改: 增加最大訓練輪數

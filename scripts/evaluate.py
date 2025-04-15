@@ -228,7 +228,7 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
         # 初始化結果收集
         all_predictions = []
         all_targets = []
-        model_outputs = {}
+        all_outputs = {}
         
         # 進行評估
         model.eval()
@@ -282,12 +282,12 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
                     
                     # 收集其他輸出
                     for key in outputs:
-                        if key not in model_outputs:
-                            model_outputs[key] = []
+                        if key not in all_outputs:
+                            all_outputs[key] = []
                         if isinstance(outputs[key], torch.Tensor):
-                            model_outputs[key].append(outputs[key].cpu().numpy())
+                            all_outputs[key].append(outputs[key].cpu().numpy())
                         else:
-                            model_outputs[key].append(outputs[key])
+                            all_outputs[key].append(outputs[key])
                     
                 elif model_type == "pinn":
                     outputs = model(X_batch)
@@ -318,13 +318,13 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
                     
                     # 收集其他輸出
                     for key in outputs:
-                        if key not in model_outputs:
-                            model_outputs[key] = []
+                        if key not in all_outputs:
+                            all_outputs[key] = []
 
                         if isinstance(outputs[key], torch.Tensor):
-                            model_outputs[key].append(outputs[key].cpu().numpy())
+                            all_outputs[key].append(outputs[key].cpu().numpy())
                         else:
-                            model_outputs[key].append(outputs[key])
+                            all_outputs[key].append(outputs[key])
                             
                 elif model_type == "lstm":
                     outputs = model(time_series_batch)
@@ -355,9 +355,9 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
                     
                     # 收集其他輸出
                     for key in outputs:
-                        if key not in model_outputs:
-                            model_outputs[key] = []
-                        model_outputs[key].append(outputs[key].cpu().numpy())
+                        if key not in all_outputs:
+                            all_outputs[key] = []
+                        all_outputs[key].append(outputs[key].cpu().numpy())
                 else:
                     raise ValueError(f"不支援的模型類型: {model_type}")
                 
@@ -416,21 +416,21 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
         print(f"目標值樣本: {all_targets[:5]}")
         
         # 合併模型輸出
-        for key in model_outputs:
-            if isinstance(model_outputs[key][0], np.ndarray):
+        for key in all_outputs:
+            if isinstance(all_outputs[key][0], np.ndarray):
                 try:
-                    model_outputs[key] = np.concatenate(model_outputs[key])
+                    all_outputs[key] = np.concatenate(all_outputs[key])
                 except ValueError as e:
                     print(f"無法合併輸出 '{key}': {str(e)}")
                     # 如果不能合併，保留為列表
         
         # 添加預測和目標到模型輸出
-        model_outputs["predictions"] = all_predictions
-        model_outputs["targets"] = all_targets
+        all_outputs["predictions"] = all_predictions
+        all_outputs["targets"] = all_targets
         
         logger.info(f"評估完成: {len(all_predictions)} 個預測")
         
-        return model_outputs
+        return all_outputs
     except Exception as e:
         logger.error(f"評估模型性能失敗: {str(e)}")
         logger.error(traceback.format_exc())

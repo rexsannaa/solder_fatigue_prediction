@@ -1132,7 +1132,7 @@ class HybridPINNLSTMModel(nn.Module):
             delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
         
         # 添加縮放因子校正 delta_w (根據觀察到的差距，理論值約為預測值的1/3)
-        scale_factor = 0.33  # 縮放因子，使預測值接近理論值
+        scale_factor = 0.15  # 縮放因子，使預測值接近理論值
         scaled_delta_w = delta_w * scale_factor
         
         # 3. 使用物理公式計算Nf (第二階段)

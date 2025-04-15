@@ -55,22 +55,29 @@ class PhysicsLayer(nn.Module):
             self.register_buffer('b', torch.tensor(b, dtype=torch.float32))
     
     def forward(self, delta_w):
+        """
+        應用物理模型計算疲勞壽命
+        
+        參數:
+            delta_w (torch.Tensor): 非線性塑性應變能密度變化量
+        
+        返回:
+            torch.Tensor: 預測的疲勞壽命
+        """
         # 確保輸入為正值 (物理上合理)
         delta_w = torch.clamp(delta_w, min=1e-8)
         
         if self.trainable:
             a = torch.exp(self.log_a)
             b = -torch.exp(self.log_neg_b)
-            # 輸出精確係數值以供調試
-            if torch.rand(1).item() < 0.01:  # 每100次前向傳播約輸出一次
-                print(f"Physics Layer (trainable): a={a.item()}, b={b.item()}")
+            # 使用標準物理公式而不添加偏置項
             nf = a * torch.pow(delta_w, b)
         else:
+            # 使用預設係數，確保它們是浮點數
+            a_val = float(self.a) if hasattr(self.a, 'item') else float(self.a)
+            b_val = float(self.b) if hasattr(self.b, 'item') else float(self.b)
             # 應用物理模型: Nf = a * (ΔW)^b
-            # 輸出精確係數值以供調試
-            if torch.rand(1).item() < 0.01:  # 每100次前向傳播約輸出一次
-                print(f"Physics Layer (fixed): a={self.a.item()}, b={self.b.item()}")
-            nf = self.a * torch.pow(delta_w, self.b)
+            nf = a_val * torch.pow(delta_w, b_val)
         
         nf = torch.clamp(nf, min=10.0)  # 疲勞壽命下限為10週期
         return nf
@@ -214,9 +221,10 @@ class PINNBranch(nn.Module):
         delta_w = torch.clamp(delta_w, min=1e-8)  # 確保delta_w為正值
         
         # 使用物理公式計算Nf
-        a_coef = self.a_coefficient.item() if hasattr(self.a_coefficient, 'item') else self.a_coefficient
-        b_coef = self.b_coefficient.item() if hasattr(self.b_coefficient, 'item') else self.b_coefficient
+        a_coef = float(self.a_coefficient) if hasattr(self.a_coefficient, 'item') else float(self.a_coefficient)
+        b_coef = float(self.b_coefficient) if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
         
+        # 確保使用正確的浮點數計算
         nf_pred = a_coef * torch.pow(delta_w, b_coef)
         nf_pred = torch.clamp(nf_pred, min=10.0)  # 確保Nf為正值
         
@@ -357,10 +365,11 @@ class LSTMBranch(nn.Module):
         delta_w = torch.exp(log_delta_w).squeeze(-1)
         delta_w = torch.clamp(delta_w, min=1e-8)  # 確保delta_w為正值
         
-        # 使用物理公式計算Nf - 修正部分
-        a_coef = self.a_coefficient.item() if hasattr(self.a_coefficient, 'item') else self.a_coefficient
-        b_coef = self.b_coefficient.item() if hasattr(self.b_coefficient, 'item') else self.b_coefficient
+        # 使用物理公式計算Nf - 確保使用正確的浮點數值
+        a_coef = float(self.a_coefficient) if hasattr(self.a_coefficient, 'item') else float(self.a_coefficient)
+        b_coef = float(self.b_coefficient) if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
         
+        # 使用精確計算
         nf_pred = a_coef * torch.pow(delta_w, b_coef)
         nf_pred = torch.clamp(nf_pred, min=10.0)  # 確保Nf為正值
         
@@ -484,17 +493,18 @@ class PINNLSTMTrainer:
         log_targets = torch.log10(targets.clamp(min=1e-6))
         log_mse = F.mse_loss(log_predictions, log_targets)
         
-        # 直接空間損失
-        direct_mse = F.mse_loss(predictions, targets)
+        # 直接空間損失 (相對誤差)
+        rel_error = torch.abs(predictions - targets) / targets.clamp(min=1e-6)
+        direct_mse = torch.mean(rel_error ** 2)
         
         # 組合疲勞壽命預測損失 (主要使用對數空間)
-        nf_loss = 0.1 * direct_mse + 0.9 * log_mse
+        nf_loss = 0.8 * log_mse + 0.2 * direct_mse
         
         # 2. 計算delta_w預測損失 (主要目標)
         # 從目標疲勞壽命計算理論delta_w
-        # 安全地獲取物理係數
-        a_coef = self.a_coefficient if isinstance(self.a_coefficient, float) else self.a_coefficient.item()
-        b_coef = self.b_coefficient if isinstance(self.b_coefficient, float) else self.b_coefficient.item()
+        # 使用固定的浮點數係數以確保穩定性
+        a_coef = float(self.a_coefficient) if isinstance(self.a_coefficient, float) else float(self.a_coefficient)
+        b_coef = float(self.b_coefficient) if isinstance(self.b_coefficient, float) else float(self.b_coefficient)
         
         # 使用物理模型求解理論delta_w
         delta_w_theory = torch.pow(targets / a_coef, 1.0 / b_coef)
@@ -505,6 +515,13 @@ class PINNLSTMTrainer:
         log_delta_w_theory = torch.log10(delta_w_theory)
         delta_w_loss = F.mse_loss(log_delta_w, log_delta_w_theory)
         
+        # 直接空間的相對誤差
+        delta_w_rel_error = torch.abs(delta_w - delta_w_theory) / delta_w_theory.clamp(min=1e-8)
+        delta_w_rel_loss = torch.mean(delta_w_rel_error ** 2)
+        
+        # 組合delta_w損失
+        delta_w_combined_loss = 0.7 * delta_w_loss + 0.3 * delta_w_rel_loss
+        
         # 3. 計算分支一致性損失
         # PINN和LSTM的delta_w一致性
         log_pinn_delta_w = torch.log10(pinn_delta_w.clamp(min=1e-8))
@@ -513,18 +530,8 @@ class PINNLSTMTrainer:
         
         # 4. 物理約束損失
         # 從delta_w計算疲勞壽命，使用明確的物理公式
-        # 確保係數是浮點數
-        a_coef = float(a_coef)
-        b_coef = float(b_coef)
-        nf_from_delta_w = a_coef * torch.pow(delta_w.clamp(min=1e-8), b_coef)
+        nf_from_delta_w = a_coef * torch.pow(delta_w, b_coef)
         nf_from_delta_w = nf_from_delta_w.clamp(min=10.0)
-
-        # 添加調試輸出
-        if torch.rand(1).item() < 0.05:  # 每20次計算約輸出一次
-            print(f"Loss calculation - Physical coefficients: a={a_coef}, b={b_coef}")
-            print(f"Sample delta_w: {delta_w[:3].detach().cpu().numpy()}")
-            print(f"Sample nf_from_physics: {nf_from_delta_w[:3].detach().cpu().numpy()}")
-            print(f"Sample predictions: {predictions[:3].detach().cpu().numpy()}")
         
         # 物理約束損失 - 比較物理計算的nf與直接預測的nf
         # 使用對數空間計算
@@ -535,10 +542,10 @@ class PINNLSTMTrainer:
         # 5. 正則化損失
         reg_loss = outputs.get('l2_penalty', torch.tensor(0.0, device=self.device))
         
-        # 6. 總損失
+        # 6. 總損失 - 大幅增加delta_w預測損失的權重
         total_loss = (
-            nf_loss +  # 疲勞壽命預測損失
-            delta_w_weight * delta_w_loss +  # delta_w預測損失 (主要目標，權重較高)
+            0.2 * nf_loss +  # 疲勞壽命預測損失權重降低
+            delta_w_weight * delta_w_combined_loss +  # delta_w預測損失 (主要目標，權重較高)
             lambda_consistency * delta_w_consistency +  # 分支一致性損失
             lambda_physics * physics_loss +  # 物理約束損失
             reg_loss  # 正則化損失
@@ -548,7 +555,7 @@ class PINNLSTMTrainer:
         return {
             'total_loss': total_loss,
             'nf_loss': nf_loss,
-            'delta_w_loss': delta_w_loss,
+            'delta_w_loss': delta_w_combined_loss,
             'delta_w_consistency': delta_w_consistency,
             'physics_loss': physics_loss,
             'reg_loss': reg_loss
@@ -1112,27 +1119,16 @@ class HybridPINNLSTMModel(nn.Module):
             # 簡單平均融合
             delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
         
-        # 3. 使用物理公式/層計算Nf (第二階段)
-        # 確保一致且正確的物理計算
-        # 提取標量係數值
-        a_coef = float(self.a_coefficient.item() if hasattr(self.a_coefficient, 'item') else self.a_coefficient)
-        b_coef = float(self.b_coefficient.item() if hasattr(self.b_coefficient, 'item') else self.b_coefficient)
-
-        # 使用clamp確保delta_w不為零，避免計算錯誤
-        safe_delta_w = torch.clamp(delta_w, min=1e-8)
-
-        if self.use_physics_layer:
-            # 使用物理層 - 但確保係數一致
-            self.physics_layer.a = torch.tensor(a_coef, device=safe_delta_w.device)
-            self.physics_layer.b = torch.tensor(b_coef, device=safe_delta_w.device)
-            nf_pred = self.physics_layer(safe_delta_w)
-        else:
-            # 直接使用物理公式計算
-            nf_pred = a_coef * torch.pow(safe_delta_w, b_coef)
-
-        # 確保預測值在合理範圍內
-        nf_pred = torch.clamp(nf_pred, min=10.0)
+        # 3. 使用物理公式計算Nf (第二階段)
+        # 重要修正：確保精確按照物理公式計算
+        a_coef = self.a_coefficient.item() if hasattr(self.a_coefficient, 'item') else float(self.a_coefficient)
+        b_coef = self.b_coefficient.item() if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
         
+        # 使用 torch.pow 而非 ** 運算符確保數值穩定性
+        nf_pred = a_coef * torch.pow(delta_w.clamp(min=1e-8), b_coef)
+        
+        # 確保預測值在合理範圍內
+        nf_pred = torch.clamp(nf_pred, min=10.0)  # 疲勞壽命下限為10週期
         
         # 4. 準備返回結果
         # L2正則化懲罰

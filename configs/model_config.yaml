@@ -60,39 +60,39 @@ training:
   
   # 優化器
   optimizer:
-    name: "adamw"                                                     # 修改: 使用AdamW優化器
-    learning_rate: 0.002                                              # 修改: 增加初始學習率
-    weight_decay: 0.0005                                              # 修改: 降低權重衰減
+    name: "adamw"                                                     # 使用AdamW優化器
+    learning_rate: 0.001                                              # 降低初始學習率
+    weight_decay: 0.0005                                              # 權重衰減
   
   # 學習率調度
   lr_scheduler:
-    name: "one_cycle"                                                 # 修改: 使用one_cycle學習率調度
+    name: "cosine"                                                    # 使用cosine學習率調度
     T_max: 100                                                        # 週期
-    min_lr: 0.00002                                                   # 修改: 增加最小學習率
+    min_lr: 0.00001                                                   # 最小學習率
   
   # 損失函數
   loss:
-    type: "hybrid"                                                 # 損失函數類型: hybrid, adaptive
-    initial_lambda_physics: 1.0                                    # 增加物理約束損失權重
-    max_lambda_physics: 2.0                                        # 增加最大物理約束損失權重
-    initial_lambda_consistency: 0.3                                # 增加初始一致性損失權重
-    max_lambda_consistency: 0.5
-    initial_delta_w_weight: 2.5                                    # 增加delta_w預測權重
-    max_delta_w_weight: 4.0                                        # 增加最大delta_w預測權重
-    epochs_to_max: 30                                              # 減少達到最大權重的訓練輪數
+    type: "adaptive"                                                  # 損失函數類型: hybrid, adaptive
+    initial_lambda_physics: 2.0                                       # 增加物理約束損失權重
+    max_lambda_physics: 5.0                                           # 增加最大物理約束損失權重
+    initial_lambda_consistency: 0.5                                   # 增加初始一致性損失權重
+    max_lambda_consistency: 1.0                                       # 增加最大一致性損失權重
+    initial_delta_w_weight: 3.0                                       # 增加delta_w預測權重
+    max_delta_w_weight: 6.0                                           # 增加最大delta_w預測權重
+    epochs_to_max: 30                                                 # 減少達到最大權重的訓練輪數
     log_space_weight: 0.95   
   
   # 訓練控制
-  epochs: 200                                                         # 修改: 增加最大訓練輪數
+  epochs: 300                                                         # 增加最大訓練輪數
   early_stopping:
-    patience: 40                                                      # 修改: 增加早停耐心值
+    patience: 40                                                      # 保持早停耐心值
     min_delta: 0.0005                                                 # 最小改善閾值
     monitor: "val_loss"                                               # 監控指標
     mode: "min"                                                       # 監控模式
-    restart_threshold: 10                                             # 修改: 添加重啟閾值
+    restart_threshold: 10                                             # 添加重啟閾值
   
   # 梯度裁剪
-  clip_grad_norm: 2.0                                                 # 修改: 增加梯度裁剪範數
+  clip_grad_norm: 1.0                                                 # 降低梯度裁剪範數
 
 # 資料預處理
 preprocessing:
@@ -106,7 +106,7 @@ preprocessing:
     
   # 目標值處理
   target:
-    log_transform: true                                               # 修改: 啟用目標值對數轉換
+    log_transform: true                                               # 啟用目標值對數轉換
     normalize: false                                                  # 是否標準化目標值
 
 # 評估指標

@@ -128,7 +128,13 @@ def prepare_time_series(df, time_series_prefix=None, time_points=None):
             
             if time_points_set:
                 time_points = sorted(list(time_points_set))
-        
+        # 添加調試輸出
+        print(f"[DEBUG] 原始時間序列資料統計:")
+        for prefix in time_series_prefix:
+            cols = [col for col in df.columns if col.startswith(prefix)]
+            for col in cols:
+                data = df[col].values
+                print(f"[DEBUG] {col} - 範圍: {np.min(data):.6e} - {np.max(data):.6e}, 平均值: {np.mean(data):.6e}")
         n_samples = len(df)
         n_time_steps = len(time_points)
         n_features = len(time_series_prefix)
@@ -145,7 +151,13 @@ def prepare_time_series(df, time_series_prefix=None, time_points=None):
         
         logger.info(f"時間序列資料準備完成，形狀: {time_series_data.shape}")
         logger.debug(f"時間序列特徵: {time_series_prefix}, 時間點: {time_points}")
-        
+        # 添加最終時間序列資料的調試輸出
+        print(f"[DEBUG] 最終時間序列資料形狀: {time_series_data.shape}")
+        print(f"[DEBUG] 時間序列上界面數據範例 (第一個樣本):")
+        print(time_series_data[0, :, 0])
+        print(f"[DEBUG] 時間序列下界面數據範例 (第一個樣本):")
+        print(time_series_data[0, :, 1])
+
         return time_series_data
     except Exception as e:
         logger.error(f"準備時間序列資料時發生錯誤: {str(e)}")

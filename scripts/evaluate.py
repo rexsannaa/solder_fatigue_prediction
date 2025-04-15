@@ -376,6 +376,13 @@ def evaluate_model_performance(model, dataloader, device, model_type="hybrid"):
         all_predictions = np.concatenate(all_predictions)
         all_targets = np.concatenate(all_targets)
         
+        delta_w_theory = calculate_theoretical_delta_w(all_targets)
+        print(f"[DEBUG] 预测的 delta_w 统计:")
+        print(f"[DEBUG] 范围: {np.min(results['delta_w']):.6e} - {np.max(results['delta_w']):.6e}")
+        print(f"[DEBUG] 平均值: {np.mean(results['delta_w']):.6e}")
+        print(f"[DEBUG] 样本: {results['delta_w'][:5]}")
+        print(f"[DEBUG] delta_w 相对误差: {np.mean(np.abs((delta_w_theory - results['delta_w']) / delta_w_theory)) * 100:.2f}%")
+
         # 檢查最終結果
         print("="*50)
         print("最終預測結果檢查:")
@@ -436,7 +443,15 @@ def compute_metrics(predictions, targets):
             "r2": [r2],
             "mae": [mae]
         })
-
+    
+def calculate_theoretical_delta_w(targets, a_coefficient=55.83, b_coefficient=-2.259):
+    """計算理論的 delta_w 值"""
+    delta_w_theory = np.power(targets / a_coefficient, 1.0 / b_coefficient)
+    print(f"[DEBUG] 理論 delta_w 統計:")
+    print(f"[DEBUG] 範圍: {np.min(delta_w_theory):.6e} - {np.max(delta_w_theory):.6e}")
+    print(f"[DEBUG] 平均值: {np.mean(delta_w_theory):.6e}")
+    print(f"[DEBUG] 樣本: {delta_w_theory[:5]}")
+    return delta_w_theory
 
 def visualize_results(results, output_dir, config=None):
     """生成視覺化結果"""

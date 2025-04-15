@@ -184,6 +184,10 @@ class PINNModel(nn.Module):
         delta_w = torch.exp(log_delta_w).squeeze(-1)
         delta_w = delta_w.clamp(min=1e-8)  # 確保delta_w為正值
         
+        # 添加調試輸出
+        print(f"[DEBUG] PINN預測 delta_w 統計 - 最小值: {delta_w.min().item():.6e}, 最大值: {delta_w.max().item():.6e}, 平均值: {delta_w.mean().item():.6e}")
+        print(f"[DEBUG] PINN預測 delta_w 樣本: {delta_w[:5].detach().cpu().numpy()}")
+
         # 使用物理公式或物理層計算疲勞壽命
         if self.use_physics_layer:
             nf_pred = self.physics_layer(delta_w)

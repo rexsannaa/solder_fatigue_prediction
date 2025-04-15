@@ -52,7 +52,7 @@ def calculate_delta_w(up_interface, down_interface, weight_factor=0.5):
         delta_w_down = down_interface
 
     # 加權平均計算ΔW，並保證為正值
-    delta_w = weight_factor * delta_w_up + (1 - weight_factor) * delta_w_down
+    delta_w = weight_factor * delta_w_up + (1 - weight_factor) * delta_w_down 
     delta_w = np.maximum(delta_w, 1e-10)
     
     return delta_w
@@ -71,8 +71,18 @@ def nf_from_delta_w(delta_w, a=A_COEFFICIENT, b=B_COEFFICIENT):
     返回:
         float or array: 計算的疲勞壽命
     """
+
     delta_w = np.maximum(np.asarray(delta_w), 1e-10)
+     # 添加調試輸出
+    if isinstance(delta_w, np.ndarray) and len(delta_w) < 10:
+        print(f"[DEBUG] delta_w 範圍: {np.min(delta_w):.6e} - {np.max(delta_w):.6e}")
+        print(f"[DEBUG] delta_w 樣本: {delta_w}")
     nf = a * np.power(delta_w, b)
+     # 添加調試輸出
+    if isinstance(nf, np.ndarray) and len(nf) < 10:
+        print(f"[DEBUG] 計算的 Nf 範圍: {np.min(nf):.2f} - {np.max(nf):.2f}")
+        print(f"[DEBUG] 計算的 Nf 樣本: {nf}")
+
     return nf
 
 

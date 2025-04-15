@@ -1166,6 +1166,7 @@ class HybridPINNLSTMModel(nn.Module):
                 result['fused_features'] = fused_features
         
         return result
+    
     def _calculate_direct_delta_w(self, time_series_input):
         """
         直接從時間序列數據計算delta_w物理量
@@ -1196,6 +1197,10 @@ class HybridPINNLSTMModel(nn.Module):
         
         # 確保值為正
         direct_delta_w = torch.clamp(direct_delta_w, min=1e-8)
+
+        # 添加調試輸出
+        print(f"[DEBUG] 直接計算的 delta_w 範圍: {direct_delta_w.min().item():.6e} - {direct_delta_w.max().item():.6e}")
+        print(f"[DEBUG] 直接計算的 delta_w 樣本: {direct_delta_w[:5].detach().cpu().numpy()}")
         
         return direct_delta_w
 

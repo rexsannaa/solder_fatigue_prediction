@@ -14,19 +14,19 @@ model:
   
   # PINN分支參數
   pinn:
-    hidden_layers: [128, 64, 32]                                      # 修改: 增加隱藏層維度
-    activation: "leaky_relu"                                          # 修改: 使用LeakyReLU激活函數
-    dropout_rate: 0.1                                                 # 修改: 降低Dropout率
+    hidden_layers: [64, 32, 16]                                       # 修改: 減少隱藏層維度，避免過擬合
+    activation: "relu"                                                # 修改: 使用更穩定的ReLU激活函數
+    dropout_rate: 0.2                                                 # 修改: 增加Dropout率防止過擬合
     use_batch_norm: true                                              # 是否使用批次正規化
     use_physics_layer: true                                           # 是否使用物理約束層
-    physics_layer_trainable: true                                     # 修改: 啟用物理層可訓練
+    physics_layer_trainable: false                                    # 修改: 固定物理層參數
   
   # LSTM分支參數
   lstm:
-    hidden_size: 96                                                   # 修改: 增加LSTM隱藏層大小
-    num_layers: 3                                                     # 修改: 增加LSTM層數
+    hidden_size: 64                                                   # 修改: 減少LSTM隱藏層大小
+    num_layers: 2                                                     # 修改: 減少LSTM層數
     bidirectional: true                                               # 是否使用雙向LSTM
-    dropout_rate: 0.1                                                 # 修改: 降低Dropout率
+    dropout_rate: 0.2                                                 # 修改: 增加Dropout率
     use_attention: true                                               # 是否使用注意力機制
   
   # 特徵融合參數
@@ -60,27 +60,27 @@ training:
   
   # 優化器
   optimizer:
-    name: "adamw"                                                     # 使用AdamW優化器
-    learning_rate: 0.001                                              # 降低初始學習率
-    weight_decay: 0.0005                                              # 權重衰減
+    name: "adam"                                                      # 使用標準Adam優化器
+    learning_rate: 0.0005                                             # 進一步降低初始學習率
+    weight_decay: 0.001                                               # 增加權重衰減防止過擬合
   
   # 學習率調度
   lr_scheduler:
     name: "cosine"                                                    # 使用cosine學習率調度
-    T_max: 100                                                        # 週期
+    T_max: 150                                                        # 延長週期
     min_lr: 0.00001                                                   # 最小學習率
   
   # 損失函數
   loss:
     type: "adaptive"                                                  # 損失函數類型: hybrid, adaptive
-    initial_lambda_physics: 2.0                                       # 增加物理約束損失權重
-    max_lambda_physics: 5.0                                           # 增加最大物理約束損失權重
-    initial_lambda_consistency: 0.5                                   # 增加初始一致性損失權重
-    max_lambda_consistency: 1.0                                       # 增加最大一致性損失權重
-    initial_delta_w_weight: 3.0                                       # 增加delta_w預測權重
-    max_delta_w_weight: 6.0                                           # 增加最大delta_w預測權重
-    epochs_to_max: 30                                                 # 減少達到最大權重的訓練輪數
-    log_space_weight: 0.95   
+    initial_lambda_physics: 0.5                                       # 降低物理約束損失權重
+    max_lambda_physics: 2.0                                           # 降低最大物理約束損失權重
+    initial_lambda_consistency: 0.2                                   # 降低初始一致性損失權重
+    max_lambda_consistency: 0.5                                       # 降低最大一致性損失權重
+    initial_delta_w_weight: 1.0                                       # 大幅降低delta_w預測權重
+    max_delta_w_weight: 2.0                                           # 大幅降低最大delta_w預測權重
+    epochs_to_max: 50                                                 # 增加達到最大權重的訓練輪數
+    log_space_weight: 0.9
   
   # 訓練控制
   epochs: 300                                                         # 增加最大訓練輪數

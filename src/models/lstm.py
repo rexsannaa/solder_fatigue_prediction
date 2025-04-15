@@ -76,9 +76,9 @@ class LSTMModel(nn.Module):
     長短期記憶網絡模型 - 專注於預測delta_w
     專門用於處理銲錫接點的非線性塑性應變功時間序列資料
     """
-    def __init__(self, input_dim=2, hidden_size=64, num_layers=2, output_dim=1,
-                 bidirectional=True, dropout_rate=0.1, use_attention=True,
-                 l2_reg=0.001, a_coefficient=55.83, b_coefficient=-2.259):
+    def __init__(self, input_dim=2, hidden_size=48, num_layers=2, output_dim=1,
+                bidirectional=True, dropout_rate=0.25, use_attention=True,
+                l2_reg=0.002, a_coefficient=55.83, b_coefficient=-2.259):
         """
         初始化LSTM模型
         

@@ -70,10 +70,10 @@ class PINNModel(nn.Module):
     處理靜態結構參數特徵並應用物理約束
     專注於預測非線性塑性應變能密度變化量(delta_w)
     """
-    def __init__(self, input_dim=5, hidden_dims=[64, 32, 16], output_dim=1, 
-                 dropout_rate=0.1, use_physics_layer=True, physics_layer_trainable=False,
-                 use_batch_norm=True, activation='leaky_relu', a_coefficient=55.83,
-                 b_coefficient=-2.259, l2_reg=0.001):
+    def __init__(self, input_dim=5, hidden_dims=[48, 24, 12], output_dim=1, 
+                dropout_rate=0.25, use_physics_layer=True, physics_layer_trainable=False,
+                use_batch_norm=True, activation='relu', a_coefficient=55.83,
+                b_coefficient=-2.259, l2_reg=0.002):
         """
         初始化PINN模型
         

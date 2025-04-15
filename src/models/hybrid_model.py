@@ -486,6 +486,7 @@ class PINNLSTMTrainer:
         delta_w = outputs['delta_w']
         pinn_delta_w = outputs['pinn_delta_w']
         lstm_delta_w = outputs['lstm_delta_w']
+        direct_delta_w = outputs.get('direct_delta_w', None)  # 獲取直接計算的delta_w
         
         # 1. 計算疲勞壽命預測損失 (對數空間和直接空間)
         # 對數空間損失
@@ -542,12 +543,19 @@ class PINNLSTMTrainer:
         # 5. 正則化損失
         reg_loss = outputs.get('l2_penalty', torch.tensor(0.0, device=self.device))
         
-        # 6. 總損失 - 大幅增加delta_w預測損失的權重
+        # 添加直接delta_w引導損失
+        direct_delta_w_loss = 0
+        if direct_delta_w is not None:
+            log_direct_delta_w = torch.log10(direct_delta_w.clamp(min=1e-8))
+            log_delta_w = torch.log10(delta_w.clamp(min=1e-8))
+            direct_delta_w_loss = F.mse_loss(log_delta_w, log_direct_delta_w)
+        # 6. 總損失 - 添加直接delta_w引導，平衡預測權重
         total_loss = (
-            0.2 * nf_loss +  # 疲勞壽命預測損失權重降低
-            delta_w_weight * delta_w_combined_loss +  # delta_w預測損失 (主要目標，權重較高)
+            0.4 * nf_loss +  # 增加疲勞壽命預測損失權重
+            delta_w_weight * 0.6 * delta_w_combined_loss +  # 適度降低delta_w預測權重
             lambda_consistency * delta_w_consistency +  # 分支一致性損失
             lambda_physics * physics_loss +  # 物理約束損失
+            0.3 * direct_delta_w_loss +  # 添加直接delta_w引導損失
             reg_loss  # 正則化損失
         )
         
@@ -1095,6 +1103,8 @@ class HybridPINNLSTMModel(nn.Module):
         返回:
             dict: 包含預測結果的字典
         """
+        # 直接從時間序列計算物理delta_w作為引導
+        direct_delta_w = self._calculate_direct_delta_w(time_series_input)
         # 1. 分支預測
         pinn_out = self.pinn_branch(static_input)
         lstm_out = self.lstm_branch(time_series_input)
@@ -1140,6 +1150,7 @@ class HybridPINNLSTMModel(nn.Module):
             'nf_pred': nf_pred,            # 基於物理公式計算的疲勞壽命
             'pinn_delta_w': pinn_out['delta_w'],  # PINN分支預測的delta_w
             'lstm_delta_w': lstm_out['delta_w'],  # LSTM分支預測的delta_w
+            'direct_delta_w': direct_delta_w,     # 直接從時間序列計算的delta_w
             'l2_penalty': l2_penalty
         }
         
@@ -1155,6 +1166,38 @@ class HybridPINNLSTMModel(nn.Module):
                 result['fused_features'] = fused_features
         
         return result
+    def _calculate_direct_delta_w(self, time_series_input):
+        """
+        直接從時間序列數據計算delta_w物理量
+        採用最後時間步與第一時間步的差值
+        
+        參數:
+            time_series_input (torch.Tensor): 時間序列輸入，形狀為 (batch_size, time_steps, time_input_dim)
+        
+        返回:
+            torch.Tensor: 直接計算的delta_w值
+        """
+        # 假設time_input_dim=2，分別是上下界面的應變能密度
+        # 取最後與最初時間步的差值
+        if time_series_input.shape[-1] >= 2:
+            # 提取上下界面的數據
+            up_interface = time_series_input[:, :, 0]  # (batch_size, time_steps)
+            down_interface = time_series_input[:, :, 1]  # (batch_size, time_steps)
+            
+            # 計算差值
+            delta_w_up = up_interface[:, -1] - up_interface[:, 0]
+            delta_w_down = down_interface[:, -1] - down_interface[:, 0]
+            
+            # 加權平均（可根據實際物理意義調整權重）
+            direct_delta_w = (delta_w_up + delta_w_down) / 2.0
+        else:
+            # 如果只有一個特徵，直接計算差值
+            direct_delta_w = time_series_input[:, -1, 0] - time_series_input[:, 0, 0]
+        
+        # 確保值為正
+        direct_delta_w = torch.clamp(direct_delta_w, min=1e-8)
+        
+        return direct_delta_w
 
 if __name__ == "__main__":
     # 簡單的測試代碼

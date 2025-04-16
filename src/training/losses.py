@@ -479,12 +479,12 @@ class HybridLoss(nn.Module):
                 if isinstance(reg_loss, torch.Tensor) and reg_loss.dim() > 0:
                     reg_loss = reg_loss.mean()
             
-            # 6. 總損失 - 添加直接delta_w引導，平衡預測權重
+            # 6. 總損失 - 更加專注於delta_w的準確預測和物理約束
             total_loss = (
                 0.02 * nf_loss +  # 更進一步降低疲勞壽命預測損失權重  
-                delta_w_weight * 8.0 * delta_w_combined_loss +  # 更大幅增強delta_w預測權重
-                lambda_consistency * 0.5 * delta_w_consistency +  # 降低分支一致性損失
-                lambda_physics * 8.0 * physics_loss +  # 更大幅增強物理約束損失
+                self.delta_w_weight * 8.0 * delta_w_combined_loss +  # 更大幅增強delta_w預測權重
+                self.lambda_consistency * 0.5 * delta_w_consistency +  # 降低分支一致性損失
+                self.lambda_physics * 8.0 * physics_loss +  # 更大幅增強物理約束損失
                 4.0 * direct_delta_w_loss +  # 大幅增強直接delta_w引導損失
                 reg_loss  # 正則化損失
             )

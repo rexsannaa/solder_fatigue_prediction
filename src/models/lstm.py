@@ -159,7 +159,7 @@ class LSTMModel(nn.Module):
             elif 'attention_weights' in name:
                 nn.init.xavier_uniform_(param.data) if param.dim() >= 2 else nn.init.uniform_(param.data, -0.1, 0.1)
             elif 'delta_w_layer' in name and 'bias' in name:
-                nn.init.constant_(param.data, -5.5)  # 初始偏置值為對數空間中的-3，exp(-3)≈0.05
+                nn.init.constant_(param.data, -6.0)  # 初始偏置值為對數空間中的-3，exp(-3)≈0.05
             elif 'linear' in name and 'weight' in name:
                 nn.init.xavier_uniform_(param.data) if param.dim() >= 2 else nn.init.uniform_(param.data, -0.1, 0.1)
             elif 'linear' in name and 'bias' in name:

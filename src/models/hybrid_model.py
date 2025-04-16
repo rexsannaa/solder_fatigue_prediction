@@ -195,7 +195,7 @@ class PINNBranch(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
                 if m.bias is not None:
                     if m == self.delta_w_layer:  # delta_w輸出層
-                        nn.init.constant_(m.bias, -3.0)  # 初始偏置使輸出在正常範圍內
+                        nn.init.constant_(m.bias, -5.5)  # 初始偏置使輸出在正常範圍內
                     else:
                         nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm1d):
@@ -323,7 +323,7 @@ class LSTMBranch(nn.Module):
             elif 'attention_weights' in name:
                 nn.init.xavier_uniform_(param.data)
             elif 'delta_w_layer' in name and 'bias' in name:
-                nn.init.constant_(param.data, -3.0)  # 初始偏置使輸出在正常範圍內
+                nn.init.constant_(param.data, -5.5)  # 初始偏置使輸出在正常範圍內
             elif 'linear' in name and 'weight' in name:
                 nn.init.xavier_uniform_(param.data)
             elif 'linear' in name and 'bias' in name:
@@ -1132,7 +1132,7 @@ class HybridPINNLSTMModel(nn.Module):
             delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
         
         # 添加縮放因子校正 delta_w (根據觀察到的差距，理論值約為預測值的1/3)
-        scale_factor = 0.05  # 縮放因子
+        scale_factor = 0.25  # 縮放因子
         base_shift = 0.18   # 底線偏移量
         scaled_delta_w = delta_w * scale_factor + base_shift
 

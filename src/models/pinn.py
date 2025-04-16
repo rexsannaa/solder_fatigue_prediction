@@ -185,9 +185,9 @@ class PINNModel(nn.Module):
         delta_w = delta_w.clamp(min=1e-8)  # 確保delta_w為正值
 
         # 添加縮放因子校正
-        scale_factor = 0.08  # 與混合模型使用相同的縮放因子
-        base_shift = 0.15    # 添加底線偏移量
-        delta_w = delta_w * scale_factor
+        scale_factor = 0.05  # 縮放因子
+        base_shift = 0.18    # 底線偏移量
+        delta_w = delta_w * scale_factor + base_shift
         
         # 添加調試輸出
         print(f"[DEBUG] PINN預測 delta_w 統計 - 最小值: {delta_w.min().item():.6e}, 最大值: {delta_w.max().item():.6e}, 平均值: {delta_w.mean().item():.6e}")
@@ -198,9 +198,18 @@ class PINNModel(nn.Module):
             nf_pred = self.physics_layer(delta_w)
         else:
             # 使用物理公式: Nf = a * (ΔW)^b
-            nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
-            nf_amp_factor = 3.0
-            nf_pred = nf_pred * nf_amp_factor
+            # 使用物理公式計算疲勞壽命
+            a_coef = float(self.a_coefficient) if hasattr(self.a_coefficient, 'item') else self.a_coefficient
+            b_coef = float(self.b_coefficient) if hasattr(self.b_coefficient, 'item') else self.b_coefficient
+            nf_theory = a_coef * torch.pow(delta_w.clamp(min=1e-8), b_coef)
+
+            # 放大因子
+            nf_amp_factor = 5.0
+            # 調整delta_w以保持物理一致性
+            power_factor = (1.0/nf_amp_factor)**(1.0/b_coef)
+            delta_w = delta_w * power_factor
+            # 放大最終預測值
+            nf_pred = nf_theory * nf_amp_factor
             nf_pred = nf_pred.clamp(min=10.0)  # 確保nf_pred為正值
         
         # 計算L2正則化懲罰

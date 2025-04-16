@@ -406,108 +406,107 @@ class HybridLoss(nn.Module):
                     f"delta_w_weight={delta_w_weight}")
     
     def forward(self, outputs, targets, model=None):
-        """
-        計算混合損失 - 專注於delta_w的預測精度
-    
-        參數:
-            outputs (dict): 模型輸出，包含多個預測結果
-                - 'nf_pred': 最終預測的疲勞壽命
-                - 'delta_w': 預測的非線性塑性應變能密度變化量
-                - 'pinn_delta_w': PINN分支預測的delta_w
-                - 'lstm_delta_w': LSTM分支預測的delta_w
-            targets (torch.Tensor): 目標疲勞壽命
-            model (torch.nn.Module, optional): 模型，用於計算正則化損失
-        
-        返回:
-            dict: 包含各部分損失和總損失的字典
-        """
-        # 確保targets為正值
-        targets = torch.clamp(targets, min=10.0)
-        
-        # 1. 基本疲勞壽命預測損失
-        nf_pred = outputs['nf_pred']
-        if nf_pred.dim() != targets.dim() or nf_pred.shape != targets.shape:
-            if nf_pred.dim() < targets.dim():
-                nf_pred = nf_pred.view(targets.shape)
-            elif targets.dim() < nf_pred.dim():
-                targets = targets.view(nf_pred.shape)
-        outputs['nf_pred'] = nf_pred
+            """
+            計算混合損失 - 專注於delta_w的預測精度
             
-        nf_loss = self.mse_loss(nf_pred, targets)
-        
-        # 2. delta_w專用損失 (重點關注)
-        delta_w_direct_loss = torch.tensor(0.0, device=targets.device)
-        if 'delta_w' in outputs:
-            delta_w_direct_loss = self.delta_w_loss(outputs['delta_w'], targets)
-        
-        # 3. 物理約束損失
-        physics_results = {}
-        physics_total_loss = torch.tensor(0.0, device=targets.device)
-        
-        if 'delta_w' in outputs:
-            physics_results = self.physics_loss(
-                outputs['delta_w'], outputs['nf_pred'], targets
+            參數:
+                outputs (dict): 模型輸出，包含多個預測結果
+                    - 'nf_pred': 最終預測的疲勞壽命
+                    - 'delta_w': 預測的非線性塑性應變能密度變化量
+                    - 'pinn_delta_w': PINN分支預測的delta_w
+                    - 'lstm_delta_w': LSTM分支預測的delta_w
+                targets (torch.Tensor): 目標疲勞壽命
+                model (torch.nn.Module, optional): 模型，用於計算正則化損失
+            
+            返回:
+                dict: 包含各部分損失和總損失的字典
+            """
+            # 確保targets為正值
+            targets = torch.clamp(targets, min=10.0)
+            
+            # 1. 基本疲勞壽命預測損失
+            nf_pred = outputs['nf_pred']
+            if nf_pred.dim() != targets.dim() or nf_pred.shape != targets.shape:
+                if nf_pred.dim() < targets.dim():
+                    nf_pred = nf_pred.view(targets.shape)
+                elif targets.dim() < nf_pred.dim():
+                    targets = targets.view(nf_pred.shape)
+            outputs['nf_pred'] = nf_pred
+                
+            nf_loss = self.mse_loss(nf_pred, targets)
+            
+            # 2. delta_w專用損失 (重點關注)
+            delta_w_direct_loss = torch.tensor(0.0, device=targets.device)
+            if 'delta_w' in outputs:
+                delta_w_direct_loss = self.delta_w_loss(outputs['delta_w'], targets)
+            
+            # 3. 物理約束損失
+            physics_results = {}
+            physics_total_loss = torch.tensor(0.0, device=targets.device)
+            
+            if 'delta_w' in outputs:
+                physics_results = self.physics_loss(
+                    outputs['delta_w'], outputs['nf_pred'], targets
+                )
+                physics_total_loss = physics_results['physics_loss']
+            
+            # 4. 一致性損失
+            consistency_results = {}
+            consistency_total_loss = torch.tensor(0.0, device=targets.device)
+            
+            if 'pinn_delta_w' in outputs and 'lstm_delta_w' in outputs:
+                pinn_outputs = {'delta_w': outputs['pinn_delta_w'], 'nf_pred': outputs.get('pinn_nf_pred', nf_pred)}
+                lstm_outputs = {'delta_w': outputs['lstm_delta_w'], 'nf_pred': outputs.get('lstm_nf_pred', nf_pred)}
+                
+                consistency_results = self.consistency_loss(pinn_outputs, lstm_outputs)
+                consistency_total_loss = consistency_results['consistency_loss']
+            
+            # 5. 正則化損失
+            reg_loss = torch.tensor(0.0, device=targets.device)
+            if (self.l1_reg > 0 or self.l2_reg > 0) and model is not None:
+                l1_term = torch.tensor(0.0, device=targets.device)
+                l2_term = torch.tensor(0.0, device=targets.device)
+                
+                for param in model.parameters():
+                    if self.l1_reg > 0:
+                        l1_term += torch.sum(torch.abs(param))
+                    if self.l2_reg > 0:
+                        l2_term += torch.sum(param ** 2)
+                
+                reg_loss = self.l1_reg * l1_term + self.l2_reg * l2_term
+                
+                # 確保reg_loss是標量
+                if isinstance(reg_loss, torch.Tensor) and reg_loss.dim() > 0:
+                    reg_loss = reg_loss.mean()
+            
+            # 6. 總損失 - 添加直接delta_w引導，平衡預測權重
+            total_loss = (
+                0.05 * nf_loss +  # 進一步降低疲勞壽命預測損失權重  
+                self.delta_w_weight * 2.0 * delta_w_direct_loss +  # 更強化delta_w預測權重
+                self.lambda_consistency * 0.5 * consistency_total_loss +  # 調整分支一致性損失
+                self.lambda_physics * 3.0 * physics_total_loss +  # 大幅增強物理約束損失
+                reg_loss  # 正則化損失
             )
-            physics_total_loss = physics_results['physics_loss']
-        
-        # 4. 一致性損失
-        consistency_results = {}
-        consistency_total_loss = torch.tensor(0.0, device=targets.device)
-        
-        if 'pinn_delta_w' in outputs and 'lstm_delta_w' in outputs:
-            pinn_outputs = {'delta_w': outputs['pinn_delta_w'], 'nf_pred': outputs.get('pinn_nf_pred', nf_pred)}
-            lstm_outputs = {'delta_w': outputs['lstm_delta_w'], 'nf_pred': outputs.get('lstm_nf_pred', nf_pred)}
+
+            # 7. 收集所有損失結果
+            result = {
+                'total_loss': total_loss,
+                'nf_loss': nf_loss,
+                'delta_w_loss': delta_w_direct_loss,
+                'physics_loss': physics_total_loss,
+                'consistency_loss': consistency_total_loss,
+                'reg_loss': reg_loss
+            }
             
-            consistency_results = self.consistency_loss(pinn_outputs, lstm_outputs)
-            consistency_total_loss = consistency_results['consistency_loss']
-        
-        # 5. 正則化損失
-        reg_loss = torch.tensor(0.0, device=targets.device)
-        if (self.l1_reg > 0 or self.l2_reg > 0) and model is not None:
-            l1_term = torch.tensor(0.0, device=targets.device)
-            l2_term = torch.tensor(0.0, device=targets.device)
+            # 添加物理約束損失細節
+            for key, value in physics_results.items():
+                result[key] = value
             
-            for param in model.parameters():
-                if self.l1_reg > 0:
-                    l1_term += torch.sum(torch.abs(param))
-                if self.l2_reg > 0:
-                    l2_term += torch.sum(param ** 2)
+            # 添加一致性損失細節
+            for key, value in consistency_results.items():
+                result[key] = value
             
-            reg_loss = self.l1_reg * l1_term + self.l2_reg * l2_term
-            
-            # 確保reg_loss是標量
-            if isinstance(reg_loss, torch.Tensor) and reg_loss.dim() > 0:
-                reg_loss = reg_loss.mean()
-        
-        # 6. 總損失 - 添加直接delta_w引導，平衡預測權重
-        total_loss = (
-            0.05 * nf_loss +  # 進一步降低疲勞壽命預測損失權重  
-            self.delta_w_weight * 2.0 * delta_w_combined_loss +  # 更強化delta_w預測權重
-            self.lambda_consistency * 0.5 * delta_w_consistency +  # 調整分支一致性損失
-            self.lambda_physics * 3.0 * physics_total_loss +  # 大幅增強物理約束損失
-            1.5 * delta_w_direct_loss +  # 進一步增強直接delta_w引導損失
-            reg_loss  # 正則化損失
-        )
-    
-        # 7. 收集所有損失結果
-        result = {
-            'total_loss': total_loss,
-            'nf_loss': nf_loss,
-            'delta_w_loss': delta_w_direct_loss,
-            'physics_loss': physics_total_loss,
-            'consistency_loss': consistency_total_loss,
-            'reg_loss': reg_loss
-        }
-        
-        # 添加物理約束損失細節
-        for key, value in physics_results.items():
-            result[key] = value
-        
-        # 添加一致性損失細節
-        for key, value in consistency_results.items():
-            result[key] = value
-        
-        return result
+            return result
 
     def update_lambda(self, lambda_physics=None, lambda_consistency=None, delta_w_weight=None):
         """

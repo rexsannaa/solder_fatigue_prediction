@@ -225,7 +225,7 @@ class PINNBranch(nn.Module):
         b_coef = float(self.b_coefficient) if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
         
         # 確保使用正確的浮點數計算
-        nf_pred = a_coef * torch.pow(delta_w, b_coef)
+        nf_pred = a_coef * torch.pow(delta_w, b_coef) * 3.0
         nf_pred = torch.clamp(nf_pred, min=10.0)  # 確保Nf為正值
         
         # 計算L2正則化懲罰
@@ -370,7 +370,7 @@ class LSTMBranch(nn.Module):
         b_coef = float(self.b_coefficient) if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
         
         # 使用精確計算
-        nf_pred = a_coef * torch.pow(delta_w, b_coef)
+        nf_pred = a_coef * torch.pow(delta_w, b_coef) * 3.0
         nf_pred = torch.clamp(nf_pred, min=10.0)  # 確保Nf為正值
         
         # 計算L2正則化懲罰
@@ -550,13 +550,13 @@ class PINNLSTMTrainer:
             log_delta_w = torch.log10(delta_w.clamp(min=1e-8))
             direct_delta_w_loss = F.mse_loss(log_delta_w, log_direct_delta_w)
         
-        # 6. 總損失 - 大幅增強delta_w預測權重和物理約束權重
+        # 6. 總損失 - 進一步增強delta_w預測權重
         total_loss = (
-            0.05 * nf_loss +  # 進一步降低疲勞壽命預測損失權重  
-            delta_w_weight * 5.0 * delta_w_combined_loss +  # 大幅增強delta_w預測權重
-            lambda_consistency * 0.8 * delta_w_consistency +  # 保持分支一致性損失
-            lambda_physics * 5.0 * physics_loss +  # 大幅增強物理約束損失
-            2.0 * direct_delta_w_loss +  # 增強直接delta_w引導損失
+            0.02 * nf_loss +  # 更進一步降低疲勞壽命預測損失權重  
+            delta_w_weight * 8.0 * delta_w_combined_loss +  # 更進一步增強delta_w預測權重
+            lambda_consistency * 0.5 * delta_w_consistency +  # 略微降低分支一致性損失權重
+            lambda_physics * 6.0 * physics_loss +  # 增強物理約束損失權重
+            3.0 * direct_delta_w_loss +  # 更進一步增強直接delta_w引導損失
             reg_loss  # 正則化損失
         )
         
@@ -1150,7 +1150,7 @@ class HybridPINNLSTMModel(nn.Module):
         # 3. 直接使用物理公式計算疲勞壽命，不添加縮放因子
         a_coef = float(self.a_coefficient) if hasattr(self.a_coefficient, 'item') else float(self.a_coefficient)
         b_coef = float(self.b_coefficient) if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
-        nf_pred = a_coef * torch.pow(delta_w, b_coef)
+        nf_pred = a_coef * torch.pow(delta_w, b_coef) * 3.0  # 添加3.0的校正因子
         nf_pred = torch.clamp(nf_pred, min=10.0)  # 疲勞壽命下限為10週期
 
         # 4. 準備返回結果
@@ -1207,7 +1207,7 @@ class HybridPINNLSTMModel(nn.Module):
             direct_delta_w = (delta_w_up + delta_w_down) / 2.0
 
             # 添加縮放因子校正
-            direct_scale_factor = 0.25  # 與其他部分使用相同的縮放因子
+            direct_scale_factor = 0.5  # 與其他部分使用相同的縮放因子
             direct_delta_w = direct_delta_w * direct_scale_factor
 
         else:

@@ -185,7 +185,8 @@ class PINNModel(nn.Module):
         delta_w = delta_w.clamp(min=1e-8)  # 確保delta_w為正值
 
         # 添加縮放因子校正
-        scale_factor = 0.10  # 與混合模型使用相同的縮放因子
+        scale_factor = 0.08  # 與混合模型使用相同的縮放因子
+        base_shift = 0.15    # 添加底線偏移量
         delta_w = delta_w * scale_factor
         
         # 添加調試輸出
@@ -198,6 +199,8 @@ class PINNModel(nn.Module):
         else:
             # 使用物理公式: Nf = a * (ΔW)^b
             nf_pred = self.a_coefficient * torch.pow(delta_w, self.b_coefficient)
+            nf_amp_factor = 3.0
+            nf_pred = nf_pred * nf_amp_factor
             nf_pred = nf_pred.clamp(min=10.0)  # 確保nf_pred為正值
         
         # 計算L2正則化懲罰

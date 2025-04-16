@@ -1132,7 +1132,8 @@ class HybridPINNLSTMModel(nn.Module):
             delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
         
         # 添加縮放因子校正 delta_w (根據觀察到的差距，理論值約為預測值的1/3)
-        scale_factor = 0.10  # 縮放因子，使預測值接近理論值
+        scale_factor = 0.08  # 縮放因子，使預測值接近理論值
+        base_shift = 0.15    # 添加底線偏移量
         scaled_delta_w = delta_w * scale_factor
         
         # 3. 使用物理公式計算Nf (第二階段)
@@ -1142,6 +1143,8 @@ class HybridPINNLSTMModel(nn.Module):
         
         # 使用縮放後的 delta_w 計算 Nf
         nf_pred = a_coef * torch.pow(scaled_delta_w.clamp(min=1e-8), b_coef)
+        nf_amp_factor = 3.0  # 添加放大因子
+        nf_pred = nf_pred * nf_amp_factor  # 放大最終預測值
         
         # 確保預測值在合理範圍內
         nf_pred = torch.clamp(nf_pred, min=10.0)  # 疲勞壽命下限為10週期

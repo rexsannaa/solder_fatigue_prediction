@@ -1148,7 +1148,7 @@ class HybridPINNLSTMModel(nn.Module):
         delta_w = delta_w.clamp(min=1e-8)
 
         # 添加全局縮放係數來匹配理論值
-        global_scale_factor = 0.45  # 縮放因子，使預測的delta_w更接近理論值
+        global_scale_factor = 0.35  # 縮放因子，使預測的delta_w更接近理論值
         delta_w = delta_w * global_scale_factor
 
         # 3. 直接使用物理公式計算疲勞壽命，不添加縮放因子
@@ -1211,7 +1211,7 @@ class HybridPINNLSTMModel(nn.Module):
             direct_delta_w = (delta_w_up + delta_w_down) / 2.0
 
             # 添加縮放因子校正
-            direct_scale_factor = 0.20  # 與其他部分使用相同的縮放因子
+            direct_scale_factor = 0.09  # 與其他部分使用相同的縮放因子
             direct_delta_w = direct_delta_w * direct_scale_factor
 
         else:

@@ -155,7 +155,7 @@ class PINNModel(nn.Module):
                 if m.bias is not None:
                     # 對於最終的delta_w輸出層，設置特殊初始化
                     if m == list(self.delta_w_layer.modules())[-1]:
-                        nn.init.constant_(m.bias, -6.0)  # exp(-3) ≈ 0.05，合理的delta_w初始值
+                        nn.init.constant_(m.bias, -6.4)  # exp(-3) ≈ 0.05，合理的delta_w初始值
                     else:
                         nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm1d):

@@ -480,15 +480,14 @@ class HybridLoss(nn.Module):
                     reg_loss = reg_loss.mean()
             
             # 6. 總損失 - 添加直接delta_w引導，平衡預測權重
-            # 6. 總損失 - 更加專注於delta_w的準確預測
             total_loss = (
-                0.02 * nf_loss +  # 進一步降低疲勞壽命預測損失權重  
-                self.delta_w_weight * 10.0 * delta_w_direct_loss +  # 更極大增強delta_w預測權重
-                self.lambda_consistency * 0.5 * consistency_total_loss +  # 降低一致性損失權重
-                self.lambda_physics * 8.0 * physics_total_loss +  # 極大增強物理約束損失
+                0.02 * nf_loss +  # 更進一步降低疲勞壽命預測損失權重  
+                delta_w_weight * 8.0 * delta_w_combined_loss +  # 更大幅增強delta_w預測權重
+                lambda_consistency * 0.5 * delta_w_consistency +  # 降低分支一致性損失
+                lambda_physics * 8.0 * physics_loss +  # 更大幅增強物理約束損失
+                4.0 * direct_delta_w_loss +  # 大幅增強直接delta_w引導損失
                 reg_loss  # 正則化損失
             )
-
             # 7. 收集所有損失結果
             result = {
                 'total_loss': total_loss,

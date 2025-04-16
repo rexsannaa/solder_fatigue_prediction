@@ -1135,6 +1135,15 @@ class HybridPINNLSTMModel(nn.Module):
         a_coef = self.a_coefficient.item() if hasattr(self.a_coefficient, 'item') else float(self.a_coefficient)
         b_coef = self.b_coefficient.item() if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
 
+        # 預測原始delta_w並且確保為正值
+        raw_delta_w = delta_w.clamp(min=1e-8)
+
+        # 直接使用物理公式計算nf_pred，不添加任何縮放或偏移
+        nf_pred = a_coef * torch.pow(raw_delta_w, b_coef)
+
+        # 確保預測值在合理範圍內
+        nf_pred = torch.clamp(nf_pred, min=10.0)
+
         # 2. Delta_W融合預測 (核心預測目標)
         if self.ensemble_method == 'weighted':
             # 加權平均融合

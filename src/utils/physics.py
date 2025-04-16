@@ -140,13 +140,23 @@ def validate_physical_constraints(delta_w, nf, a=A_COEFFICIENT, b=B_COEFFICIENT,
     返回:
         tuple: (是否通過驗證, 相對殘差, 違反約束的索引)
     """
-    delta_w = np.asarray(delta_w)
-    nf = np.asarray(nf)
+    # 計算理論nf值
+    nf_theory = a * np.power(delta_w, b)
+    
+    # 計算相對殘差
     _, relative_residual = strain_energy_equation(nf, delta_w, a, b)
     violated_idx = np.where(relative_residual > threshold)[0]
     passed = (len(violated_idx) == 0)
     
+    # 添加更詳細的診斷信息
     if verbose:
+        mean_delta_w = np.mean(delta_w)
+        mean_nf = np.mean(nf)
+        mean_nf_theory = np.mean(nf_theory)
+        
+        logger.info(f"物理診斷 - 平均delta_w: {mean_delta_w:.6e}, 對應理論Nf: {mean_nf_theory:.2f}")
+        logger.info(f"物理診斷 - 平均預測Nf: {mean_nf:.2f}, 理論與預測比例: {mean_nf_theory/mean_nf:.4f}")
+        
         if passed:
             logger.info(f"物理約束驗證通過! 最大相對殘差: {np.max(relative_residual):.2f}%")
         else:
@@ -155,6 +165,7 @@ def validate_physical_constraints(delta_w, nf, a=A_COEFFICIENT, b=B_COEFFICIENT,
             logger.warning(f"違反約束的樣本相對殘差: {relative_residual[violated_idx]}")
     
     return passed, relative_residual, violated_idx
+
 def estimate_fatigue_life_from_cae(nlplwk_up, nlplwk_down, warpage=None, 
                                   a=A_COEFFICIENT, b=B_COEFFICIENT):
     """

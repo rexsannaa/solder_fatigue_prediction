@@ -1121,6 +1121,7 @@ class HybridPINNLSTMModel(nn.Module):
         """
         # 直接從時間序列計算物理delta_w作為引導
         direct_delta_w = self._calculate_direct_delta_w(time_series_input)
+        
         # 1. 分支預測
         pinn_out = self.pinn_branch(static_input)
         lstm_out = self.lstm_branch(time_series_input)

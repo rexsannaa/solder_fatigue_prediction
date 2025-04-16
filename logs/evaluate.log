@@ -53,3 +53,46 @@ Log RMSE: 0.4795
 2025-04-16 14:03:23,160 - __main__ - INFO - 評估指標保存到: outputs/hybrid_model/evaluation\metrics.csv
 2025-04-16 14:03:23,166 - __main__ - INFO - 違反物理約束的樣本保存到: outputs/hybrid_model/evaluation\violated_samples.csv
 2025-04-16 14:03:23,166 - __main__ - INFO - === 評估完成，耗時: 1.12秒 ===
+2025-04-16 14:24:15,337 - __main__ - INFO - === 開始模型評估 ===
+2025-04-16 14:24:15,339 - __main__ - INFO - 命令行參數: Namespace(model_path='outputs/hybrid_model/models/best_model.pt', config='configs/model_config.yaml', data='data/raw/Training_data_warpage_final_20250321_v1.2.csv', output_dir='outputs/hybrid_model/evaluation', model_type='hybrid', device=None, batch_size=16, visualize=False, debug=False)
+2025-04-16 14:24:15,357 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-16 14:24:15,357 - __main__ - INFO - 使用計算設備: cpu
+2025-04-16 14:24:15,407 - __main__ - INFO - 創建混合PINN-LSTM模型
+2025-04-16 14:24:15,419 - __main__ - INFO - 從 outputs/hybrid_model/models/best_model.pt 載入模型權重
+2025-04-16 14:24:15,437 - __main__ - INFO - 直接從檢查點載入模型權重
+2025-04-16 14:24:15,437 - __main__ - INFO - 模型載入成功，移至 cpu 設備
+2025-04-16 14:24:16,312 - __main__ - INFO - 從 data/raw/Training_data_warpage_final_20250321_v1.2.csv 載入數據
+2025-04-16 14:24:16,316 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-16 14:24:16,318 - __main__ - INFO - 標準化特徵: ['Die', 'stud', 'mold', 'PCB', 'Unit_warpage']
+2025-04-16 14:24:16,320 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-16 14:24:16,322 - __main__ - INFO - 準備時間序列數據
+2025-04-16 14:24:16,324 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-16 14:24:16,324 - __main__ - INFO - 數據載入完成: 81 個樣本
+2025-04-16 14:24:16,326 - __main__ - INFO - 創建數據載入器成功: 81 個樣本，批次大小 16
+2025-04-16 14:24:16,326 - __main__ - INFO - 開始評估模型性能
+2025-04-16 14:24:16,336 - __main__ - ERROR - 評估模型性能失敗: name 'adjusted_delta_w' is not defined
+2025-04-16 14:24:16,339 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\evaluate.py", line 244, in evaluate_model_performance
+    outputs = model(X_batch, time_series_batch, return_features=True)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\models\hybrid_model.py", line 1148, in forward
+    delta_w = adjusted_delta_w
+NameError: name 'adjusted_delta_w' is not defined
+
+2025-04-16 14:24:16,339 - __main__ - ERROR - 評估過程中發生錯誤: name 'adjusted_delta_w' is not defined
+2025-04-16 14:24:16,339 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\evaluate.py", line 636, in main
+    results = evaluate_model_performance(model, dataloader, device, model_type=args.model_type)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\evaluate.py", line 244, in evaluate_model_performance
+    outputs = model(X_batch, time_series_batch, return_features=True)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\a\anaconda3\envs\solder_fatigue\lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\models\hybrid_model.py", line 1148, in forward
+    delta_w = adjusted_delta_w
+NameError: name 'adjusted_delta_w' is not defined
+

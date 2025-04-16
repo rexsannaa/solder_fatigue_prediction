@@ -1135,30 +1135,42 @@ class HybridPINNLSTMModel(nn.Module):
         a_coef = self.a_coefficient.item() if hasattr(self.a_coefficient, 'item') else float(self.a_coefficient)
         b_coef = self.b_coefficient.item() if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
 
-        # 預測原始delta_w並且確保為正值
-        raw_delta_w = delta_w.clamp(min=1e-8)
+        # 2. Delta_W融合預測 (核心預測目標)
+        if self.ensemble_method == 'weighted':
+            # 加權平均融合
+            weights = self.get_branch_weights()
+            delta_w = weights[0] * pinn_out['delta_w'] + weights[1] * lstm_out['delta_w']
+            
+        elif self.ensemble_method in ['gate', 'deep_fusion']:
+            # 使用特徵級融合
+            fused_features, gate_weights = self.fusion_layer(
+                pinn_out['features'], lstm_out['features']
+            )
+            
+            # 從融合特徵預測delta_w
+            delta_w = torch.exp(self.fused_delta_w_layer(fused_features)).squeeze(-1)
+            delta_w = delta_w.clamp(min=1e-8)
+            
+        else:
+            # 簡單平均融合
+            delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
 
-        # 直接使用物理公式計算nf_pred，不添加任何縮放或偏移
-        nf_pred = a_coef * torch.pow(raw_delta_w, b_coef)
+        # 確保delta_w為正值
+        delta_w = delta_w.clamp(min=1e-8)
 
-        # 確保預測值在合理範圍內
-        nf_pred = torch.clamp(nf_pred, min=10.0)
-
-        # 更新delta_w以保持一致性
-        delta_w = adjusted_delta_w
-        
-        # 確保預測值在合理範圍內
+        # 3. 使用物理公式計算疲勞壽命
+        nf_pred = a_coef * torch.pow(delta_w, b_coef)
         nf_pred = torch.clamp(nf_pred, min=10.0)  # 疲勞壽命下限為10週期
-        
+
         # 4. 準備返回結果
         # L2正則化懲罰
         l2_penalty = self.l2_reg * (_l2_penalty(self.parameters()))
-        
+
         # 基本輸出
         result = {
-            'delta_w': scaled_delta_w,       # 修改：返回縮放後的 delta_w
-            'raw_delta_w': delta_w,          # 添加：原始未縮放的 delta_w
-            'nf_pred': nf_pred,              # 基於物理公式計算的疲勞壽命
+            'delta_w': delta_w,       # 預測的delta_w
+            'raw_delta_w': delta_w,   # 原始未縮放的delta_w (此處與delta_w相同)
+            'nf_pred': nf_pred,       # 基於物理公式計算的疲勞壽命
             'pinn_delta_w': pinn_out['delta_w'],  # PINN分支預測的delta_w
             'lstm_delta_w': lstm_out['delta_w'],  # LSTM分支預測的delta_w
             'direct_delta_w': direct_delta_w,     # 直接從時間序列計算的delta_w

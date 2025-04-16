@@ -466,7 +466,7 @@ class PINNLSTMTrainer:
     
     def _compute_loss(self, outputs, targets, lambda_physics, lambda_consistency, delta_w_weight):
         """
-        計算混合損失
+        計算混合損失 - 專注於delta_w的預測精度
         
         參數:
             outputs (dict): 模型輸出
@@ -520,8 +520,8 @@ class PINNLSTMTrainer:
         delta_w_rel_error = torch.abs(delta_w - delta_w_theory) / delta_w_theory.clamp(min=1e-8)
         delta_w_rel_loss = torch.mean(delta_w_rel_error ** 2)
         
-        # 組合delta_w損失
-        delta_w_combined_loss = 0.7 * delta_w_loss + 0.3 * delta_w_rel_loss
+        # 組合delta_w損失 (增加對數空間損失權重)
+        delta_w_combined_loss = 0.8 * delta_w_loss + 0.2 * delta_w_rel_loss
         
         # 3. 計算分支一致性損失
         # PINN和LSTM的delta_w一致性
@@ -549,13 +549,14 @@ class PINNLSTMTrainer:
             log_direct_delta_w = torch.log10(direct_delta_w.clamp(min=1e-8))
             log_delta_w = torch.log10(delta_w.clamp(min=1e-8))
             direct_delta_w_loss = F.mse_loss(log_delta_w, log_direct_delta_w)
-        # 6. 總損失 - 加大delta_w預測權重和物理約束權重
+        
+        # 6. 總損失 - 大幅增強delta_w預測權重和物理約束權重
         total_loss = (
-            0.1 * nf_loss +  # 大幅降低疲勞壽命預測損失權重  
-            delta_w_weight * 1.5 * delta_w_combined_loss +  # 強化delta_w預測權重
-            lambda_consistency * 0.8 * delta_w_consistency +  # 加強分支一致性損失
-            lambda_physics * 2.0 * physics_loss +  # 極大增強物理約束損失
-            1.0 * direct_delta_w_loss +  # 極大增強直接delta_w引導損失
+            0.05 * nf_loss +  # 進一步降低疲勞壽命預測損失權重  
+            delta_w_weight * 5.0 * delta_w_combined_loss +  # 大幅增強delta_w預測權重
+            lambda_consistency * 0.8 * delta_w_consistency +  # 保持分支一致性損失
+            lambda_physics * 5.0 * physics_loss +  # 大幅增強物理約束損失
+            2.0 * direct_delta_w_loss +  # 增強直接delta_w引導損失
             reg_loss  # 正則化損失
         )
         
@@ -1022,6 +1023,20 @@ class HybridPINNLSTMModel(nn.Module):
         self.ensemble_method = ensemble_method
         self.l2_reg = l2_reg
         
+        self.physics_constraint_layer = nn.Sequential(
+            nn.Linear(1, 32),
+            nn.LeakyReLU(0.1),
+            nn.Linear(32, 32),
+            nn.LeakyReLU(0.1),
+            nn.Linear(32, 1),
+            nn.Sigmoid()  # 輸出範圍 [0, 1]
+        )
+        for m in self.physics_constraint_layer.modules():
+            if isinstance(m, nn.Linear):
+                if m == self.physics_constraint_layer[-2]:  # 最後一層線性層
+                    nn.init.constant_(m.bias, 5.0)  # 初始偏置讓 sigmoid 輸出接近 1
+
+
         # 註冊物理係數
         self.register_buffer('a_coefficient', torch.tensor(a_coefficient, dtype=torch.float32))
         self.register_buffer('b_coefficient', torch.tensor(b_coefficient, dtype=torch.float32))
@@ -1091,7 +1106,6 @@ class HybridPINNLSTMModel(nn.Module):
         # 默認權重
         return torch.tensor([0.5, 0.5], device=next(self.parameters()).device)
     
-    # 在 src/models/hybrid_model.py 的 HybridPINNLSTMModel 類的 forward 方法中添加縮放因子
 
     def forward(self, static_input, time_series_input, return_features=False):
         """
@@ -1116,7 +1130,6 @@ class HybridPINNLSTMModel(nn.Module):
             # 加權平均融合
             weights = self.get_branch_weights()
             delta_w = weights[0] * pinn_out['delta_w'] + weights[1] * lstm_out['delta_w']
-            
         elif self.ensemble_method in ['gate', 'deep_fusion']:
             # 使用特徵級融合
             fused_features, gate_weights = self.fusion_layer(
@@ -1126,40 +1139,6 @@ class HybridPINNLSTMModel(nn.Module):
             # 從融合特徵預測delta_w
             delta_w = torch.exp(self.fused_delta_w_layer(fused_features)).squeeze(-1)
             delta_w = delta_w.clamp(min=1e-8)
-            
-        else:
-            # 簡單平均融合
-            delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
-        
-        # 提取物理參數
-        a_coef = self.a_coefficient.item() if hasattr(self.a_coefficient, 'item') else float(self.a_coefficient)
-        b_coef = self.b_coefficient.item() if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
-
-        # 預測原始delta_w並且確保為正值
-        raw_delta_w = delta_w.clamp(min=1e-8)
-
-        # 直接使用物理公式計算nf_pred，不添加任何縮放或偏移
-        nf_pred = a_coef * torch.pow(raw_delta_w, b_coef)
-
-        # 確保預測值在合理範圍內
-        nf_pred = torch.clamp(nf_pred, min=10.0)
-
-        # 2. Delta_W融合預測 (核心預測目標)
-        if self.ensemble_method == 'weighted':
-            # 加權平均融合
-            weights = self.get_branch_weights()
-            delta_w = weights[0] * pinn_out['delta_w'] + weights[1] * lstm_out['delta_w']
-            
-        elif self.ensemble_method in ['gate', 'deep_fusion']:
-            # 使用特徵級融合
-            fused_features, gate_weights = self.fusion_layer(
-                pinn_out['features'], lstm_out['features']
-            )
-            
-            # 從融合特徵預測delta_w
-            delta_w = torch.exp(self.fused_delta_w_layer(fused_features)).squeeze(-1)
-            delta_w = delta_w.clamp(min=1e-8)
-            
         else:
             # 簡單平均融合
             delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
@@ -1167,7 +1146,9 @@ class HybridPINNLSTMModel(nn.Module):
         # 確保delta_w為正值
         delta_w = delta_w.clamp(min=1e-8)
 
-        # 3. 使用物理公式計算疲勞壽命
+        # 3. 直接使用物理公式計算疲勞壽命，不添加縮放因子
+        a_coef = float(self.a_coefficient) if hasattr(self.a_coefficient, 'item') else float(self.a_coefficient)
+        b_coef = float(self.b_coefficient) if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
         nf_pred = a_coef * torch.pow(delta_w, b_coef)
         nf_pred = torch.clamp(nf_pred, min=10.0)  # 疲勞壽命下限為10週期
 

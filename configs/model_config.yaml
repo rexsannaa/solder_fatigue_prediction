@@ -73,15 +73,14 @@ training:
   
   # 損失函數
   loss:
-    type: "adaptive"                                                  # 損失函數類型: hybrid, adaptive
-    initial_lambda_physics: 1.0                                      # 降低物理約束損失權重
-    max_lambda_physics: 3.0                                           # 降低最大物理約束損失權重
-    initial_lambda_consistency: 2.0                                   # 降低初始一致性損失權重
-    max_lambda_consistency: 4.0                                       # 降低最大一致性損失權重
-    initial_delta_w_weight: 1.0                                       # 大幅降低delta_w預測權重
-    max_delta_w_weight: 2.0                                           # 大幅降低最大delta_w預測權重
-    epochs_to_max: 50                                                 # 增加達到最大權重的訓練輪數
-    log_space_weight: 0.9
+    type: "adaptive"
+    initial_lambda_physics: 2.0          # 增加物理約束初始權重
+    max_lambda_physics: 5.0              # 增加物理約束最大權重
+    initial_lambda_consistency: 0.5      # 調整初始一致性損失權重
+    max_lambda_consistency: 1.0          # 調整最大一致性損失權重
+    initial_delta_w_weight: 3.0          # 大幅增加delta_w預測初始權重
+    max_delta_w_weight: 5.0              # 大幅增加delta_w預測最大權重
+    epochs_to_max: 50                    # 權重達到最大值的訓練輪數
   
   # 訓練控制
   epochs: 300                                                         # 增加最大訓練輪數

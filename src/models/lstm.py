@@ -211,16 +211,7 @@ class LSTMModel(nn.Module):
         # 使用物理公式計算疲勞壽命
         a_coef = float(self.a_coefficient) if hasattr(self.a_coefficient, 'item') else self.a_coefficient
         b_coef = float(self.b_coefficient) if hasattr(self.b_coefficient, 'item') else self.b_coefficient
-        nf_theory = a_coef * torch.pow(delta_w.clamp(min=1e-8), b_coef)
-
-        # 放大因子
-        nf_amp_factor = 5.0
-        # 調整delta_w以保持物理一致性
-        power_factor = (1.0/nf_amp_factor)**(1.0/b_coef)
-        delta_w = delta_w * power_factor
-        # 放大最終預測值
-        nf_pred = nf_theory * nf_amp_factor
-
+        nf_pred = a_coef * torch.pow(delta_w.clamp(min=1e-8), b_coef)
         nf_pred = nf_pred.clamp(min=10.0)  # 確保疲勞壽命不會太小
 
         # 計算L2正則化懲罰

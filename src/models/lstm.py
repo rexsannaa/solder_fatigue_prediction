@@ -207,11 +207,6 @@ class LSTMModel(nn.Module):
         log_delta_w = self.delta_w_layer(fc_output)
         delta_w = torch.exp(log_delta_w).squeeze(-1)
         delta_w = delta_w.clamp(min=1e-8)  # 確保delta_w為正值
-
-        # 添加縮放因子校正
-        scale_factor = 0.05  # 縮放因子
-        base_shift = 0.18    # 底線偏移量
-        delta_w = delta_w * scale_factor + base_shift
         
         # 使用物理公式計算疲勞壽命
         a_coef = float(self.a_coefficient) if hasattr(self.a_coefficient, 'item') else self.a_coefficient

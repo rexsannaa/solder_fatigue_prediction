@@ -1131,21 +1131,18 @@ class HybridPINNLSTMModel(nn.Module):
             # 簡單平均融合
             delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
         
-        # 添加縮放因子校正 delta_w (根據觀察到的差距，理論值約為預測值的1/3)
-        scale_factor = 0.25  # 縮放因子
-        base_shift = 0.18   # 底線偏移量
-        scaled_delta_w = delta_w * scale_factor + base_shift
-
-        # 使用物理公式計算理論Nf
+        # 提取物理參數
         a_coef = self.a_coefficient.item() if hasattr(self.a_coefficient, 'item') else float(self.a_coefficient)
         b_coef = self.b_coefficient.item() if hasattr(self.b_coefficient, 'item') else float(self.b_coefficient)
-        nf_theory = a_coef * torch.pow(scaled_delta_w.clamp(min=1e-8), b_coef)
 
-        # 應用相同的放大因子到delta_w和nf以保持物理一致性
-        nf_amp_factor = 5.0  # 放大因子
-        power_factor = (1.0/nf_amp_factor)**(1.0/b_coef)  # 使用Python的冪運算代替torch.pow
-        adjusted_delta_w = scaled_delta_w * power_factor  # 根據放大因子調整delta_w
-        nf_pred = nf_theory * nf_amp_factor  # 放大最終預測值
+        # 預測原始delta_w並且確保為正值
+        raw_delta_w = delta_w.clamp(min=1e-8)
+
+        # 直接使用物理公式計算nf_pred，不添加任何縮放或偏移
+        nf_pred = a_coef * torch.pow(raw_delta_w, b_coef)
+
+        # 確保預測值在合理範圍內
+        nf_pred = torch.clamp(nf_pred, min=10.0)
 
         # 更新delta_w以保持一致性
         delta_w = adjusted_delta_w

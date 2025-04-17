@@ -150,30 +150,24 @@ def create_model(config, model_type="hybrid", use_physics=True):
     b_coefficient = config["model"]["physics"]["b_coefficient"]
     
     if model_type == "hybrid":
-        # 創建混合PINN-LSTM模型
+        # 從配置中獲取隱藏層大小
+        pinn_hidden_dim = config["model"]["pinn"]["hidden_layers"][0] if isinstance(config["model"]["pinn"]["hidden_layers"], list) else 32
+        lstm_hidden_size = config["model"]["lstm"]["hidden_size"]
+        
+        # 創建簡化的混合模型
         model = HybridPINNLSTMModel(
             static_input_dim=len(config["model"]["input"]["static_features"]),
             time_input_dim=len(config["model"]["input"]["time_series_features"]),
             time_steps=config["model"]["input"]["time_steps"],
-            pinn_hidden_dims=config["model"]["pinn"]["hidden_layers"],
-            lstm_hidden_size=config["model"]["lstm"]["hidden_size"],
-            lstm_num_layers=config["model"]["lstm"]["num_layers"],
-            fusion_dim=config["model"]["fusion"]["fusion_dim"],
+            hidden_dim=pinn_hidden_dim,
             dropout_rate=config["model"]["pinn"]["dropout_rate"],
-            bidirectional=config["model"]["lstm"]["bidirectional"],
-            use_attention=config["model"]["lstm"]["use_attention"],
-            use_physics_layer=use_physics and config["model"]["pinn"]["use_physics_layer"],
-            physics_layer_trainable=config["model"]["pinn"].get("physics_layer_trainable", False),
-            use_batch_norm=config["model"]["pinn"].get("use_batch_norm", True),
-            pinn_weight_init=config["model"]["fusion"].get("pinn_weight_init", 0.7),
-            lstm_weight_init=config["model"]["fusion"].get("lstm_weight_init", 0.3),
+            pinn_weight=config["model"]["fusion"].get("pinn_weight_init", 0.5),
+            lstm_weight=config["model"]["fusion"].get("lstm_weight_init", 0.5),
             a_coefficient=a_coefficient,
             b_coefficient=b_coefficient,
-            use_log_transform=config["model"].get("use_log_transform", True),
-            ensemble_method=config["model"]["fusion"].get("ensemble_method", "weighted"),
-            l2_reg=config["training"].get("l2_reg", 0.001)
         )
-        logger.info(f"創建混合PINN-LSTM模型，使用物理約束: {use_physics}，融合方法: {config['model']['fusion'].get('ensemble_method', 'weighted')}")
+        
+        logger.info(f"創建簡化的混合PINN-LSTM模型，使用物理約束: {use_physics}")
     elif model_type == "pinn":
         # 只創建PINN模型
         model = PINNModel(

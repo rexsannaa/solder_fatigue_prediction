@@ -3,96 +3,96 @@
 
 # 模型架構參數
 model:
-  name: "HybridPINNLSTM"  # 模型名稱
-  description: "混合物理資訊神經網絡和長短期記憶網絡用於銲錫接點疲勞壽命預測"
+  name: "SimplifiedHybridPINNLSTM"  # 更新模型名稱
+  description: "簡化版混合物理資訊神經網絡和長短期記憶網絡，強調直接物理計算"
   
-  # 輸入特徵參數
+  # 輸入特徵參數保持不變
   input:
-    static_features: ["Die", "stud", "mold", "PCB", "Unit_warpage"]  # 靜態結構參數
-    time_series_features: ["NLPLWK_up_", "NLPLWK_down_"]               # 時間序列特徵
-    time_steps: 4                                                     # 時間步數 (3600, 7200, 10800, 14400)
+    static_features: ["Die", "stud", "mold", "PCB", "Unit_warpage"]
+    time_series_features: ["NLPLWK_up_", "NLPLWK_down_"]
+    time_steps: 4
   
-  # PINN分支參數
+  # PINN分支參數 - 大幅簡化
   pinn:
-    hidden_layers: [64, 32, 16]                                       # 修改: 減少隱藏層維度，避免過擬合
-    activation: "relu"                                                # 修改: 使用更穩定的ReLU激活函數
-    dropout_rate: 0.2                                                 # 修改: 增加Dropout率防止過擬合
-    use_batch_norm: true                                              # 是否使用批次正規化
-    use_physics_layer: true                                           # 是否使用物理約束層
-    physics_layer_trainable: false                                    # 修改: 固定物理層參數
+    hidden_layers: [16]                   # 改為單層隱藏層
+    activation: "leaky_relu"              # 改用LeakyReLU以避免死神經元
+    dropout_rate: 0.1                     # 降低Dropout率，避免過度正則化
+    use_batch_norm: true                  # 保持BatchNorm
+    use_physics_layer: true               # 保持物理層
+    physics_layer_trainable: false        # 固定物理層參數
   
-  # LSTM分支參數
+  # LSTM分支參數 - 大幅簡化
   lstm:
-    hidden_size: 64                                                   # 修改: 減少LSTM隱藏層大小
-    num_layers: 2                                                     # 修改: 減少LSTM層數
-    bidirectional: true                                               # 是否使用雙向LSTM
-    dropout_rate: 0.2                                                 # 修改: 增加Dropout率
-    use_attention: true                                               # 是否使用注意力機制
+    hidden_size: 32                       # 降低隱藏層大小
+    num_layers: 1                         # 減少為單層LSTM
+    bidirectional: true                   # 保持雙向特性
+    dropout_rate: 0.1                     # 降低Dropout率
+    use_attention: true                   # 保持注意力機制
   
-  # 特徵融合參數
+  # 特徵融合參數 - 簡化
   fusion:
-    fusion_dim: 64                                                    # 修改: 增加融合特徵維度
-    use_attention_gate: true                                          # 是否使用注意力門控機制
-    ensemble_method: "weighted"                                       # 融合方法: weighted, gate, deep_fusion
-    pinn_weight_init: 0.7                                             # PINN初始權重
-    lstm_weight_init: 0.3                                             # LSTM初始權重
+    fusion_dim: 16                        # 降低融合維度
+    use_attention_gate: false             # 移除注意力門控機制
+    ensemble_method: "weighted"           # 使用簡單加權平均
+    pinn_weight_init: 0.5                 # 平衡兩個分支權重
+    lstm_weight_init: 0.5                 # 平衡兩個分支權重
   
-  # 物理約束參數
+  # 物理約束參數 - 調整
   physics:
-    a_coefficient: 55.83                                              # 物理模型係數a
-    b_coefficient: -2.259                                             # 物理模型係數b
-    enforce_constraints: true                                         # 是否強制執行物理約束
-    scale_correction_factor: 10.0                                     # 添加delta_w縮放校正因子
+    a_coefficient: 55.83                  # 保持不變
+    b_coefficient: -2.259                 # 保持不變
+    enforce_constraints: true             # 保持不變
+    scale_correction_factor: 0.4          # 調整為新的直接計算校正因子
   
   # 輸出參數
-  use_log_transform: true                                             # 是否使用對數變換
-  output_scale_init: 1.0                                              # 修改: 設置初始輸出尺度因子
+  use_log_transform: true                 # 保持不變
+  output_scale_init: 1.0                  # 保持不變
 
 # 訓練參數
 training:
-  # 資料分割
+  # 資料分割保持不變
   data_split:
-    test_size: 0.15                                                   # 測試集比例
-    val_size: 0.15                                                    # 驗證集比例
-    random_seed: 42                                                   # 隨機種子
+    test_size: 0.15
+    val_size: 0.15
+    random_seed: 42
   
-  # 批次大小 - 考慮到小樣本資料集(81筆)
-  batch_size: 8                                                       # 批次大小
+  # 批次大小保持不變
+  batch_size: 8
   
-  # 優化器
+  # 優化器 - 降低學習率
   optimizer:
-    name: "adam"                                                      # 使用標準Adam優化器
-    learning_rate: 0.0005                                             # 進一步降低初始學習率
-    weight_decay: 0.001                                               # 增加權重衰減防止過擬合
+    name: "adam"
+    learning_rate: 0.0003                 # 降低學習率以適應簡化模型
+    weight_decay: 0.001                   # 保持不變
   
-  # 學習率調度
+  # 學習率調度保持不變
   lr_scheduler:
-    name: "cosine"                                                    # 使用cosine學習率調度
-    T_max: 150                                                        # 延長週期
-    min_lr: 0.00001                                                   # 最小學習率
+    name: "cosine"
+    T_max: 150
+    min_lr: 0.00001
   
-  # 損失函數
+  # 損失函數 - 調整權重
   loss:
     type: "adaptive"
-    initial_lambda_physics: 2.0          # 增加物理約束初始權重
-    max_lambda_physics: 5.0              # 增加物理約束最大權重
-    initial_lambda_consistency: 0.5      # 調整初始一致性損失權重
-    max_lambda_consistency: 1.0          # 調整最大一致性損失權重
-    initial_delta_w_weight: 3.0          # 大幅增加delta_w預測初始權重
-    max_delta_w_weight: 5.0              # 大幅增加delta_w預測最大權重
-    epochs_to_max: 50                    # 權重達到最大值的訓練輪數
+    initial_lambda_physics: 5.0           # 顯著增加物理約束初始權重
+    max_lambda_physics: 10.0              # 顯著增加物理約束最大權重
+    initial_lambda_consistency: 0.2       # 降低一致性損失權重
+    max_lambda_consistency: 0.5           # 降低一致性損失最大權重
+    initial_delta_w_weight: 5.0           # 增加delta_w預測初始權重
+    max_delta_w_weight: 8.0               # 增加delta_w預測最大權重
+    epochs_to_max: 50                     # 保持不變
   
-  # 訓練控制
-  epochs: 300                                                         # 增加最大訓練輪數
+  # 訓練控制保持不變
+  epochs: 300
   early_stopping:
-    patience: 40                                                      # 保持早停耐心值
-    min_delta: 0.0005                                                 # 最小改善閾值
-    monitor: "val_loss"                                               # 監控指標
-    mode: "min"                                                       # 監控模式
-    restart_threshold: 10                                             # 添加重啟閾值
+    patience: 40
+    min_delta: 0.0005
+    monitor: "val_loss"
+    mode: "min"
+    restart_threshold: 10
   
-  # 梯度裁剪
-  clip_grad_norm: 1.0                                                 # 降低梯度裁剪範數
+  # 梯度裁剪降低
+  clip_grad_norm: 0.5                     # 降低梯度裁剪，適應較小的網絡
 
 # 資料預處理
 preprocessing:

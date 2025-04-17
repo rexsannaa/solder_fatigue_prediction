@@ -1,0 +1,19 @@
+2025-04-18 00:12:48,705 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-18 00:12:48,725 - __main__ - INFO - 成功載入配置文件: configs/train_config.yaml
+2025-04-18 00:12:48,730 - __main__ - INFO - 已設定隨機種子: 42
+2025-04-18 00:12:48,731 - __main__ - INFO - 使用計算設備: cpu
+2025-04-18 00:12:48,731 - __main__ - INFO - 輸出目錄: outputs/hybrid_model
+2025-04-18 00:12:48,733 - __main__ - INFO - 載入資料: data/raw/Training_data_warpage_final_20250321_v1.2.csv
+2025-04-18 00:12:48,737 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-18 00:12:48,741 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-18 00:12:48,743 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-18 00:12:48,745 - src.data.preprocess - INFO - 資料分割完成 - 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-18 00:12:48,745 - src.data.preprocess - INFO - 完整資料處理流程完成
+2025-04-18 00:12:48,745 - __main__ - INFO - 資料分割完成, 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-18 00:12:48,746 - __main__ - INFO - 應用資料增強...
+2025-04-18 00:12:48,746 - src.data.dataset - INFO - 進行資料增強，原始訓練集大小: 56 樣本
+2025-04-18 00:12:48,909 - src.data.dataset - INFO - 資料增強完成，增強後的訓練集大小: 940 樣本
+2025-04-18 00:12:48,910 - __main__ - INFO - 資料增強完成，增強後的訓練集大小: 940 樣本
+2025-04-18 00:12:48,913 - src.models.hybrid_model - INFO - 初始化簡化的HybridPINNLSTMModel - 使用直接物理計算優先策略
+2025-04-18 00:12:48,913 - __main__ - INFO - 創建簡化的混合PINN-LSTM模型，使用物理約束: True
+2025-04-18 00:12:48,915 - src.data.dataset - INFO - 已創建資料載入器 - 訓練: 940 樣本, 驗證: 12 樣本, 測試: 13 樣本, 批次大小: 8

@@ -349,7 +349,7 @@ class SimplifiedHybridModel(nn.Module):
         # 簡單加權平均
         base_factor = (self.pinn_weight * pinn_factor + self.lstm_weight * lstm_factor)
         # 應用受限非線性變換，使修正因子更專注於中心區域
-        combined_factor = torch.sigmoid((base_factor - 0.5) * 2.0) * 0.6 + 0.7  # 範圍約為0.8-1.2
+        combined_factor = torch.sigmoid((base_factor - 0.5) * 2.0) * 0.5 + 0.75  # 範圍約為0.8-1.2
         
         # 4. 應用修正因子到直接計算的delta_w
         delta_w = direct_delta_w * combined_factor
@@ -407,7 +407,7 @@ class SimplifiedHybridModel(nn.Module):
         
         # 使用物理校正因子 - 根據評估結果重新校準
         # 從結果來看，預測的delta_w平均約為0.484，而理論值約為0.265，差異約1.83倍
-        direct_delta_w = direct_delta_w * 0.29  # 0.4 / 1.83 ≈ 0.22
+        direct_delta_w = direct_delta_w * 0.27  # 0.4 / 1.83 ≈ 0.22
         
         # 確保值為正
         direct_delta_w = torch.clamp(direct_delta_w, min=1e-8)

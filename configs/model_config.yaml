@@ -74,13 +74,13 @@ training:
   # 損失函數 - 調整權重
   loss:
     type: "adaptive"
-    initial_lambda_physics: 5.0           # 顯著增加物理約束初始權重
-    max_lambda_physics: 10.0              # 顯著增加物理約束最大權重
-    initial_lambda_consistency: 0.2       # 降低一致性損失權重
-    max_lambda_consistency: 0.5           # 降低一致性損失最大權重
-    initial_delta_w_weight: 5.0           # 增加delta_w預測初始權重
-    max_delta_w_weight: 8.0               # 增加delta_w預測最大權重
-    epochs_to_max: 50                     # 保持不變
+    initial_lambda_physics: 8.0           # 進一步增加物理約束初始權重
+    max_lambda_physics: 15.0              # 進一步增加物理約束最大權重
+    initial_lambda_consistency: 0.1       # 進一步降低一致性損失權重
+    max_lambda_consistency: 0.3           # 進一步降低一致性損失最大權重
+    initial_delta_w_weight: 8.0           # 大幅增加delta_w預測初始權重
+    max_delta_w_weight: 15.0              # 大幅增加delta_w預測最大權重
+    epochs_to_max: 40                     # 縮短達到最大權重的時間
   
   # 訓練控制保持不變
   epochs: 300

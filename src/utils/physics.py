@@ -143,9 +143,6 @@ def validate_physical_constraints(delta_w, nf, a=A_COEFFICIENT, b=B_COEFFICIENT,
     delta_w = np.asarray(delta_w)
     nf = np.asarray(nf)
     
-    # 使用與模型相同的放大因子
-    nf_amp_factor = 3.0
-    
     # 計算理論nf值（考慮放大因子）
     nf_theory = a * np.power(delta_w, b) * nf_amp_factor
     

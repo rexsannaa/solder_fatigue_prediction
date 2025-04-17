@@ -6,3 +6,252 @@
 2025-04-17 23:10:44,164 - __main__ - INFO - 載入資料: data/raw/Training_data_warpage_final_20250321_v1.2.csv
 2025-04-17 23:10:44,172 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
 2025-04-17 23:10:44,230 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-17 23:10:45,138 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-17 23:10:45,195 - src.data.preprocess - INFO - 資料分割完成 - 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-17 23:10:45,201 - src.data.preprocess - INFO - 完整資料處理流程完成
+2025-04-17 23:10:45,201 - __main__ - INFO - 資料分割完成, 訓練集: 56 樣本, 驗證集: 12 樣本, 測試集: 13 樣本
+2025-04-17 23:10:45,202 - __main__ - INFO - 應用資料增強...
+2025-04-17 23:10:45,202 - src.data.dataset - INFO - 進行資料增強，原始訓練集大小: 56 樣本
+2025-04-17 23:10:45,401 - src.data.dataset - INFO - 資料增強完成，增強後的訓練集大小: 940 樣本
+2025-04-17 23:10:45,401 - __main__ - INFO - 資料增強完成，增強後的訓練集大小: 940 樣本
+2025-04-17 23:10:45,406 - src.models.hybrid_model - INFO - 初始化簡化的HybridPINNLSTMModel - 使用直接物理計算優先策略
+2025-04-17 23:10:45,406 - __main__ - INFO - 創建簡化的混合PINN-LSTM模型，使用物理約束: True
+2025-04-17 23:10:45,408 - src.data.dataset - INFO - 已創建資料載入器 - 訓練: 940 樣本, 驗證: 12 樣本, 測試: 13 樣本, 批次大小: 8
+2025-04-17 23:10:47,741 - src.training.trainer - INFO - 創建adam優化器，學習率: 0.0003，權重衰減: 0.001
+2025-04-17 23:10:47,742 - src.training.losses - INFO - 初始化HybridLoss: lambda_physics=5.0, lambda_consistency=0.2, delta_w_weight=1.5
+2025-04-17 23:10:47,743 - src.training.losses - INFO - 初始化AdaptiveHybridLoss: physics權重從5.0增加到10.0, consistency權重從0.2增加到0.5, delta_w權重從1.5增加到3.0, 在50個輪次內達到最大值, 預熱輪次: 5, 調整方案: linear
+2025-04-17 23:10:47,743 - src.training.trainer - INFO - 創建餘弦退火學習率調度器，週期: 150，最小學習率: 1e-05
+2025-04-17 23:10:47,745 - src.training.callbacks - INFO - 初始化ModelCheckpoint: 保存目錄=outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints, 保存頻率=5, 只保存最佳=False, 監控指標=val_loss, 模式=min
+2025-04-17 23:10:47,746 - src.training.callbacks - INFO - 初始化LossHistory: 保存路徑=outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\history.json, 保存頻率=1
+2025-04-17 23:10:47,749 - src.training.trainer - INFO - 初始化訓練器完成，模型: HybridPINNLSTMModel, 優化器: Adam, 設備: cpu
+2025-04-17 23:10:47,750 - __main__ - INFO - 開始訓練，總輪數: 300
+2025-04-17 23:10:47,750 - src.training.trainer - INFO - 開始訓練，總輪數: 300
+2025-04-17 23:10:49,078 - src.training.trainer - INFO - 輪次 1/300 - 訓練損失: 175.060759 - 驗證損失: 17.349728 - rmse: 15846.031250 - r2: -453.764282 - mae: 13144.059570 - 學習率: 0.000300 - 時間: 1.33秒
+2025-04-17 23:10:49,085 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_001.pt
+2025-04-17 23:10:49,092 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:10:50,349 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:10:51,772 - src.training.trainer - INFO - 輪次 3/300 - 訓練損失: 75.885547 - 驗證損失: 11.151524 - rmse: 9856.168945 - r2: -174.938812 - mae: 7892.167969 - 學習率: 0.000300 - 時間: 1.42秒
+2025-04-17 23:10:51,779 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:10:53,064 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:10:54,199 - src.training.trainer - INFO - 輪次 5/300 - 訓練損失: 57.356333 - 驗證損失: 9.994223 - rmse: 8473.390625 - r2: -129.034866 - mae: 6700.171387 - 學習率: 0.000299 - 時間: 1.13秒
+2025-04-17 23:10:54,204 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:10:55,467 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_006.pt
+2025-04-17 23:10:55,471 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:10:56,742 - src.training.trainer - INFO - 輪次 7/300 - 訓練損失: 49.270131 - 驗證損失: 9.243250 - rmse: 7498.212891 - r2: -100.826515 - mae: 5905.755371 - 學習率: 0.000299 - 時間: 1.27秒
+2025-04-17 23:10:56,748 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:10:58,248 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:10:59,793 - src.training.trainer - INFO - 輪次 9/300 - 訓練損失: 44.073939 - 驗證損失: 8.670756 - rmse: 6705.041016 - r2: -80.423210 - mae: 5285.280762 - 學習率: 0.000298 - 時間: 1.54秒
+2025-04-17 23:10:59,798 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:01,076 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:02,383 - src.training.trainer - INFO - 輪次 11/300 - 訓練損失: 41.423875 - 驗證損失: 8.355196 - rmse: 6262.822266 - r2: -70.037140 - mae: 4924.627441 - 學習率: 0.000297 - 時間: 1.31秒
+2025-04-17 23:11:02,393 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_011.pt
+2025-04-17 23:11:02,398 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:03,622 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:04,836 - src.training.trainer - INFO - 輪次 13/300 - 訓練損失: 40.165638 - 驗證損失: 8.223415 - rmse: 6072.053223 - r2: -65.775398 - mae: 4775.492188 - 學習率: 0.000295 - 時間: 1.21秒
+2025-04-17 23:11:04,842 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:06,029 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:07,215 - src.training.trainer - INFO - 輪次 15/300 - 訓練損失: 39.066942 - 驗證損失: 8.157483 - rmse: 5981.641113 - r2: -63.801643 - mae: 4698.506348 - 學習率: 0.000294 - 時間: 1.19秒
+2025-04-17 23:11:07,220 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:08,400 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_016.pt
+2025-04-17 23:11:08,407 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:09,656 - src.training.trainer - INFO - 輪次 17/300 - 訓練損失: 39.212579 - 驗證損失: 8.133667 - rmse: 5948.941895 - r2: -63.095093 - mae: 4672.291992 - 學習率: 0.000292 - 時間: 1.25秒
+2025-04-17 23:11:09,661 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:10,798 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:12,002 - src.training.trainer - INFO - 輪次 19/300 - 訓練損失: 41.505531 - 驗證損失: 8.127348 - rmse: 5940.993652 - r2: -62.923943 - mae: 4664.346191 - 學習率: 0.000290 - 時間: 1.20秒
+2025-04-17 23:11:12,009 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:13,217 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:14,666 - src.training.trainer - INFO - 輪次 21/300 - 訓練損失: 38.808766 - 驗證損失: 8.124491 - rmse: 5937.228027 - r2: -62.842930 - mae: 4661.198242 - 學習率: 0.000287 - 時間: 1.45秒
+2025-04-17 23:11:14,677 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_021.pt
+2025-04-17 23:11:14,682 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:15,996 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:17,249 - src.training.trainer - INFO - 輪次 23/300 - 訓練損失: 39.473153 - 驗證損失: 8.123552 - rmse: 5936.014648 - r2: -62.816841 - mae: 4660.140625 - 學習率: 0.000285 - 時間: 1.25秒
+2025-04-17 23:11:17,256 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:18,615 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:19,951 - src.training.trainer - INFO - 輪次 25/300 - 訓練損失: 39.125856 - 驗證損失: 8.122861 - rmse: 5935.098145 - r2: -62.797134 - mae: 4659.307617 - 學習率: 0.000282 - 時間: 1.34秒
+2025-04-17 23:11:19,958 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:21,265 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_026.pt
+2025-04-17 23:11:21,271 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:22,469 - src.training.trainer - INFO - 輪次 27/300 - 訓練損失: 39.027858 - 驗證損失: 8.122546 - rmse: 5934.664062 - r2: -62.787800 - mae: 4658.944824 - 學習率: 0.000279 - 時間: 1.20秒
+2025-04-17 23:11:22,474 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:23,743 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:25,021 - src.training.trainer - INFO - 輪次 29/300 - 訓練損失: 38.873342 - 驗證損失: 8.122452 - rmse: 5934.589844 - r2: -62.786205 - mae: 4658.786621 - 學習率: 0.000276 - 時間: 1.28秒
+2025-04-17 23:11:25,028 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:26,269 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:27,449 - src.training.trainer - INFO - 輪次 31/300 - 訓練損失: 40.333457 - 驗證損失: 8.122211 - rmse: 5934.232422 - r2: -62.778519 - mae: 4658.550293 - 學習率: 0.000272 - 時間: 1.18秒
+2025-04-17 23:11:27,458 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_031.pt
+2025-04-17 23:11:27,464 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:28,793 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:29,999 - src.training.trainer - INFO - 輪次 33/300 - 訓練損失: 40.117374 - 驗證損失: 8.122215 - rmse: 5934.288574 - r2: -62.779724 - mae: 4658.526855 - 學習率: 0.000269 - 時間: 1.21秒
+2025-04-17 23:11:30,004 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:31,303 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:32,556 - src.training.trainer - INFO - 輪次 35/300 - 訓練損失: 38.856619 - 驗證損失: 8.122083 - rmse: 5934.092773 - r2: -62.775520 - mae: 4658.404297 - 學習率: 0.000265 - 時間: 1.25秒
+2025-04-17 23:11:32,563 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:33,744 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_036.pt
+2025-04-17 23:11:33,752 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:34,906 - src.training.trainer - INFO - 輪次 37/300 - 訓練損失: 40.180527 - 驗證損失: 8.122023 - rmse: 5934.007324 - r2: -62.773682 - mae: 4658.333496 - 學習率: 0.000261 - 時間: 1.15秒
+2025-04-17 23:11:34,916 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:36,201 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:37,566 - src.training.trainer - INFO - 輪次 39/300 - 訓練損失: 39.631099 - 驗證損失: 8.121950 - rmse: 5933.908203 - r2: -62.771557 - mae: 4658.254883 - 學習率: 0.000256 - 時間: 1.37秒
+2025-04-17 23:11:37,573 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:38,944 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:40,231 - src.training.trainer - INFO - 輪次 41/300 - 訓練損失: 38.175187 - 驗證損失: 8.121953 - rmse: 5933.933105 - r2: -62.772091 - mae: 4658.246582 - 學習率: 0.000252 - 時間: 1.29秒
+2025-04-17 23:11:40,241 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_041.pt
+2025-04-17 23:11:40,248 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:41,702 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:42,927 - src.training.trainer - INFO - 輪次 43/300 - 訓練損失: 38.251972 - 驗證損失: 8.121923 - rmse: 5933.900391 - r2: -62.771385 - mae: 4658.214355 - 學習率: 0.000247 - 時間: 1.22秒
+2025-04-17 23:11:42,932 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:44,343 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:45,616 - src.training.trainer - INFO - 輪次 45/300 - 訓練損失: 39.110500 - 驗證損失: 8.121906 - rmse: 5933.875977 - r2: -62.770863 - mae: 4658.190918 - 學習率: 0.000243 - 時間: 1.27秒
+2025-04-17 23:11:45,623 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:46,976 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_046.pt
+2025-04-17 23:11:46,982 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:48,107 - src.training.trainer - INFO - 輪次 47/300 - 訓練損失: 37.961852 - 驗證損失: 8.121887 - rmse: 5933.848145 - r2: -62.770264 - mae: 4658.166016 - 學習率: 0.000238 - 時間: 1.13秒
+2025-04-17 23:11:48,114 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:49,379 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:50,528 - src.training.trainer - INFO - 輪次 49/300 - 訓練損失: 38.706228 - 驗證損失: 8.121888 - rmse: 5933.858887 - r2: -62.770500 - mae: 4658.163574 - 學習率: 0.000233 - 時間: 1.15秒
+2025-04-17 23:11:50,535 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:51,784 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:53,041 - src.training.trainer - INFO - 輪次 51/300 - 訓練損失: 39.748205 - 驗證損失: 8.121845 - rmse: 5933.792480 - r2: -62.769066 - mae: 4658.121582 - 學習率: 0.000228 - 時間: 1.26秒
+2025-04-17 23:11:53,047 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_051.pt
+2025-04-17 23:11:53,050 - src.training.trainer - INFO - min模式下監控指標改善
+2025-04-17 23:11:53,055 - src.training.trainer - INFO - 監控指標改善，模型已保存至 outputs/hybrid_model\models\best_model.pt
+2025-04-17 23:11:54,324 - src.training.trainer - INFO - 監控指標未改善，已連續 1 輪。最佳值: 8.121845, 當前值: 8.121840
+2025-04-17 23:11:55,479 - src.training.trainer - INFO - 輪次 53/300 - 訓練損失: 39.025304 - 驗證損失: 8.121821 - rmse: 5933.762207 - r2: -62.768414 - mae: 4658.091797 - 學習率: 0.000222 - 時間: 1.15秒
+2025-04-17 23:11:55,482 - src.training.trainer - INFO - 監控指標未改善，已連續 2 輪。最佳值: 8.121845, 當前值: 8.121821
+2025-04-17 23:11:56,588 - src.training.trainer - INFO - 監控指標未改善，已連續 3 輪。最佳值: 8.121845, 當前值: 8.121811
+2025-04-17 23:11:57,782 - src.training.trainer - INFO - 輪次 55/300 - 訓練損失: 48.387959 - 驗證損失: 8.121787 - rmse: 5933.704590 - r2: -62.767181 - mae: 4658.056152 - 學習率: 0.000217 - 時間: 1.19秒
+2025-04-17 23:11:57,786 - src.training.trainer - INFO - 監控指標未改善，已連續 4 輪。最佳值: 8.121845, 當前值: 8.121787
+2025-04-17 23:11:58,932 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_056.pt
+2025-04-17 23:11:58,935 - src.training.trainer - INFO - 監控指標未改善，已連續 5 輪。最佳值: 8.121845, 當前值: 8.121836
+2025-04-17 23:11:58,935 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:00,179 - src.training.trainer - INFO - 輪次 57/300 - 訓練損失: 39.037194 - 驗證損失: 8.121814 - rmse: 5933.748047 - r2: -62.768108 - mae: 4658.082031 - 學習率: 0.000211 - 時間: 1.24秒
+2025-04-17 23:12:00,182 - src.training.trainer - INFO - 監控指標未改善，已連續 4 輪。最佳值: 8.121845, 當前值: 8.121814
+2025-04-17 23:12:01,396 - src.training.trainer - INFO - 監控指標未改善，已連續 5 輪。最佳值: 8.121845, 當前值: 8.121805
+2025-04-17 23:12:02,525 - src.training.trainer - INFO - 輪次 59/300 - 訓練損失: 38.467762 - 驗證損失: 8.121808 - rmse: 5933.744629 - r2: -62.768032 - mae: 4658.077148 - 學習率: 0.000206 - 時間: 1.13秒
+2025-04-17 23:12:02,529 - src.training.trainer - INFO - 監控指標未改善，已連續 6 輪。最佳值: 8.121845, 當前值: 8.121808
+2025-04-17 23:12:03,818 - src.training.trainer - INFO - 監控指標未改善，已連續 7 輪。最佳值: 8.121845, 當前值: 8.121795
+2025-04-17 23:12:04,975 - src.training.trainer - INFO - 輪次 61/300 - 訓練損失: 38.514812 - 驗證損失: 8.121807 - rmse: 5933.746582 - r2: -62.768078 - mae: 4658.073730 - 學習率: 0.000200 - 時間: 1.16秒
+2025-04-17 23:12:04,985 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_061.pt
+2025-04-17 23:12:04,988 - src.training.trainer - INFO - 監控指標未改善，已連續 8 輪。最佳值: 8.121845, 當前值: 8.121807
+2025-04-17 23:12:04,988 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:06,095 - src.training.trainer - INFO - 監控指標未改善，已連續 7 輪。最佳值: 8.121845, 當前值: 8.121798
+2025-04-17 23:12:07,209 - src.training.trainer - INFO - 輪次 63/300 - 訓練損失: 38.888364 - 驗證損失: 8.121790 - rmse: 5933.717773 - r2: -62.767464 - mae: 4658.058105 - 學習率: 0.000194 - 時間: 1.11秒
+2025-04-17 23:12:07,211 - src.training.trainer - INFO - 監控指標未改善，已連續 8 輪。最佳值: 8.121845, 當前值: 8.121790
+2025-04-17 23:12:08,375 - src.training.trainer - INFO - 監控指標未改善，已連續 9 輪。最佳值: 8.121845, 當前值: 8.121784
+2025-04-17 23:12:09,492 - src.training.trainer - INFO - 輪次 65/300 - 訓練損失: 39.152706 - 驗證損失: 8.121791 - rmse: 5933.720703 - r2: -62.767521 - mae: 4658.058105 - 學習率: 0.000188 - 時間: 1.12秒
+2025-04-17 23:12:09,495 - src.training.trainer - INFO - 監控指標未改善，已連續 10 輪。最佳值: 8.121845, 當前值: 8.121791
+2025-04-17 23:12:10,561 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_066.pt
+2025-04-17 23:12:10,566 - src.training.trainer - INFO - 監控指標未改善，已連續 11 輪。最佳值: 8.121845, 當前值: 8.121795
+2025-04-17 23:12:10,566 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:11,724 - src.training.trainer - INFO - 輪次 67/300 - 訓練損失: 38.618232 - 驗證損失: 8.121790 - rmse: 5933.720215 - r2: -62.767509 - mae: 4658.056152 - 學習率: 0.000182 - 時間: 1.16秒
+2025-04-17 23:12:11,727 - src.training.trainer - INFO - 監控指標未改善，已連續 10 輪。最佳值: 8.121845, 當前值: 8.121790
+2025-04-17 23:12:12,889 - src.training.trainer - INFO - 監控指標未改善，已連續 11 輪。最佳值: 8.121845, 當前值: 8.121788
+2025-04-17 23:12:14,054 - src.training.trainer - INFO - 輪次 69/300 - 訓練損失: 39.491507 - 驗證損失: 8.121783 - rmse: 5933.709473 - r2: -62.767284 - mae: 4658.047852 - 學習率: 0.000176 - 時間: 1.17秒
+2025-04-17 23:12:14,056 - src.training.trainer - INFO - 監控指標未改善，已連續 12 輪。最佳值: 8.121845, 當前值: 8.121783
+2025-04-17 23:12:15,198 - src.training.trainer - INFO - 監控指標未改善，已連續 13 輪。最佳值: 8.121845, 當前值: 8.121781
+2025-04-17 23:12:16,423 - src.training.trainer - INFO - 輪次 71/300 - 訓練損失: 39.029632 - 驗證損失: 8.121782 - rmse: 5933.708008 - r2: -62.767246 - mae: 4658.046875 - 學習率: 0.000170 - 時間: 1.22秒
+2025-04-17 23:12:16,433 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_071.pt
+2025-04-17 23:12:16,435 - src.training.trainer - INFO - 監控指標未改善，已連續 14 輪。最佳值: 8.121845, 當前值: 8.121782
+2025-04-17 23:12:16,436 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:17,609 - src.training.trainer - INFO - 監控指標未改善，已連續 13 輪。最佳值: 8.121845, 當前值: 8.121796
+2025-04-17 23:12:18,830 - src.training.trainer - INFO - 輪次 73/300 - 訓練損失: 38.648610 - 驗證損失: 8.121774 - rmse: 5933.696777 - r2: -62.767014 - mae: 4658.039062 - 學習率: 0.000164 - 時間: 1.22秒
+2025-04-17 23:12:18,834 - src.training.trainer - INFO - 監控指標未改善，已連續 14 輪。最佳值: 8.121845, 當前值: 8.121774
+2025-04-17 23:12:19,993 - src.training.trainer - INFO - 監控指標未改善，已連續 15 輪。最佳值: 8.121845, 當前值: 8.121778
+2025-04-17 23:12:21,201 - src.training.trainer - INFO - 輪次 75/300 - 訓練損失: 38.400740 - 驗證損失: 8.121782 - rmse: 5933.708984 - r2: -62.767269 - mae: 4658.046875 - 學習率: 0.000158 - 時間: 1.21秒
+2025-04-17 23:12:21,204 - src.training.trainer - INFO - 監控指標未改善，已連續 16 輪。最佳值: 8.121845, 當前值: 8.121782
+2025-04-17 23:12:22,381 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_076.pt
+2025-04-17 23:12:22,384 - src.training.trainer - INFO - 監控指標未改善，已連續 17 輪。最佳值: 8.121845, 當前值: 8.121781
+2025-04-17 23:12:22,384 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:23,610 - src.training.trainer - INFO - 輪次 77/300 - 訓練損失: 38.979669 - 驗證損失: 8.121771 - rmse: 5933.692871 - r2: -62.766926 - mae: 4658.034668 - 學習率: 0.000152 - 時間: 1.23秒
+2025-04-17 23:12:23,614 - src.training.trainer - INFO - 監控指標未改善，已連續 16 輪。最佳值: 8.121845, 當前值: 8.121771
+2025-04-17 23:12:24,902 - src.training.trainer - INFO - 監控指標未改善，已連續 17 輪。最佳值: 8.121845, 當前值: 8.121759
+2025-04-17 23:12:26,024 - src.training.trainer - INFO - 輪次 79/300 - 訓練損失: 39.165652 - 驗證損失: 8.121754 - rmse: 5933.666504 - r2: -62.766354 - mae: 4658.015625 - 學習率: 0.000146 - 時間: 1.12秒
+2025-04-17 23:12:26,027 - src.training.trainer - INFO - 監控指標未改善，已連續 18 輪。最佳值: 8.121845, 當前值: 8.121754
+2025-04-17 23:12:27,135 - src.training.trainer - INFO - 監控指標未改善，已連續 19 輪。最佳值: 8.121845, 當前值: 8.121727
+2025-04-17 23:12:28,322 - src.training.trainer - INFO - 輪次 81/300 - 訓練損失: 39.670415 - 驗證損失: 8.121747 - rmse: 5933.654297 - r2: -62.766090 - mae: 4658.006348 - 學習率: 0.000140 - 時間: 1.19秒
+2025-04-17 23:12:28,327 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_081.pt
+2025-04-17 23:12:28,332 - src.training.trainer - INFO - 監控指標未改善，已連續 20 輪。最佳值: 8.121845, 當前值: 8.121747
+2025-04-17 23:12:28,332 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:29,523 - src.training.trainer - INFO - 監控指標未改善，已連續 19 輪。最佳值: 8.121845, 當前值: 8.121759
+2025-04-17 23:12:30,670 - src.training.trainer - INFO - 輪次 83/300 - 訓練損失: 39.590695 - 驗證損失: 8.121764 - rmse: 5933.679688 - r2: -62.766647 - mae: 4658.025391 - 學習率: 0.000134 - 時間: 1.15秒
+2025-04-17 23:12:30,674 - src.training.trainer - INFO - 監控指標未改善，已連續 20 輪。最佳值: 8.121845, 當前值: 8.121764
+2025-04-17 23:12:31,912 - src.training.trainer - INFO - 監控指標未改善，已連續 21 輪。最佳值: 8.121845, 當前值: 8.121770
+2025-04-17 23:12:33,011 - src.training.trainer - INFO - 輪次 85/300 - 訓練損失: 40.594578 - 驗證損失: 8.121755 - rmse: 5933.667480 - r2: -62.766380 - mae: 4658.017578 - 學習率: 0.000128 - 時間: 1.10秒
+2025-04-17 23:12:33,015 - src.training.trainer - INFO - 監控指標未改善，已連續 22 輪。最佳值: 8.121845, 當前值: 8.121755
+2025-04-17 23:12:34,175 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_086.pt
+2025-04-17 23:12:34,177 - src.training.trainer - INFO - 監控指標未改善，已連續 23 輪。最佳值: 8.121845, 當前值: 8.121758
+2025-04-17 23:12:34,178 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:35,272 - src.training.trainer - INFO - 輪次 87/300 - 訓練損失: 39.357292 - 驗證損失: 8.121769 - rmse: 5933.687012 - r2: -62.766796 - mae: 4658.032715 - 學習率: 0.000122 - 時間: 1.09秒
+2025-04-17 23:12:35,275 - src.training.trainer - INFO - 監控指標未改善，已連續 22 輪。最佳值: 8.121845, 當前值: 8.121769
+2025-04-17 23:12:36,420 - src.training.trainer - INFO - 監控指標未改善，已連續 23 輪。最佳值: 8.121845, 當前值: 8.121759
+2025-04-17 23:12:37,644 - src.training.trainer - INFO - 輪次 89/300 - 訓練損失: 39.126762 - 驗證損失: 8.121767 - rmse: 5933.686035 - r2: -62.766777 - mae: 4658.029785 - 學習率: 0.000116 - 時間: 1.22秒
+2025-04-17 23:12:37,647 - src.training.trainer - INFO - 監控指標未改善，已連續 24 輪。最佳值: 8.121845, 當前值: 8.121767
+2025-04-17 23:12:38,884 - src.training.trainer - INFO - 監控指標未改善，已連續 25 輪。最佳值: 8.121845, 當前值: 8.121714
+2025-04-17 23:12:40,199 - src.training.trainer - INFO - 輪次 91/300 - 訓練損失: 38.185291 - 驗證損失: 8.121732 - rmse: 5933.632812 - r2: -62.765633 - mae: 4657.992188 - 學習率: 0.000110 - 時間: 1.31秒
+2025-04-17 23:12:40,209 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_091.pt
+2025-04-17 23:12:40,213 - src.training.trainer - INFO - 監控指標未改善，已連續 26 輪。最佳值: 8.121845, 當前值: 8.121732
+2025-04-17 23:12:40,213 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:41,496 - src.training.trainer - INFO - 監控指標未改善，已連續 25 輪。最佳值: 8.121845, 當前值: 8.121745
+2025-04-17 23:12:42,763 - src.training.trainer - INFO - 輪次 93/300 - 訓練損失: 38.501254 - 驗證損失: 8.121759 - rmse: 5933.672852 - r2: -62.766502 - mae: 4658.020508 - 學習率: 0.000104 - 時間: 1.27秒
+2025-04-17 23:12:42,766 - src.training.trainer - INFO - 監控指標未改善，已連續 26 輪。最佳值: 8.121845, 當前值: 8.121759
+2025-04-17 23:12:43,950 - src.training.trainer - INFO - 監控指標未改善，已連續 27 輪。最佳值: 8.121845, 當前值: 8.121763
+2025-04-17 23:12:45,165 - src.training.trainer - INFO - 輪次 95/300 - 訓練損失: 39.501015 - 驗證損失: 8.121766 - rmse: 5933.682617 - r2: -62.766708 - mae: 4658.027344 - 學習率: 0.000099 - 時間: 1.22秒
+2025-04-17 23:12:45,170 - src.training.trainer - INFO - 監控指標未改善，已連續 28 輪。最佳值: 8.121845, 當前值: 8.121766
+2025-04-17 23:12:46,373 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_096.pt
+2025-04-17 23:12:46,378 - src.training.trainer - INFO - 監控指標未改善，已連續 29 輪。最佳值: 8.121845, 當前值: 8.121765
+2025-04-17 23:12:46,378 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:47,559 - src.training.trainer - INFO - 輪次 97/300 - 訓練損失: 37.975803 - 驗證損失: 8.121769 - rmse: 5933.689941 - r2: -62.766865 - mae: 4658.032715 - 學習率: 0.000093 - 時間: 1.18秒
+2025-04-17 23:12:47,564 - src.training.trainer - INFO - 監控指標未改善，已連續 28 輪。最佳值: 8.121845, 當前值: 8.121769
+2025-04-17 23:12:48,798 - src.training.trainer - INFO - 監控指標未改善，已連續 29 輪。最佳值: 8.121845, 當前值: 8.121773
+2025-04-17 23:12:50,021 - src.training.trainer - INFO - 輪次 99/300 - 訓練損失: 39.609019 - 驗證損失: 8.121773 - rmse: 5933.699219 - r2: -62.767067 - mae: 4658.034668 - 學習率: 0.000088 - 時間: 1.22秒
+2025-04-17 23:12:50,024 - src.training.trainer - INFO - 監控指標未改善，已連續 30 輪。最佳值: 8.121845, 當前值: 8.121773
+2025-04-17 23:12:51,287 - src.training.trainer - INFO - 監控指標未改善，已連續 31 輪。最佳值: 8.121845, 當前值: 8.121763
+2025-04-17 23:12:52,515 - src.training.trainer - INFO - 輪次 101/300 - 訓練損失: 39.209025 - 驗證損失: 8.121762 - rmse: 5933.677246 - r2: -62.766582 - mae: 4658.022461 - 學習率: 0.000083 - 時間: 1.23秒
+2025-04-17 23:12:52,525 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_101.pt
+2025-04-17 23:12:52,529 - src.training.trainer - INFO - 監控指標未改善，已連續 32 輪。最佳值: 8.121845, 當前值: 8.121762
+2025-04-17 23:12:52,529 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:53,755 - src.training.trainer - INFO - 監控指標未改善，已連續 31 輪。最佳值: 8.121845, 當前值: 8.121763
+2025-04-17 23:12:54,962 - src.training.trainer - INFO - 輪次 103/300 - 訓練損失: 38.924980 - 驗證損失: 8.121758 - rmse: 5933.674805 - r2: -62.766537 - mae: 4658.020996 - 學習率: 0.000077 - 時間: 1.21秒
+2025-04-17 23:12:54,964 - src.training.trainer - INFO - 監控指標未改善，已連續 32 輪。最佳值: 8.121845, 當前值: 8.121758
+2025-04-17 23:12:56,146 - src.training.trainer - INFO - 監控指標未改善，已連續 33 輪。最佳值: 8.121845, 當前值: 8.121763
+2025-04-17 23:12:57,403 - src.training.trainer - INFO - 輪次 105/300 - 訓練損失: 38.913672 - 驗證損失: 8.121768 - rmse: 5933.689941 - r2: -62.766861 - mae: 4658.029297 - 學習率: 0.000072 - 時間: 1.26秒
+2025-04-17 23:12:57,408 - src.training.trainer - INFO - 監控指標未改善，已連續 34 輪。最佳值: 8.121845, 當前值: 8.121768
+2025-04-17 23:12:58,620 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_106.pt
+2025-04-17 23:12:58,626 - src.training.trainer - INFO - 監控指標未改善，已連續 35 輪。最佳值: 8.121845, 當前值: 8.121765
+2025-04-17 23:12:58,626 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:12:59,864 - src.training.trainer - INFO - 輪次 107/300 - 訓練損失: 38.935464 - 驗證損失: 8.121762 - rmse: 5933.679688 - r2: -62.766636 - mae: 4658.023926 - 學習率: 0.000067 - 時間: 1.24秒
+2025-04-17 23:12:59,870 - src.training.trainer - INFO - 監控指標未改善，已連續 34 輪。最佳值: 8.121845, 當前值: 8.121762
+2025-04-17 23:13:01,088 - src.training.trainer - INFO - 監控指標未改善，已連續 35 輪。最佳值: 8.121845, 當前值: 8.121770
+2025-04-17 23:13:02,312 - src.training.trainer - INFO - 輪次 109/300 - 訓練損失: 38.894193 - 驗證損失: 8.121762 - rmse: 5933.679688 - r2: -62.766644 - mae: 4658.024902 - 學習率: 0.000063 - 時間: 1.22秒
+2025-04-17 23:13:02,316 - src.training.trainer - INFO - 監控指標未改善，已連續 36 輪。最佳值: 8.121845, 當前值: 8.121762
+2025-04-17 23:13:03,546 - src.training.trainer - INFO - 監控指標未改善，已連續 37 輪。最佳值: 8.121845, 當前值: 8.121770
+2025-04-17 23:13:04,717 - src.training.trainer - INFO - 輪次 111/300 - 訓練損失: 38.922798 - 驗證損失: 8.121767 - rmse: 5933.686035 - r2: -62.766781 - mae: 4658.030273 - 學習率: 0.000058 - 時間: 1.17秒
+2025-04-17 23:13:04,727 - src.training.callbacks - INFO - 模型檢查點已保存至 outputs\hybrid_model\HybridPINNLSTMModel_20250417_231047\checkpoints\HybridPINNLSTMModel_epoch_111.pt
+2025-04-17 23:13:04,730 - src.training.trainer - INFO - 監控指標未改善，已連續 38 輪。最佳值: 8.121845, 當前值: 8.121767
+2025-04-17 23:13:04,730 - src.training.trainer - INFO - 檢測到訓練停滯，嘗試重啟訓練...
+2025-04-17 23:13:06,018 - src.training.trainer - INFO - 監控指標未改善，已連續 37 輪。最佳值: 8.121845, 當前值: 8.121762
+2025-04-17 23:13:07,266 - src.training.trainer - INFO - 輪次 113/300 - 訓練損失: 39.184570 - 驗證損失: 8.121763 - rmse: 5933.681152 - r2: -62.766674 - mae: 4658.024414 - 學習率: 0.000054 - 時間: 1.25秒
+2025-04-17 23:13:07,271 - src.training.trainer - INFO - 監控指標未改善，已連續 38 輪。最佳值: 8.121845, 當前值: 8.121763
+2025-04-17 23:13:08,543 - src.training.trainer - INFO - 監控指標未改善，已連續 39 輪。最佳值: 8.121845, 當前值: 8.121769
+2025-04-17 23:13:09,748 - src.training.trainer - INFO - 輪次 115/300 - 訓練損失: 38.373967 - 驗證損失: 8.121761 - rmse: 5933.678223 - r2: -62.766609 - mae: 4658.022461 - 學習率: 0.000049 - 時間: 1.20秒
+2025-04-17 23:13:09,754 - src.training.trainer - INFO - 監控指標未改善，已連續 40 輪。最佳值: 8.121845, 當前值: 8.121761
+2025-04-17 23:13:09,755 - src.training.trainer - INFO - 早停觸發！40 輪未改善
+2025-04-17 23:13:09,755 - src.training.trainer - INFO - 早停觸發，在輪次 115 停止訓練
+2025-04-17 23:13:09,755 - src.training.trainer - INFO - 訓練完成，總時間: 142.00秒
+2025-04-17 23:13:09,770 - __main__ - INFO - 訓練完成，最終模型已保存至: outputs/hybrid_model\models\final_model.pt
+2025-04-17 23:13:09,786 - src.utils.metrics - INFO - Model: HybridPINNLSTMModel
+RMSE: 1452.0067
+R2: -2.6795
+MAE: 1402.5417
+MAPE: 83.95%
+Relative Error (Mean): 83.95%
+Relative Error (Median): 65.02%
+Relative Error (90th percentile): 120.07%
+Log RMSE: 0.2681
+2025-04-17 23:13:09,793 - __main__ - INFO - 評估指標已保存至: outputs/hybrid_model\evaluation\metrics.csv
+2025-04-17 23:13:09,793 - __main__ - INFO - 生成視覺化結果...
+2025-04-17 23:13:10,807 - src.utils.visualization - INFO - 圖像已保存至: outputs/hybrid_model\evaluation\visualizations\prediction_vs_true.png
+2025-04-17 23:13:11,442 - src.utils.visualization - INFO - 圖像已保存至: outputs/hybrid_model\evaluation\visualizations\delta_w_prediction.png
+2025-04-17 23:13:12,258 - src.utils.visualization - INFO - 圖像已保存至: outputs/hybrid_model\evaluation\visualizations\physical_constraint.png
+2025-04-17 23:13:12,269 - __main__ - INFO - 評估完成，結果已保存至: outputs/hybrid_model\evaluation
+2025-04-17 23:13:12,269 - __main__ - INFO - 任務完成

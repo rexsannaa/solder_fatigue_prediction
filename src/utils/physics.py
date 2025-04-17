@@ -144,7 +144,7 @@ def validate_physical_constraints(delta_w, nf, a=A_COEFFICIENT, b=B_COEFFICIENT,
     nf = np.asarray(nf)
     
     # 計算理論nf值（考慮放大因子）
-    nf_theory = a * np.power(delta_w, b) * nf_amp_factor
+    nf_theory = a * np.power(delta_w, b)
     
     # 計算相對誤差
     residual = nf - nf_theory

@@ -949,3 +949,121 @@ Log RMSE: 0.7177
 2025-04-17 23:20:05,612 - __main__ - INFO - 評估指標保存到: outputs/hybrid_model/evaluation\metrics.csv
 2025-04-17 23:20:05,623 - __main__ - INFO - 違反物理約束的樣本保存到: outputs/hybrid_model/evaluation\violated_samples.csv
 2025-04-17 23:20:05,624 - __main__ - INFO - === 評估完成，耗時: 1.24秒 ===
+2025-04-17 23:37:29,254 - __main__ - INFO - === 開始模型評估 ===
+2025-04-17 23:37:29,256 - __main__ - INFO - 命令行參數: Namespace(model_path='outputs/hybrid_model/models/best_model.pt', config='configs/model_config.yaml', data='data/raw/Training_data_warpage_final_20250321_v1.2.csv', output_dir='outputs/hybrid_model/evaluation', model_type='hybrid', device=None, batch_size=16, visualize=False, debug=False)
+2025-04-17 23:37:29,270 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-17 23:37:29,270 - __main__ - INFO - 使用計算設備: cpu
+2025-04-17 23:37:29,277 - __main__ - INFO - 創建混合PINN-LSTM模型
+2025-04-17 23:37:29,280 - src.models.hybrid_model - INFO - 初始化簡化的HybridPINNLSTMModel - 使用直接物理計算優先策略
+2025-04-17 23:37:29,281 - __main__ - INFO - 從 outputs/hybrid_model/models/best_model.pt 載入模型權重
+2025-04-17 23:37:29,299 - __main__ - INFO - 直接從檢查點載入模型權重
+2025-04-17 23:37:29,299 - __main__ - INFO - 模型載入成功，移至 cpu 設備
+2025-04-17 23:37:30,192 - __main__ - INFO - 從 data/raw/Training_data_warpage_final_20250321_v1.2.csv 載入數據
+2025-04-17 23:37:30,197 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-17 23:37:30,198 - __main__ - INFO - 標準化特徵: ['Die', 'stud', 'mold', 'PCB', 'Unit_warpage']
+2025-04-17 23:37:30,200 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-17 23:37:30,201 - __main__ - INFO - 準備時間序列數據
+2025-04-17 23:37:30,204 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-17 23:37:30,205 - __main__ - INFO - 數據載入完成: 81 個樣本
+2025-04-17 23:37:30,205 - __main__ - INFO - 創建數據載入器成功: 81 個樣本，批次大小 16
+2025-04-17 23:37:30,206 - __main__ - INFO - 開始評估模型性能
+2025-04-17 23:37:30,251 - __main__ - INFO - 評估完成: 81 個預測
+2025-04-17 23:37:30,251 - __main__ - INFO - 計算評估指標
+2025-04-17 23:37:30,337 - src.utils.metrics - INFO - Model: Model
+RMSE: 5442.8349
+R2: -44.4167
+MAE: 4062.5042
+MAPE: 528.84%
+Relative Error (Mean): 528.84%
+Relative Error (Median): 123.73%
+Relative Error (90th percentile): 1508.66%
+Log RMSE: 0.7177
+2025-04-17 23:37:30,338 - __main__ - INFO - 驗證物理約束
+2025-04-17 23:37:30,339 - __main__ - ERROR - 驗證物理約束失敗: name 'nf_amp_factor' is not defined
+2025-04-17 23:37:30,340 - __main__ - ERROR - Traceback (most recent call last):
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\scripts\evaluate.py", line 527, in validate_physics
+    passed, residuals, violated = validate_physical_constraints(
+  File "C:\Users\a\Desktop\畢業論文\CAE\code\pinnlstm_code_sacq_5\src\utils\physics.py", line 147, in validate_physical_constraints
+    nf_theory = a * np.power(delta_w, b) * nf_amp_factor
+NameError: name 'nf_amp_factor' is not defined
+
+2025-04-17 23:37:30,341 - __main__ - INFO - 輸出目錄: outputs/hybrid_model/evaluation
+2025-04-17 23:37:30,356 - __main__ - INFO - 預測結果保存到: outputs/hybrid_model/evaluation\predictions.csv
+2025-04-17 23:37:30,360 - __main__ - INFO - 評估指標保存到: outputs/hybrid_model/evaluation\metrics.csv
+2025-04-17 23:37:30,360 - __main__ - INFO - === 評估完成，耗時: 1.11秒 ===
+2025-04-17 23:39:59,867 - __main__ - INFO - === 開始模型評估 ===
+2025-04-17 23:39:59,869 - __main__ - INFO - 命令行參數: Namespace(model_path='outputs/hybrid_model/models/best_model.pt', config='configs/model_config.yaml', data='data/raw/Training_data_warpage_final_20250321_v1.2.csv', output_dir='outputs/hybrid_model/evaluation', model_type='hybrid', device=None, batch_size=16, visualize=False, debug=False)
+2025-04-17 23:39:59,883 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-17 23:39:59,885 - __main__ - INFO - 使用計算設備: cpu
+2025-04-17 23:39:59,891 - __main__ - INFO - 創建混合PINN-LSTM模型
+2025-04-17 23:39:59,893 - src.models.hybrid_model - INFO - 初始化簡化的HybridPINNLSTMModel - 使用直接物理計算優先策略
+2025-04-17 23:39:59,895 - __main__ - INFO - 從 outputs/hybrid_model/models/best_model.pt 載入模型權重
+2025-04-17 23:39:59,899 - __main__ - INFO - 直接從檢查點載入模型權重
+2025-04-17 23:39:59,901 - __main__ - INFO - 模型載入成功，移至 cpu 設備
+2025-04-17 23:40:00,730 - __main__ - INFO - 從 data/raw/Training_data_warpage_final_20250321_v1.2.csv 載入數據
+2025-04-17 23:40:00,734 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-17 23:40:00,734 - __main__ - INFO - 標準化特徵: ['Die', 'stud', 'mold', 'PCB', 'Unit_warpage']
+2025-04-17 23:40:00,736 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-17 23:40:00,738 - __main__ - INFO - 準備時間序列數據
+2025-04-17 23:40:00,740 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-17 23:40:00,742 - __main__ - INFO - 數據載入完成: 81 個樣本
+2025-04-17 23:40:00,742 - __main__ - INFO - 創建數據載入器成功: 81 個樣本，批次大小 16
+2025-04-17 23:40:00,742 - __main__ - INFO - 開始評估模型性能
+2025-04-17 23:40:00,772 - __main__ - INFO - 評估完成: 81 個預測
+2025-04-17 23:40:00,772 - __main__ - INFO - 計算評估指標
+2025-04-17 23:40:00,885 - src.utils.metrics - INFO - Model: Model
+RMSE: 5442.8349
+R2: -44.4167
+MAE: 4062.5042
+MAPE: 528.84%
+Relative Error (Mean): 528.84%
+Relative Error (Median): 123.73%
+Relative Error (90th percentile): 1508.66%
+Log RMSE: 0.7177
+2025-04-17 23:40:00,885 - __main__ - INFO - 驗證物理約束
+2025-04-17 23:40:00,887 - src.utils.physics - INFO - 物理診斷 - 平均delta_w: 1.466249e-01, 對應理論Nf: 5487.10
+2025-04-17 23:40:00,887 - src.utils.physics - INFO - 物理診斷 - 平均預測Nf: 5487.10, 理論與預測比例: 1.0000
+2025-04-17 23:40:00,887 - src.utils.physics - INFO - 物理約束驗證通過! 最大相對殘差: 0.00%
+2025-04-17 23:40:00,887 - __main__ - INFO - 所有預測結果都滿足物理約束條件
+2025-04-17 23:40:00,889 - __main__ - INFO - 輸出目錄: outputs/hybrid_model/evaluation
+2025-04-17 23:40:00,899 - __main__ - INFO - 預測結果保存到: outputs/hybrid_model/evaluation\predictions.csv
+2025-04-17 23:40:00,901 - __main__ - INFO - 評估指標保存到: outputs/hybrid_model/evaluation\metrics.csv
+2025-04-17 23:40:00,901 - __main__ - INFO - === 評估完成，耗時: 1.03秒 ===
+2025-04-17 23:47:25,698 - __main__ - INFO - === 開始模型評估 ===
+2025-04-17 23:47:25,700 - __main__ - INFO - 命令行參數: Namespace(model_path='outputs/hybrid_model/models/best_model.pt', config='configs/model_config.yaml', data='data/raw/Training_data_warpage_final_20250321_v1.2.csv', output_dir='outputs/hybrid_model/evaluation', model_type='hybrid', device=None, batch_size=16, visualize=False, debug=False)
+2025-04-17 23:47:25,717 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-17 23:47:25,717 - __main__ - INFO - 使用計算設備: cpu
+2025-04-17 23:47:25,723 - __main__ - INFO - 創建混合PINN-LSTM模型
+2025-04-17 23:47:25,727 - src.models.hybrid_model - INFO - 初始化簡化的HybridPINNLSTMModel - 使用直接物理計算優先策略
+2025-04-17 23:47:25,727 - __main__ - INFO - 從 outputs/hybrid_model/models/best_model.pt 載入模型權重
+2025-04-17 23:47:25,746 - __main__ - INFO - 直接從檢查點載入模型權重
+2025-04-17 23:47:25,748 - __main__ - INFO - 模型載入成功，移至 cpu 設備
+2025-04-17 23:47:26,662 - __main__ - INFO - 從 data/raw/Training_data_warpage_final_20250321_v1.2.csv 載入數據
+2025-04-17 23:47:26,666 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-17 23:47:26,668 - __main__ - INFO - 標準化特徵: ['Die', 'stud', 'mold', 'PCB', 'Unit_warpage']
+2025-04-17 23:47:26,670 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5
+2025-04-17 23:47:26,671 - __main__ - INFO - 準備時間序列數據
+2025-04-17 23:47:26,674 - src.data.preprocess - INFO - 時間序列資料準備完成，形狀: (81, 4, 2)
+2025-04-17 23:47:26,675 - __main__ - INFO - 數據載入完成: 81 個樣本
+2025-04-17 23:47:26,676 - __main__ - INFO - 創建數據載入器成功: 81 個樣本，批次大小 16
+2025-04-17 23:47:26,676 - __main__ - INFO - 開始評估模型性能
+2025-04-17 23:47:26,706 - __main__ - INFO - 評估完成: 81 個預測
+2025-04-17 23:47:26,706 - __main__ - INFO - 計算評估指標
+2025-04-17 23:47:26,779 - src.utils.metrics - INFO - Model: Model
+RMSE: 5442.8349
+R2: -44.4167
+MAE: 4062.5042
+MAPE: 528.84%
+Relative Error (Mean): 528.84%
+Relative Error (Median): 123.73%
+Relative Error (90th percentile): 1508.66%
+Log RMSE: 0.7177
+2025-04-17 23:47:26,780 - __main__ - INFO - 驗證物理約束
+2025-04-17 23:47:26,781 - src.utils.physics - INFO - 物理診斷 - 平均delta_w: 1.466249e-01, 對應理論Nf: 5487.10
+2025-04-17 23:47:26,781 - src.utils.physics - INFO - 物理診斷 - 平均預測Nf: 5487.10, 理論與預測比例: 1.0000
+2025-04-17 23:47:26,781 - src.utils.physics - INFO - 物理約束驗證通過! 最大相對殘差: 0.00%
+2025-04-17 23:47:26,781 - __main__ - INFO - 所有預測結果都滿足物理約束條件
+2025-04-17 23:47:26,782 - __main__ - INFO - 輸出目錄: outputs/hybrid_model/evaluation
+2025-04-17 23:47:26,795 - __main__ - INFO - 預測結果保存到: outputs/hybrid_model/evaluation\predictions.csv
+2025-04-17 23:47:26,797 - __main__ - INFO - 評估指標保存到: outputs/hybrid_model/evaluation\metrics.csv
+2025-04-17 23:47:26,797 - __main__ - INFO - === 評估完成，耗時: 1.10秒 ===

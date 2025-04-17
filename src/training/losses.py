@@ -456,9 +456,9 @@ class HybridLoss(nn.Module):
         
         # 5. 總損失 - 更新權重配置
         total_loss = (
-            0.05 * nf_loss +  # 降低直接預測損失權重
-            self.delta_w_weight * delta_w_loss +  
-            0.5 * factor_loss +  # 添加修正因子損失
+            0.02 * nf_loss +  # 進一步降低直接預測損失權重
+            self.delta_w_weight * 2.0 * delta_w_loss +  # 大幅增加delta_w預測權重
+            0.8 * factor_loss +  # 增加修正因子損失權重
             self.lambda_physics * physics_total_loss
         )
         

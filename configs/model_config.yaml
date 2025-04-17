@@ -42,7 +42,7 @@ model:
     a_coefficient: 55.83                  # 保持不變
     b_coefficient: -2.259                 # 保持不變
     enforce_constraints: true             # 保持不變
-    scale_correction_factor: 0.4          # 調整為新的直接計算校正因子
+    scale_correction_factor: 0.22          # 調整為新的直接計算校正因子
   
   # 輸出參數
   use_log_transform: true                 # 保持不變

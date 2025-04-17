@@ -777,16 +777,6 @@ class PINNLSTMTrainer:
             'delta_w': all_delta_w,
             'delta_w_theory': all_delta_w_theory
         }
-
-        return {
-            'loss': avg_loss, 
-            'components': avg_components,
-            'metrics': metrics,
-            'predictions': all_predictions,
-            'targets': all_targets,
-            'delta_w': all_delta_w,
-            'delta_w_theory': all_delta_w_theory
-        }
     
     def _compute_metrics(self, targets, predictions, delta_w, delta_w_theory):
         """

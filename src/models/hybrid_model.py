@@ -1110,6 +1110,7 @@ class HybridPINNLSTMModel(nn.Module):
     def forward(self, static_input, time_series_input, return_features=False):
         """
         前向傳播 - 兩階段方法：先預測delta_w，再計算Nf
+        使用簡化的直接物理計算為主，神經網路只做小幅修正
         
         參數:
             static_input (torch.Tensor): 靜態特徵輸入，形狀為 (batch_size, static_input_dim)
@@ -1119,62 +1120,39 @@ class HybridPINNLSTMModel(nn.Module):
         返回:
             dict: 包含預測結果的字典
         """
-        # 直接從時間序列計算物理delta_w作為引導
+        # 1. 直接從時間序列計算物理delta_w作為基礎
         direct_delta_w = self._calculate_direct_delta_w(time_series_input)
         
-        # 1. 分支預測
+        # 2. 簡單執行分支模型以獲取特徵
         pinn_out = self.pinn_branch(static_input)
         lstm_out = self.lstm_branch(time_series_input)
         
-        # 2. 計算理論delta_w作為參考
-        # 從目標值反算delta_w (訓練時才有目標值)
-        if hasattr(self, '_delta_w_theory') and self._delta_w_theory is not None:
-            delta_w_theory = self._delta_w_theory
-            use_theory = True
-        else:
-            use_theory = False
-        
-        # 3. 混合預測 - 更激進的融合策略
-        
-        # 獲取基本預測
+        # 3. 計算修正因子 - 使用簡單的權重平均
         if self.ensemble_method == 'weighted':
-            # 加權平均融合
             weights = self.get_branch_weights()
             model_delta_w = weights[0] * pinn_out['delta_w'] + weights[1] * lstm_out['delta_w']
-        elif self.ensemble_method in ['gate', 'deep_fusion']:
-            # 使用特徵級融合
-            fused_features, gate_weights = self.fusion_layer(
-                pinn_out['features'], lstm_out['features']
-            )
-            
-            # 從融合特徵預測delta_w
-            model_delta_w = torch.exp(self.fused_delta_w_layer(fused_features)).squeeze(-1)
         else:
             # 簡單平均融合
             model_delta_w = 0.5 * pinn_out['delta_w'] + 0.5 * lstm_out['delta_w']
         
-        # 確保為正值
-        model_delta_w = model_delta_w.clamp(min=1e-8)
+        # 4. 融合直接計算值和模型預測值 - 更依賴直接計算
+        # 使用較小的調整權重 - 直接計算佔主導
+        adjust_weight = 0.3  # 限制模型的調整能力
+        delta_w = (1.0 - adjust_weight) * direct_delta_w + adjust_weight * model_delta_w
         
-        # 4. 強力引導 - 大幅增加直接計算delta_w的權重
-        direct_guide_weight = 0.65  # 顯著增加權重
-        delta_w = (1 - direct_guide_weight) * model_delta_w + direct_guide_weight * direct_delta_w
+        # 確保為正值並且在合理範圍內
+        delta_w = torch.clamp(delta_w, min=1e-8, max=1.0)
         
-        # 5. 全局縮放 - 更接近理論值
-        global_scale_factor = 0.58  # 縮小的縮放因子
-        delta_w = delta_w * global_scale_factor
-        
-        # 6. 使用物理公式計算疲勞壽命
+        # 5. 使用物理公式計算疲勞壽命 - 不使用任何校正因子
         a_coef = float(self.a_coefficient)
         b_coef = float(self.b_coefficient)
-        nf_pred = a_coef * torch.pow(delta_w, b_coef) * 3.0  # 保留校正因子
+        nf_pred = a_coef * torch.pow(delta_w, b_coef)  # 移除之前的3.0校正因子
         nf_pred = torch.clamp(nf_pred, min=10.0)  # 確保最小值
         
-        # 7. 準備返回結果
-        # L2正則化懲罰
+        # 6. L2正則化懲罰
         l2_penalty = self.l2_reg * (_l2_penalty(self.parameters()))
 
-        # 基本輸出
+        # 7. 準備返回結果
         result = {
             'delta_w': delta_w,       # 最終預測的delta_w
             'raw_delta_w': model_delta_w,   # 原始模型預測的delta_w
@@ -1193,8 +1171,8 @@ class HybridPINNLSTMModel(nn.Module):
             if self.ensemble_method == 'weighted':
                 result['branch_weights'] = self.get_branch_weights()
             elif self.ensemble_method in ['gate', 'deep_fusion']:
-                result['gate_weights'] = gate_weights
-                result['fused_features'] = fused_features
+                result['gate_weights'] = gate_weights if 'gate_weights' in locals() else None
+                result['fused_features'] = fused_features if 'fused_features' in locals() else None
         
         return result
     
@@ -1211,6 +1189,7 @@ class HybridPINNLSTMModel(nn.Module):
         """
         直接從時間序列數據計算delta_w物理量
         採用最後時間步與第一時間步的差值
+        使用更準確且與物理原理一致的計算方式
         
         參數:
             time_series_input (torch.Tensor): 時間序列輸入，形狀為 (batch_size, time_steps, time_input_dim)
@@ -1224,22 +1203,17 @@ class HybridPINNLSTMModel(nn.Module):
             up_interface = time_series_input[:, :, 0]  # (batch_size, time_steps)
             down_interface = time_series_input[:, :, 1]  # (batch_size, time_steps)
             
-            # 計算差值 - 使用更複雜的計算方式
-            # 上下界面權重差異化處理
-            delta_w_up = (up_interface[:, -1] - up_interface[:, 0]) * 0.6  # 上界面權重增加
-            delta_w_down = (down_interface[:, -1] - down_interface[:, 0]) * 0.4  # 下界面權重降低
+            # 計算最終與初始狀態的差值，使用更合理的權重
+            delta_w_up = (up_interface[:, -1] - up_interface[:, 0]) * 0.5  # 上界面權重
+            delta_w_down = (down_interface[:, -1] - down_interface[:, 0]) * 0.5  # 下界面權重
             
-            # 結合兩個界面的差值
+            # 計算總變化量 - 直接相加
             direct_delta_w = delta_w_up + delta_w_down
-            
-            # 使用更準確的縮放因子 - 經過實驗確定
-            direct_scale_factor = 0.4  # 大幅增加縮放因子
-            direct_delta_w = direct_delta_w * direct_scale_factor
         else:
             # 如果只有一個特徵，直接計算差值
-            direct_delta_w = (time_series_input[:, -1, 0] - time_series_input[:, 0, 0]) * 0.4
+            direct_delta_w = time_series_input[:, -1, 0] - time_series_input[:, 0, 0]
         
-        # 確保值為正
+        # 確保值為正且在合理範圍內
         direct_delta_w = torch.clamp(direct_delta_w, min=1e-8)
 
         # 添加調試輸出

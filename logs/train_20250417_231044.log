@@ -1,0 +1,8 @@
+2025-04-17 23:10:44,078 - __main__ - INFO - 成功載入配置文件: configs/model_config.yaml
+2025-04-17 23:10:44,156 - __main__ - INFO - 成功載入配置文件: configs/train_config.yaml
+2025-04-17 23:10:44,162 - __main__ - INFO - 已設定隨機種子: 42
+2025-04-17 23:10:44,163 - __main__ - INFO - 使用計算設備: cpu
+2025-04-17 23:10:44,163 - __main__ - INFO - 輸出目錄: outputs/hybrid_model
+2025-04-17 23:10:44,164 - __main__ - INFO - 載入資料: data/raw/Training_data_warpage_final_20250321_v1.2.csv
+2025-04-17 23:10:44,172 - src.data.preprocess - INFO - 成功載入資料檔案: data/raw/Training_data_warpage_final_20250321_v1.2.csv，共 81 筆資料，18 個欄位
+2025-04-17 23:10:44,230 - src.data.preprocess - INFO - 標準化完成，特徵數量: 5

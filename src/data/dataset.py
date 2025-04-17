@@ -305,6 +305,56 @@ def augment_training_data(X_train, time_series_train, y_train, synthetic_samples
                     augmented_time_series.append(np.expand_dims(ts_mix, axis=0))
                     augmented_y.append(np.array([y_mix]))
         
+        # 針對極端值樣本專門增強
+        extreme_targets = []
+        extreme_inputs = []
+        extreme_time_series = []
+
+        # 找出壽命較短和較長的樣本（可能是極端值）
+        short_life_idx = np.where(y_train < np.percentile(y_train, 10))[0]
+        long_life_idx = np.where(y_train > np.percentile(y_train, 90))[0]
+
+        # 組合極端值索引
+        extreme_idx = np.concatenate([short_life_idx, long_life_idx])
+
+        if len(extreme_idx) > 0:
+            for idx in extreme_idx:
+                # 對每個極端值樣本生成10個變種
+                for _ in range(10):
+                    # 複製原始樣本
+                    X_extreme = X_train[idx].copy()
+                    ts_extreme = time_series_train[idx].copy()
+                    y_extreme = y_train[idx].copy()
+                    
+                    # 微擾靜態特徵（較小擾動）
+                    X_extreme += np.random.normal(0, 0.05, X_extreme.shape)
+                    
+                    # 針對時間序列進行更精確的物理約束擾動
+                    delta_w_theory = np.power(y_extreme / a_coefficient, 1.0 / b_coefficient)
+                    
+                    # 生成合理的時間序列變化
+                    up_ratio = np.array([0.2, 0.5, 0.8, 1.0]) * (1 + np.random.normal(0, 0.05, 4))
+                    down_ratio = np.array([0.15, 0.45, 0.75, 1.0]) * (1 + np.random.normal(0, 0.05, 4))
+                    
+                    # 確保比率單調遞增
+                    up_ratio = np.maximum.accumulate(up_ratio)
+                    down_ratio = np.maximum.accumulate(down_ratio)
+                    
+                    # 生成合理的時間序列
+                    for t in range(ts_extreme.shape[1]):
+                        ts_extreme[t, 0] = delta_w_theory * up_ratio[t] * (1 + np.random.normal(0, 0.05))
+                        ts_extreme[t, 1] = delta_w_theory * down_ratio[t] * (1 + np.random.normal(0, 0.05))
+                    
+                    extreme_inputs.append(X_extreme)
+                    extreme_time_series.append(ts_extreme)
+                    extreme_targets.append(y_extreme)
+            
+            # 添加極端值增強樣本
+            if extreme_inputs:
+                augmented_X.append(np.vstack(extreme_inputs))
+                augmented_time_series.append(np.stack(extreme_time_series))
+                augmented_y.append(np.array(extreme_targets))
+
         # 合併所有增強樣本
         X_augmented = np.vstack(augmented_X)
         time_series_augmented = np.vstack(augmented_time_series)

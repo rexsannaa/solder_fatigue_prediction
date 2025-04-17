@@ -159,12 +159,20 @@ def create_model(config, model_type="hybrid", use_physics=True):
             static_input_dim=len(config["model"]["input"]["static_features"]),
             time_input_dim=len(config["model"]["input"]["time_series_features"]),
             time_steps=config["model"]["input"]["time_steps"],
-            hidden_dim=pinn_hidden_dim,
+            pinn_hidden_dims=[pinn_hidden_dim],  # 注意這裡是列表格式
+            lstm_hidden_size=config["model"]["lstm"]["hidden_size"],
+            lstm_num_layers=config["model"]["lstm"]["num_layers"],
+            fusion_dim=config["model"]["fusion"]["fusion_dim"],
             dropout_rate=config["model"]["pinn"]["dropout_rate"],
-            pinn_weight=config["model"]["fusion"].get("pinn_weight_init", 0.5),
-            lstm_weight=config["model"]["fusion"].get("lstm_weight_init", 0.5),
+            bidirectional=config["model"]["lstm"]["bidirectional"],
+            use_attention=config["model"]["lstm"]["use_attention"],
+            use_physics_layer=config["model"]["pinn"]["use_physics_layer"],
+            physics_layer_trainable=config["model"]["pinn"].get("physics_layer_trainable", False),
+            use_batch_norm=config["model"]["pinn"].get("use_batch_norm", True),
+            pinn_weight_init=config["model"]["fusion"].get("pinn_weight_init", 0.5),
+            lstm_weight_init=config["model"]["fusion"].get("lstm_weight_init", 0.5),
             a_coefficient=a_coefficient,
-            b_coefficient=b_coefficient,
+            b_coefficient=b_coefficient
         )
         
         logger.info(f"創建簡化的混合PINN-LSTM模型，使用物理約束: {use_physics}")

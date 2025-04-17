@@ -346,7 +346,7 @@ class SimplifiedHybridModel(nn.Module):
         # 3. 融合修正因子 - 簡單加權平均
         pinn_factor = pinn_out['correction_factor']
         lstm_factor = lstm_out['correction_factor']
-        combined_factor = (self.pinn_weight * pinn_factor + self.lstm_weight * lstm_factor)
+        combined_factor = (self.pinn_weight * pinn_factor + self.lstm_weight * lstm_factor)*0.55
         
         # 4. 應用修正因子到直接計算的delta_w
         delta_w = direct_delta_w * combined_factor
@@ -403,7 +403,7 @@ class SimplifiedHybridModel(nn.Module):
             direct_delta_w = time_series_input[:, -1, 0] - time_series_input[:, 0, 0]
         
         # 使用物理校正因子 - 基於實驗數據確定的最佳值
-        direct_delta_w = direct_delta_w * 0.4
+        direct_delta_w = direct_delta_w * 0.22
         
         # 確保值為正
         direct_delta_w = torch.clamp(direct_delta_w, min=1e-8)

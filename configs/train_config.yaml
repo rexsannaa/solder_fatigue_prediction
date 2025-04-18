@@ -50,7 +50,7 @@ training_strategy:
     enabled: true                                  # 是否啟用數據增強
     physics_guided: true                           # 是否使用物理引導的數據增強
     synthetic_samples: 20                         # 合成樣本數量
-    noise_level: 0.20                              # 噪聲水平
+    noise_level: 0.08                              # 噪聲水平
     description: "基於物理模型生成合成數據以增強訓練"
 
 # 回調函數配置

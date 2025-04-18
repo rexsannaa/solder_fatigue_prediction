@@ -349,7 +349,7 @@ class SimplifiedHybridModel(nn.Module):
         # 簡單加權平均
         base_factor = (self.pinn_weight * pinn_factor + self.lstm_weight * lstm_factor)
         # 應用受限非線性變換，使修正因子更專注於中心區域
-        combined_factor = torch.sigmoid((base_factor - 0.5) * 2.0) * 0.5 + 0.75  # 範圍約為0.8-1.2
+        combined_factor = torch.sigmoid((base_factor - 0.5) * 1.8) * 0.4 + 0.8  # 範圍約為0.8-1.2
         
         # 4. 應用修正因子到直接計算的delta_w
         delta_w = direct_delta_w * combined_factor
@@ -407,7 +407,7 @@ class SimplifiedHybridModel(nn.Module):
         
         # 使用物理校正因子 - 根據評估結果重新校準
         # 從結果來看，預測的delta_w平均約為0.484，而理論值約為0.265，差異約1.83倍
-        direct_delta_w = direct_delta_w * 0.27  # 0.4 / 1.83 ≈ 0.22
+        direct_delta_w = direct_delta_w * 0.278  # 0.4 / 1.83 ≈ 0.22
         
         # 確保值為正
         direct_delta_w = torch.clamp(direct_delta_w, min=1e-8)
@@ -626,7 +626,17 @@ class PINNLSTMTrainer:
             0.5 * factor_loss +  # 中等程度權重的修正因子損失
             lambda_physics * physics_loss  # 物理約束損失
         )
-        
+        # 在這裡添加對大偏差樣本的額外懲罰
+        # 計算相對誤差
+        rel_error = torch.abs(predictions - targets) / targets.clamp(min=1e-6)
+        # 找出相對誤差較大的樣本
+        large_error_mask = rel_error > 0.5  # 相對誤差超過50%的樣本
+        if large_error_mask.any():
+            # 對大誤差樣本額外懲罰
+            large_error_loss = torch.mean(rel_error[large_error_mask] ** 2)
+            # 加入總損失
+            total_loss = total_loss + 0.2 * large_error_loss
+
         # 返回各部分損失
         return {
             'total_loss': total_loss,

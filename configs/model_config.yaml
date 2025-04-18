@@ -79,8 +79,9 @@ training:
     initial_lambda_consistency: 0.1       # 進一步降低一致性損失權重
     max_lambda_consistency: 0.3           # 進一步降低一致性損失最大權重
     initial_delta_w_weight: 8.0           # 大幅增加delta_w預測初始權重
-    max_delta_w_weight: 15.0              # 大幅增加delta_w預測最大權重
+    max_delta_w_weight: 20.0              # 大幅增加delta_w預測最大權重
     epochs_to_max: 40                     # 縮短達到最大權重的時間
+    initial_delta_w_weight: 10.0  # 增加這個權重
   
   # 訓練控制保持不變
   epochs: 300
